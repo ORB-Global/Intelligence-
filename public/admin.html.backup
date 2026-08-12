@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Orb Intelligence — Admin</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex, nofollow" />
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #f4f4f5;
+      color: #18181b;
+      margin: 0;
+      padding: 2.5rem;
+    }
+    .header { display: flex; align-items: baseline; gap: 0.75rem; margin-bottom: 0.25rem; }
+    h1 { font-size: 1.4rem; margin: 0; }
+    .badge {
+      font-size: 0.75rem;
+      font-weight: 600;
+      padding: 0.15rem 0.6rem;
+      border-radius: 999px;
+      background: #e4e4e7;
+      color: #52525b;
+    }
+    .subtitle { color: #71717a; font-size: 0.85rem; margin-bottom: 2rem; }
+    .status-row { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 2rem; font-size: 0.95rem; }
+    .dot { width: 10px; height: 10px; border-radius: 50%; background: #a1a1aa; }
+    .dot.connected { background: #22c55e; }
+    .dot.error { background: #ef4444; }
+    .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1rem; margin-bottom: 2.5rem; }
+    .card { background: white; border: 1px solid #e4e4e7; border-radius: 10px; padding: 1.25rem; }
+    .card h2 { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.04em; color: #71717a; margin: 0 0 0.75rem; }
+    .card .big { font-size: 1.5rem; font-weight: 600; }
+    .card .meta { font-size: 0.85rem; color: #52525b; margin-top: 0.35rem; }
+    .card .summary { font-size: 0.85rem; color: #3f3f46; margin-top: 0.5rem; line-height: 1.4; }
+    .errors { margin-top: 1.5rem; font-size: 0.8rem; color: #b91c1c; }
+
+    .section {
+      background: white;
+      border: 1px solid #e4e4e7;
+      border-radius: 10px;
+      padding: 1.5rem;
+      max-width: 720px;
+    }
+    .section h2 { font-size: 1rem; margin: 0 0 1rem; }
+    .row { display: flex; gap: 0.5rem; align-items: center; margin-bottom: 1rem; }
+    .row label { font-size: 0.85rem; color: #52525b; }
+    .row input {
+      width: 100px;
+      padding: 0.4rem 0.6rem;
+      border: 1px solid #d4d4d8;
+      border-radius: 6px;
+      font-size: 0.9rem;
+    }
+    .row button {
+      padding: 0.5rem 1rem;
+      border: none;
+      border-radius: 6px;
+      background: #18181b;
+      color: white;
+      font-size: 0.85rem;
+      cursor: pointer;
+    }
+    .row button:disabled { background: #a1a1aa; cursor: not-allowed; }
+    .result { font-size: 0.85rem; line-height: 1.5; white-space: pre-wrap; }
+    .result h3 { font-size: 0.8rem; text-transform: uppercase; color: #71717a; margin: 1rem 0 0.25rem; }
+    .result h3:first-child { margin-top: 0; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>Orb Intelligence</h1>
+    <span class="badge">Internal — staff only</span>
+  </div>
+  <div class="subtitle">
+    Not the client-facing dashboard. Clients still use
+    <a href="https://orb-global.com/dashboard">orb-global.com/dashboard</a> and their existing Oviond logins.
+  </div>
+
+  <div class="status-row">
+    <div id="statusDot" class="dot"></div>
+    <span id="statusText">Checking Supabase connection&hellip;</span>
+  </div>
+
+  <div class="cards">
+    <div class="card">
+      <h2>Clients</h2>
+      <div id="clientCount" class="big">&mdash;</div>
+    </div>
+
+    <div class="card">
+      <h2>Latest Monthly Snapshot</h2>
+      <div id="snapshotClient" class="big">&mdash;</div>
+      <div id="snapshotMeta" class="meta"></div>
+    </div>
+
+    <div class="card">
+      <h2>Latest Generated Insight</h2>
+      <div id="insightClient" class="big">&mdash;</div>
+      <div id="insightMeta" class="meta"></div>
+      <div id="insightSummary" class="summary"></div>
+    </div>
+  </div>
+
+  <div id="errors" class="errors"></div>
+
+  <div class="section">
+    <h2>Generate Insight</h2>
+    <div class="row">
+      <label for="clientIdInput">Client ID</label>
+      <input id="clientIdInput" type="number" min="1" value="1" />
+      <button id="generateBtn">Generate</button>
+    </div>
+    <div id="generateStatus" class="meta"></div>
+    <div id="generateResult" class="result"></div>
+  </div>
+
+  <script>
+    function fmtDate(d) {
+      return d || 'unknown date';
+    }
+
+    async function loadSummary() {
+      const dot = document.getElementById('statusDot');
+      const statusText = document.getElementById('statusText');
+
+      try {
+        const res = await fetch('/api/admin/summary', { credentials: 'include' });
+        const body = await res.json();
+
+        if (!res.ok || !body.success) {
+          throw new Error((body.error && body.error.message) || `HTTP ${res.status}`);
+        }
+
+        const d = body.data;
+        const connected = d.supabaseStatus === 'connected';
+
+        dot.classList.add(connected ? 'connected' : 'error');
+        statusText.textContent = connected
+          ? 'Supabase connected'
+          : 'Supabase connection issue — see errors below';
+
+        document.getElementById('clientCount').textContent = d.clientCount ?? '—';
+
+        if (d.latestSnapshot) {
+          const s = d.latestSnapshot;
+          document.getElementById('snapshotClient').textContent =
+            (s.clients && s.clients.client_name) || `Client #${s.client_id}`;
+          document.getElementById('snapshotMeta').textContent =
+            `${fmtDate(s.period_start)} → ${fmtDate(s.period_end)}`;
+        } else {
+          document.getElementById('snapshotClient').textContent = 'No snapshots yet';
+        }
+
+        if (d.latestInsight) {
+          const i = d.latestInsight;
+          document.getElementById('insightClient').textContent =
+            (i.clients && i.clients.client_name) || `Client #${i.client_id}`;
+          document.getElementById('insightMeta').textContent =
+            `${fmtDate(i.period_start)} → ${fmtDate(i.period_end)}`;
+          document.getElementById('insightSummary').textContent = i.summary_text || '';
+        } else {
+          document.getElementById('insightClient').textContent = 'No insights yet';
+        }
+
+        if (d.errors && d.errors.length) {
+          document.getElementById('errors').textContent = 'Errors: ' + d.errors.join(' | ');
+        }
+      } catch (err) {
+        dot.classList.add('error');
+        statusText.textContent = `Could not load admin summary: ${err.message}`;
+      }
+    }
+
+    async function generateInsight() {
+      const btn = document.getElementById('generateBtn');
+      const statusEl = document.getElementById('generateStatus');
+      const resultEl = document.getElementById('generateResult');
+      const clientId = document.getElementById('clientIdInput').value;
+
+      btn.disabled = true;
+      statusEl.textContent = 'Generating — this calls the AI, may take a few seconds…';
+      resultEl.textContent = '';
+
+      try {
+        const res = await fetch(`/api/clients/${clientId}/generate-insight`, {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ analysisType: 'executive_summary' }),
+        });
+        const body = await res.json();
+
+        if (!res.ok || !body.success) {
+          throw new Error((body.error && body.error.message) || `HTTP ${res.status}`);
+        }
+
+        const row = body.data;
+        statusEl.textContent = `Saved insight #${row.id} for client ${clientId}.`;
+        resultEl.textContent =
+          `EXECUTIVE SUMMARY\n${row.summary_text || ''}\n\n` +
+          `WHAT WORKED\n${row.what_worked || '(none)'}\n\n` +
+          `WHAT DECLINED\n${row.what_declined || '(none)'}\n\n` +
+          `RECOMMENDED NEXT STEPS\n${row.recommended_next_steps || '(none)'}`;
+
+        loadSummary();
+      } catch (err) {
+        statusEl.textContent = `Failed: ${err.message}`;
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    document.getElementById('generateBtn').addEventListener('click', generateInsight);
+
+    loadSummary();
+  </script>
+</body>
+</html>

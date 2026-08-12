@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Orb Intelligence — Sign In</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="robots" content="noindex, nofollow" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500&family=Public+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<style>
+  :root{ --ink:#161B26; --ink-soft:#4B5468; --porcelain:#F7F5F2; --surface:#FFFFFF; --line:#E7E2D9; --brass:#AD8A4E; --concern:#9C3D34; }
+  *{box-sizing:border-box;}
+  body{ margin:0; min-height:100vh; display:flex; align-items:center; justify-content:center; background:var(--porcelain); color:var(--ink); font-family:'Public Sans',sans-serif; }
+  .card{ background:var(--surface); border:1px solid var(--line); border-radius:14px; padding:2.5rem; width:100%; max-width:380px; }
+  h1{ font-family:'Fraunces',serif; font-weight:500; font-size:1.5rem; margin:0 0 0.3rem; }
+  .subtitle{ color:var(--ink-soft); font-size:0.85rem; margin-bottom:1.75rem; }
+  label{ display:block; font-size:0.82rem; color:var(--ink-soft); margin-bottom:0.3rem; }
+  input{ width:100%; padding:0.65rem 0.8rem; border:1px solid var(--line); border-radius:8px; font-size:0.92rem; margin-bottom:1.1rem; font-family:inherit; }
+  button{ width:100%; padding:0.75rem; border:none; border-radius:8px; background:var(--ink); color:var(--porcelain); font-weight:600; font-size:0.9rem; cursor:pointer; }
+  button:disabled{ opacity:0.5; cursor:not-allowed; }
+  .link-btn{ background:none; color:var(--brass); font-weight:500; font-size:0.82rem; padding:0; width:auto; margin-top:0.9rem; text-decoration:underline; }
+  .error{ color:var(--concern); font-size:0.85rem; margin-bottom:1rem; min-height:1.2em; }
+  .status{ color:var(--ink-soft); font-size:0.85rem; margin-bottom:1rem; min-height:1.2em; }
+</style>
+</head>
+<body>
+  <div class="card">
+    <h1>Orb Intelligence</h1>
+    <div class="subtitle">Mission Control — staff sign in</div>
+    <div id="errorMsg" class="error"></div>
+    <div id="statusMsg" class="status"></div>
+    <form id="loginForm">
+      <label for="email">Email</label>
+      <input type="email" id="email" required autocomplete="email" />
+      <label for="password">Password</label>
+      <input type="password" id="password" required autocomplete="current-password" />
+      <button type="submit" id="loginBtn">Sign In</button>
+    </form>
+    <button type="button" id="resetBtn" class="link-btn">Forgot password?</button>
+  </div>
+<script>
+  const SUPABASE_URL = 'https://vdhsvasxccdrashmvvdk.supabase.co';
+  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZkaHN2YXN4Y2NkcmFzaG12dmRrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUzNDMyMDUsImV4cCI6MjEwMDkxOTIwNX0.rZvlbqrdYXlIeAKou-dllsO6MQr3ehzm7h3FBK2sZ6o';
+  const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { auth: { persistSession: true, autoRefreshToken: true } });
+
+  client.auth.getSession().then(({ data }) => {
+    if (data.session) window.location.href = '/mission-control.html';
+  });
+
+  document.getElementById('loginForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const errorEl = document.getElementById('errorMsg');
+    const btn = document.getElementById('loginBtn');
+    errorEl.textContent = '';
+    btn.disabled = true;
+    btn.textContent = 'Signing in…';
+    const email = document.getElementById('email').value.trim();
+    const password = document.getElementById('password').value;
+    const { error } = await client.auth.signInWithPassword({ email, password });
+    if (error) {
+      errorEl.textContent = error.message || 'Sign in failed.';
+      btn.disabled = false;
+      btn.textContent = 'Sign In';
+      return;
+    }
+    window.location.href = '/mission-control.html';
+  });
+
+  document.getElementById('resetBtn').addEventListener('click', async () => {
+    const errorEl = document.getElementById('errorMsg');
+    const statusEl = document.getElementById('statusMsg');
+    errorEl.textContent = '';
+    statusEl.textContent = '';
+    const email = document.getElementById('email').value.trim();
+    if (!email) {
+      errorEl.textContent = 'Enter your email above first, then click "Forgot password?"';
+      return;
+    }
+    const { error } = await client.auth.resetPasswordForEmail(email, { redirectTo: window.location.origin + '/login.html' });
+    if (error) {
+      errorEl.textContent = error.message || 'Could not send reset email.';
+    } else {
+      statusEl.textContent = 'If that email has an account, a reset link has been sent.';
+    }
+  });
+</script>
+</body>
+</html>

@@ -1,0 +1,709 @@
+
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Orb Intelligence</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="robots" content="noindex, nofollow" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Public+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#161B26;
+    --ink-soft:#4B5468;
+    --porcelain:#F7F5F2;
+    --surface:#FFFFFF;
+    --line:#E7E2D9;
+    --brass:#AD8A4E;
+    --brass-soft:#F1E6D2;
+    --win:#2E6F5E;
+    --win-soft:#E4F0EC;
+    --concern:#9C3D34;
+    --concern-soft:#F6E7E4;
+    --watch:#B98A2E;
+    --watch-soft:#FBF0DC;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--porcelain);
+    color:var(--ink);
+    font-family:'Public Sans', sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  .display{ font-family:'Fraunces', serif; }
+  .mono{ font-family:'IBM Plex Mono', monospace; }
+
+  a{ color:inherit; }
+
+  /* ---------- Top bar ---------- */
+  .topbar{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:1.1rem 2.5rem;
+    border-bottom:1px solid var(--line);
+    background:var(--surface);
+  }
+  .brand{
+    display:flex;
+    align-items:baseline;
+    gap:0.6rem;
+  }
+  .brand .mark{ font-size:1.3rem; font-weight:600; letter-spacing:-0.01em; }
+  .brand .tag{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:0.68rem;
+    color:var(--ink-soft);
+    letter-spacing:0.08em;
+    text-transform:uppercase;
+    border-left:1px solid var(--line);
+    padding-left:0.6rem;
+  }
+  .topbar-right{ display:flex; align-items:center; gap:1rem; }
+  .conn{ display:flex; align-items:center; gap:0.4rem; font-size:0.75rem; color:var(--ink-soft); }
+  .dot{ width:7px; height:7px; border-radius:50%; background:#B4AFA4; }
+  .dot.connected{ background:var(--win); }
+  .dot.error{ background:var(--concern); }
+
+  select#clientSelect{
+    font-family:'Public Sans', sans-serif;
+    font-size:0.85rem;
+    font-weight:500;
+    padding:0.5rem 0.9rem;
+    border-radius:8px;
+    border:1px solid var(--line);
+    background:var(--surface);
+    color:var(--ink);
+    min-width:220px;
+  }
+  button.primary{
+    font-family:'Public Sans', sans-serif;
+    font-weight:600;
+    font-size:0.85rem;
+    padding:0.6rem 1.15rem;
+    border-radius:8px;
+    border:none;
+    background:var(--ink);
+    color:var(--porcelain);
+    cursor:pointer;
+    transition:opacity 0.15s ease;
+  }
+  button.primary:hover{ opacity:0.85; }
+  button.primary:disabled{ opacity:0.45; cursor:not-allowed; }
+
+  /* ---------- Layout ---------- */
+  .page{ max-width:980px; margin:0 auto; padding:3rem 2.5rem 5rem; }
+
+  .hero{
+    display:grid;
+    grid-template-columns:1fr auto;
+    gap:2.5rem;
+    align-items:center;
+    margin-bottom:2.75rem;
+  }
+  .hero-eyebrow{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:0.72rem;
+    letter-spacing:0.12em;
+    text-transform:uppercase;
+    color:var(--brass);
+    margin-bottom:0.5rem;
+  }
+  .hero h1{
+    font-size:2.5rem;
+    font-weight:500;
+    margin:0 0 0.35rem;
+    letter-spacing:-0.01em;
+    line-height:1.05;
+  }
+  .hero .period{ color:var(--ink-soft); font-size:0.95rem; }
+
+  /* ---------- Health gauge (signature element) ---------- */
+  .gauge-wrap{ display:flex; flex-direction:column; align-items:center; gap:0.4rem; }
+  .gauge{ position:relative; width:132px; height:132px; }
+  .gauge svg{ transform:rotate(-90deg); }
+  .gauge-track{ fill:none; stroke:var(--line); stroke-width:9; }
+  .gauge-fill{ fill:none; stroke-width:9; stroke-linecap:round; transition:stroke-dasharray 0.8s ease, stroke 0.4s ease; }
+  .gauge-center{
+    position:absolute; inset:0;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+  }
+  .gauge-score{ font-family:'Fraunces', serif; font-size:2.1rem; font-weight:500; line-height:1; }
+  .gauge-of{ font-size:0.65rem; color:var(--ink-soft); margin-top:0.1rem; }
+  .gauge-label{
+    font-size:0.78rem; font-weight:600; text-align:center;
+  }
+  .gauge-caption{
+    font-size:0.68rem; color:var(--ink-soft); text-align:center; max-width:150px; line-height:1.3;
+  }
+
+  /* ---------- Cards ---------- */
+  .card{
+    background:var(--surface);
+    border:1px solid var(--line);
+    border-radius:14px;
+    padding:1.9rem 2.1rem;
+    margin-bottom:1.4rem;
+  }
+  .card-label{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:0.7rem;
+    letter-spacing:0.1em;
+    text-transform:uppercase;
+    color:var(--ink-soft);
+    margin-bottom:0.9rem;
+    display:flex;
+    align-items:center;
+    gap:0.5rem;
+  }
+  .exec-summary p{
+    font-size:1.15rem;
+    line-height:1.65;
+    margin:0;
+    color:var(--ink);
+  }
+
+  .split{ display:grid; grid-template-columns:1fr 1fr; gap:1.4rem; }
+  @media (max-width:760px){ .split{ grid-template-columns:1fr; } .hero{ grid-template-columns:1fr; } .gauge-wrap{ justify-self:start; } }
+
+  .win-card .card-label{ color:var(--win); }
+  .concern-card .card-label{ color:var(--concern); }
+  .icon-dot{ width:6px; height:6px; border-radius:50%; }
+  .win-card .icon-dot{ background:var(--win); }
+  .concern-card .icon-dot{ background:var(--concern); }
+  .win-card{ background:var(--win-soft); border-color:#D3E6DF; }
+  .concern-card{ background:var(--concern-soft); border-color:#EAD3CF; }
+  .win-card p, .concern-card p{ margin:0; font-size:0.96rem; line-height:1.6; color:var(--ink); }
+
+  .steps-card .card-label{ color:var(--brass); }
+  .steps ol{ margin:0; padding:0; list-style:none; counter-reset:step; }
+  .steps li{
+    counter-increment:step;
+    display:flex;
+    gap:0.9rem;
+    padding:0.85rem 0;
+    border-top:1px solid var(--line);
+    font-size:0.96rem;
+    line-height:1.55;
+  }
+  .steps li:first-child{ border-top:none; padding-top:0; }
+  .steps li::before{
+    content:counter(step);
+    font-family:'Fraunces', serif;
+    font-weight:500;
+    font-size:1rem;
+    color:var(--brass);
+    background:var(--brass-soft);
+    width:26px; height:26px;
+    border-radius:50%;
+    display:flex; align-items:center; justify-content:center;
+    flex-shrink:0;
+  }
+
+  .missing-note{
+    display:flex; gap:0.6rem; align-items:flex-start;
+    background:var(--watch-soft);
+    border:1px solid #EBDBAE;
+    border-radius:10px;
+    padding:0.9rem 1.1rem;
+    font-size:0.85rem;
+    color:#6B5623;
+    margin-bottom:1.4rem;
+    line-height:1.5;
+  }
+
+  .provenance{
+    display:flex; justify-content:space-between; flex-wrap:wrap; gap:0.5rem;
+    font-family:'IBM Plex Mono', monospace;
+    font-size:0.72rem;
+    color:var(--ink-soft);
+    padding-top:1.2rem;
+    margin-top:0.5rem;
+    border-top:1px solid var(--line);
+  }
+
+  /* ---------- States ---------- */
+  .state{
+    text-align:center;
+    padding:4rem 2rem;
+    color:var(--ink-soft);
+  }
+  .state h2{ font-family:'Fraunces', serif; font-weight:500; color:var(--ink); font-size:1.4rem; margin-bottom:0.5rem;}
+  .state p{ font-size:0.92rem; margin-bottom:1.5rem; }
+
+  .pulse{ animation:pulse 1.4s ease-in-out infinite; }
+  @keyframes pulse{ 0%,100%{ opacity:1; } 50%{ opacity:0.5; } }
+
+  .hidden{ display:none !important; }/* ---------- Ask Orb Intelligence chat panel ---------- */
+  .chat-section{ margin-top: 2rem; }
+  .chat-header{ display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:0.75rem; margin-bottom:1rem; }
+  .date-range{ display:flex; align-items:center; gap:0.5rem; font-size:0.82rem; color:var(--ink-soft); }
+  .date-range input{ padding:0.4rem 0.5rem; border:1px solid var(--line); border-radius:6px; font-family:'Public Sans',sans-serif; font-size:0.82rem; }
+  .suggested-qs{ display:flex; flex-wrap:wrap; gap:0.5rem; margin-bottom:1rem; }
+  .suggested-qs button{
+    font-family:'Public Sans', sans-serif; font-size:0.78rem; padding:0.4rem 0.8rem;
+    border-radius:999px; border:1px solid var(--line); background:var(--porcelain); color:var(--ink);
+    cursor:pointer;
+  }
+  .suggested-qs button:hover{ border-color:var(--brass); color:var(--brass); }
+  .chat-messages{ display:flex; flex-direction:column; gap:1rem; margin-bottom:1rem; max-height:520px; overflow-y:auto; }
+  .chat-msg-user{ align-self:flex-end; max-width:80%; background:var(--ink); color:var(--porcelain); padding:0.7rem 1rem; border-radius:12px 12px 2px 12px; font-size:0.9rem; }
+  .chat-msg-assistant{ max-width:100%; background:var(--surface); border:1px solid var(--line); border-radius:12px 12px 12px 2px; padding:1.1rem 1.3rem; }
+  .chat-msg-assistant.declined{ background:var(--watch-soft); border-color:#EBDBAE; }
+  .answer-block h4{ font-family:'IBM Plex Mono', monospace; font-size:0.68rem; text-transform:uppercase; letter-spacing:0.08em; color:var(--ink-soft); margin:0.9rem 0 0.3rem; }
+  .answer-block h4:first-child{ margin-top:0; }
+  .answer-block p{ margin:0; font-size:0.9rem; line-height:1.55; }
+  .answer-block .insufficient{ color:#6B5623; }
+  .data-scope{ margin-top:0.9rem; padding-top:0.7rem; border-top:1px solid var(--line); font-family:'IBM Plex Mono', monospace; font-size:0.68rem; color:var(--ink-soft); line-height:1.6; }
+  .chat-input-row{ display:flex; gap:0.6rem; }
+  .chat-input-row input{
+    flex:1; padding:0.7rem 1rem; border:1px solid var(--line); border-radius:8px;
+    font-family:'Public Sans', sans-serif; font-size:0.9rem;
+  }
+  .chat-loading{ font-size:0.85rem; color:var(--ink-soft); font-style:italic; }
+</style>
+</head>
+<body>
+
+  <div class="topbar">
+    <div class="brand">
+      <span class="mark display">Orb Intelligence</span>
+      <span class="tag">AI Performance Briefing</span>
+    </div>
+    <div class="topbar-right">
+      <div class="conn"><span id="statusDot" class="dot"></span><span id="statusText">Connecting&hellip;</span></div>
+      <select id="clientSelect"><option>Loading clients&hellip;</option></select>
+      <button id="generateBtn" class="primary">Generate AI Insight</button>
+    </div>
+  </div>
+
+  <div class="page">
+
+    <!-- EMPTY / LOADING / ERROR STATES -->
+    <div id="emptyState" class="state hidden">
+      <h2>No insight yet</h2>
+      <p>This client hasn't had an AI performance briefing generated. Click "Generate AI Insight" above to create the first one from real account data.</p>
+    </div>
+
+    <div id="processingState" class="state hidden">
+      <h2 class="pulse">Analyzing performance data&hellip;</h2>
+      <p>Reviewing recent spend, results, and history. This calls the AI directly and usually takes a few seconds.</p>
+    </div>
+
+    <div id="errorState" class="state hidden">
+      <h2>Couldn't load this briefing</h2>
+      <p id="errorMessage">Something went wrong.</p>
+    </div>
+
+    <!-- MAIN INSIGHT VIEW -->
+    <div id="insightView" class="hidden">
+
+      <div class="hero">
+        <div>
+          <div class="hero-eyebrow">Executive Briefing</div>
+          <h1 id="clientName" class="display">&mdash;</h1>
+          <div class="period" id="periodLine">&mdash;</div>
+        </div>
+        <div class="gauge-wrap">
+          <div class="gauge">
+            <svg width="132" height="132" viewBox="0 0 132 132">
+              <circle class="gauge-track" cx="66" cy="66" r="56"></circle>
+              <circle id="gaugeFill" class="gauge-fill" cx="66" cy="66" r="56"></circle>
+            </svg>
+            <div class="gauge-center">
+              <div id="gaugeScore" class="gauge-score">&mdash;</div>
+              <div class="gauge-of">/ 100</div>
+            </div>
+          </div>
+          <div id="gaugeLabel" class="gauge-label">&mdash;</div>
+          <div class="gauge-caption">Reflects this briefing's AI-flagged wins vs. concerns — a directional read, not a precise metric.</div>
+        </div>
+      </div>
+
+      <div id="missingNote" class="missing-note hidden">
+        <span class="mono" style="font-size:0.7rem; text-transform:uppercase; font-weight:600; flex-shrink:0;">Data gap</span>
+        <span id="missingNoteText"></span>
+      </div>
+
+      <div class="card exec-summary">
+        <div class="card-label">Executive Summary</div>
+        <p id="execSummary">&mdash;</p>
+      </div>
+
+      <div class="split">
+        <div class="card win-card">
+          <div class="card-label"><span class="icon-dot"></span>What Worked</div>
+          <p id="whatWorked">&mdash;</p>
+        </div>
+        <div class="card concern-card">
+          <div class="card-label"><span class="icon-dot"></span>What Declined</div>
+          <p id="whatDeclined">&mdash;</p>
+        </div>
+      </div>
+
+      <div class="card steps-card steps">
+        <div class="card-label">Recommended Next Steps</div>
+        <ol id="nextSteps"></ol>
+      </div>
+
+      <div class="provenance">
+        <span id="provGenerated">&mdash;</span>
+      </div>
+
+    </div>
+
+    <!-- ASK ORB INTELLIGENCE -->
+    <div class="card chat-section">
+      <div class="chat-header">
+        <div class="card-label" style="margin:0;">Ask Orb Intelligence</div>
+        <div class="date-range">
+          <label for="dateStart">From</label>
+          <input type="date" id="dateStart" />
+          <label for="dateEnd">To</label>
+          <input type="date" id="dateEnd" />
+        </div>
+      </div>
+
+      <div class="suggested-qs">
+        <button data-q="Why did Meta decline?">Why did Meta decline?</button>
+        <button data-q="Compare this period with the previous one.">Compare with previous period</button>
+        <button data-q="Which channel performed best?">Which channel performed best?</button>
+        <button data-q="What caused cost per click to increase?">What caused CPC to increase?</button>
+        <button data-q="Which campaigns need attention?">Which campaigns need attention?</button>
+        <button data-q="What should Orb do next?">What should Orb do next?</button>
+      </div>
+
+      <div id="chatMessages" class="chat-messages"></div>
+      <div id="chatLoading" class="chat-loading hidden">Analyzing&hellip;</div>
+
+      <div class="chat-input-row">
+        <input type="text" id="chatInput" maxlength="500" placeholder="Ask about this client's marketing performance&hellip;" />
+        <button id="chatSendBtn" class="primary">Ask</button>
+      </div>
+    </div>
+
+  </div>
+
+<script>
+  const state = { clients: [], currentClientId: null };
+
+  function showOnly(id){
+    ['emptyState','processingState','errorState','insightView'].forEach(s=>{
+      document.getElementById(s).classList.toggle('hidden', s !== id);
+    });
+  }
+
+  function setConnection(ok, label){
+    document.getElementById('statusDot').classList.remove('connected','error');
+    document.getElementById('statusDot').classList.add(ok ? 'connected' : 'error');
+    document.getElementById('statusText').textContent = label;
+  }
+
+  // Simple, transparent health-score heuristic derived from the
+  // insight's own fields. Not a precise statistical score — the UI
+  // says so via the caption under the gauge.
+  function computeHealth(row){
+    let score = 70;
+    const worked = (row.what_worked || '').trim();
+    const declined = (row.what_declined || '').trim();
+    const missing = (row.summary_text || '').includes('MISSING DATA NOTE');
+    if (worked.length > 40) score += 15;
+    if (declined.length > 40) score -= 20;
+    if (missing) score -= 10;
+    score = Math.max(5, Math.min(98, score));
+
+    let label, colorVar;
+    if (score >= 80){ label = 'Strong Performance'; colorVar = 'var(--win)'; }
+    else if (score >= 55){ label = 'Steady, Watch Closely'; colorVar = 'var(--watch)'; }
+    else { label = 'Needs Attention'; colorVar = 'var(--concern)'; }
+
+    return { score, label, colorVar };
+  }
+
+  function renderGauge(score, colorVar){
+    const r = 56, circumference = 2 * Math.PI * r;
+    const fillLength = circumference * (score / 100);
+    const fill = document.getElementById('gaugeFill');
+    fill.style.stroke = colorVar;
+    fill.style.strokeDasharray = `${fillLength} ${circumference}`;
+    document.getElementById('gaugeScore').textContent = score;
+  }
+
+  function fmtDate(d){
+    if(!d) return 'unknown date';
+    try { return new Date(d).toLocaleDateString(undefined, { year:'numeric', month:'short', day:'numeric' }); }
+    catch(e){ return d; }
+  }
+
+  function extractMissingNote(summaryText){
+    if (!summaryText) return null;
+    const marker = 'MISSING DATA NOTE:';
+    const idx = summaryText.indexOf(marker);
+    if (idx === -1) return null;
+    return summaryText.slice(idx + marker.length).trim();
+  }
+
+  function renderInsight(row, clientLabel){
+    showOnly('insightView');
+
+    document.getElementById('clientName').textContent = clientLabel;
+    const period = (row.period_start && row.period_end)
+      ? `${fmtDate(row.period_start)} \u2192 ${fmtDate(row.period_end)}`
+      : 'Period not attached to this briefing';
+    document.getElementById('periodLine').textContent = period;
+
+    const health = computeHealth(row);
+    renderGauge(health.score, health.colorVar);
+    document.getElementById('gaugeLabel').textContent = health.label;
+    document.getElementById('gaugeLabel').style.color = health.colorVar;
+
+    const missingNote = extractMissingNote(row.summary_text);
+    const missingEl = document.getElementById('missingNote');
+    if (missingNote){
+      document.getElementById('missingNoteText').textContent = missingNote;
+      missingEl.classList.remove('hidden');
+    } else {
+      missingEl.classList.add('hidden');
+    }
+
+    const execOnly = missingNote
+      ? row.summary_text.split('MISSING DATA NOTE:')[0].trim()
+      : (row.summary_text || '');
+    document.getElementById('execSummary').textContent = execOnly || '\u2014';
+
+    document.getElementById('whatWorked').textContent = row.what_worked || 'Nothing specific flagged this period.';
+    document.getElementById('whatDeclined').textContent = row.what_declined || 'Nothing specific flagged this period.';const stepsList = document.getElementById('nextSteps');
+    stepsList.innerHTML = '';
+    const stepsText = (row.recommended_next_steps || '').trim();
+    if (stepsText){
+      // Split on numbered markers like "1." "2." if present, else on sentences.
+      let items = stepsText.split(/\n+/).filter(Boolean);
+      if (items.length <= 1){
+        items = stepsText.split(/(?<=[.?!])\s+(?=[A-Z0-9])/).filter(Boolean);
+      }
+      items.forEach(text=>{
+        const li = document.createElement('li');
+        li.textContent = text.replace(/^\d+[\.\)]\s*/, '').trim();
+        stepsList.appendChild(li);
+      });
+    } else {
+      const li = document.createElement('li');
+      li.textContent = 'No specific actions recommended this period.';
+      stepsList.appendChild(li);
+    }
+
+    document.getElementById('provGenerated').textContent = `Generated ${fmtDate(row.created_at)}`;
+  }
+
+  async function loadClients(){
+    try{
+      const res = await fetch('/api/clients', { credentials:'include' });
+      const body = await res.json();
+      if(!res.ok) throw new Error(`HTTP ${res.status}`);
+      const list = Array.isArray(body) ? body : (body.data || []);
+      state.clients = list;
+      const select = document.getElementById('clientSelect');
+      select.innerHTML = '';
+      list.forEach(c=>{
+        const opt = document.createElement('option');
+        opt.value = c.id;
+        opt.textContent = c.client_name || c.name || `Client #${c.id}`;
+        select.appendChild(opt);
+      });
+      setConnection(true, 'Connected');
+      if (list.length){
+        state.currentClientId = list[0].id;
+        select.value = state.currentClientId;
+        loadLatestInsight(state.currentClientId);
+      } else {
+        showOnly('emptyState');
+      }
+    } catch(err){
+      setConnection(false, 'Connection issue');
+      showOnly('errorState');
+      document.getElementById('errorMessage').textContent = `Could not load client list: ${err.message}`;
+    }
+  }
+
+  function currentClientLabel(){
+    const c = state.clients.find(c => String(c.id) === String(state.currentClientId));
+    return (c && (c.client_name || c.name)) || `Client #${state.currentClientId}`;
+  }
+
+  async function loadLatestInsight(clientId){
+    try{
+      const res = await fetch(`/api/clients/${clientId}/insights`, { credentials:'include' });
+      const body = await res.json();
+      if(!res.ok) throw new Error(`HTTP ${res.status}`);
+      const list = Array.isArray(body) ? body : (body.data || []);
+      if (list.length){
+        renderInsight(list[0], currentClientLabel());
+      } else {
+        showOnly('emptyState');
+      }
+    } catch(err){
+      showOnly('errorState');
+      document.getElementById('errorMessage').textContent = `Could not load insight: ${err.message}`;
+    }
+  }
+
+  document.getElementById('clientSelect').addEventListener('change', (e)=>{
+    state.currentClientId = e.target.value;
+    showOnly('processingState');
+    document.getElementById('processingState').querySelector('h2').textContent = 'Loading\u2026';
+    loadLatestInsight(state.currentClientId);
+  });
+
+  document.getElementById('generateBtn').addEventListener('click', async ()=>{
+    if (!state.currentClientId) return;
+    const btn = document.getElementById('generateBtn');
+    btn.disabled = true;
+    showOnly('processingState');
+    document.getElementById('processingState').querySelector('h2').textContent = 'Analyzing performance data\u2026';
+
+    try{
+      const res = await fetch(`/api/clients/${state.currentClientId}/generate-insight`, {
+        method:'POST',
+        credentials:'include',
+        headers:{ 'Content-Type':'application/json' },
+        body: JSON.stringify({ analysisType:'executive_summary' }),
+      });
+      const body = await res.json();
+      if(!res.ok || !body.success){
+        throw new Error((body.error && body.error.message) || `HTTP ${res.status}`);
+      }
+      renderInsight(body.data, currentClientLabel());
+    } catch(err){
+      showOnly('errorState');
+      document.getElementById('errorMessage').textContent = `Generation failed: ${err.message}`;
+    } finally {
+      btn.disabled = false;
+    }
+  });
+
+  // ---------- Ask Orb Intelligence chat panel ----------
+  const chatHistory = []; // session-only, in-memory, cleared on page reload - not persisted server-side
+
+  function defaultDateRange(){
+    const end = new Date();
+    const start = new Date(end.getTime() - 30 * 24 * 60 * 60 * 1000);
+    const fmt = (d)=> d.toISOString().slice(0,10);
+    return { start: fmt(start), end: fmt(end) };
+  }
+
+  function setDefaultDateRangeInputs(){
+    const dr = defaultDateRange();
+    document.getElementById('dateStart').value = dr.start;
+    document.getElementById('dateEnd').value = dr.end;
+  }
+
+  function appendUserMessage(text){
+    const el = document.createElement('div');
+    el.className = 'chat-msg-user';
+    el.textContent = text;
+    document.getElementById('chatMessages').appendChild(el);
+  }
+
+  function appendAssistantMessage(data){
+    const wrap = document.createElement('div');
+    const a = data.answer;
+    const declined = a.findings && a.findings.toLowerCase().includes('scoped to');
+    wrap.className = 'chat-msg-assistant answer-block' + (declined ? ' declined' : '');
+
+    const findingsP = document.createElement('p');
+    findingsP.textContent = a.findings;
+    wrap.appendChild(findingsP);
+
+    if (a.evidence){
+      const h = document.createElement('h4'); h.textContent = 'Evidence';
+      const p = document.createElement('p'); p.textContent = a.evidence;
+      wrap.appendChild(h); wrap.appendChild(p);
+    }
+    if (a.recommended_actions){
+      const h = document.createElement('h4'); h.textContent = 'Recommended Actions';
+      const p = document.createElement('p'); p.textContent = a.recommended_actions;
+      wrap.appendChild(h); wrap.appendChild(p);
+    }
+    if (a.insufficient_data){
+      const h = document.createElement('h4'); h.textContent = 'Data Gap';
+      const p = document.createElement('p'); p.className = 'insufficient'; p.textContent = a.insufficient_data;
+      wrap.appendChild(h); wrap.appendChild(p);
+    }
+
+    const scope = data.dataScope;
+    const scopeEl = document.createElement('div');
+    scopeEl.className = 'data-scope';
+    const channelText = scope.channelsIncluded.length
+      ? scope.channelsIncluded.map(c => `${c.channel} (${c.status.replace(/_/g,' ')})`).join(', ')
+      : 'no channel data';
+    scopeEl.textContent = `Source: ${scope.client}, ${scope.dateRange.start} \u2192 ${scope.dateRange.end} \u00b7 channels: ${channelText} \u00b7 previous period available: ${scope.previousPeriodAvailable ? 'yes' : 'no'} \u00b7 account notes: ${scope.accountNotesIncluded}`;
+    wrap.appendChild(scopeEl);
+
+    document.getElementById('chatMessages').appendChild(wrap);
+    wrap.scrollIntoView({ behavior:'smooth', block:'end' });
+  }
+
+  function appendErrorMessage(message){
+    const el = document.createElement('div');
+    el.className = 'chat-msg-assistant declined';
+    el.textContent = message;
+    document.getElementById('chatMessages').appendChild(el);
+  }
+
+  async function askOrbIntelligence(question){
+    if (!state.currentClientId) return;
+    if (!question || !question.trim()) return;
+
+    const input = document.getElementById('chatInput');
+    const sendBtn = document.getElementById('chatSendBtn');
+    const loading = document.getElementById('chatLoading');
+
+    appendUserMessage(question);
+    chatHistory.push({ role:'user', content: question });
+    input.value = '';
+    sendBtn.disabled = true;
+    loading.classList.remove('hidden');
+
+    const start = document.getElementById('dateStart').value;
+    const end = document.getElementById('dateEnd').value;
+
+    try{
+      const res = await fetch(`/api/clients/${state.currentClientId}/ask`, {
+        method:'POST',
+        credentials:'include',
+        headers:{ 'Content-Type':'application/json' },
+        body: JSON.stringify({ question, dateRange:{ start, end } }),
+      });
+      const body = await res.json();
+      if(!res.ok || !body.success){
+        throw new Error((body.error && body.error.message) || `HTTP ${res.status}`);
+      }
+      appendAssistantMessage(body.data);
+      chatHistory.push({ role:'assistant', content: body.data.answer.findings });
+    } catch(err){
+      appendErrorMessage(`Couldn't get an answer: ${err.message}`);
+    } finally {
+      loading.classList.add('hidden');
+      sendBtn.disabled = false;
+    }
+  }
+
+  document.getElementById('chatSendBtn').addEventListener('click', ()=>{
+    askOrbIntelligence(document.getElementById('chatInput').value);
+  });
+  document.getElementById('chatInput').addEventListener('keydown', (e)=>{
+    if (e.key === 'Enter') askOrbIntelligence(document.getElementById('chatInput').value);
+  });
+  document.querySelectorAll('.suggested-qs button').forEach(btn=>{
+    btn.addEventListener('click', ()=> askOrbIntelligence(btn.getAttribute('data-q')));
+  });
+
+  setDefaultDateRangeInputs();
+
+  loadClients();
+</script>
+</body>
+</html>

@@ -1,0 +1,312 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Orb Intelligence — Mission Control</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="robots" content="noindex, nofollow" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Public+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<style>
+  :root{
+    --ink:#161B26; --ink-soft:#4B5468; --porcelain:#F7F5F2; --surface:#FFFFFF; --line:#E7E2D9;
+    --brass:#AD8A4E; --brass-soft:#F1E6D2;
+    --win:#2E6F5E; --win-soft:#E4F0EC;
+    --concern:#9C3D34; --concern-soft:#F6E7E4;
+    --watch:#B98A2E; --watch-soft:#FBF0DC;
+    --muted:#8B93A3; --muted-soft:#EEF0F3;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{ background:var(--porcelain); color:var(--ink); font-family:'Public Sans',sans-serif; }
+  a{ color:inherit; text-decoration:none; cursor:pointer; }
+
+  .topbar{ display:flex; align-items:center; justify-content:space-between; padding:1.1rem 2.5rem; border-bottom:1px solid var(--line); background:var(--surface); }
+  .brand{ font-family:'Fraunces',serif; font-weight:600; font-size:1.2rem; }
+  .brand .tag{ font-family:'IBM Plex Mono',monospace; font-size:0.68rem; color:var(--ink-soft); margin-left:0.6rem; text-transform:uppercase; letter-spacing:0.08em; }
+  .topbar-right{ display:flex; align-items:center; gap:1rem; font-size:0.85rem; color:var(--ink-soft); }
+  .logout-btn{ background:none; border:1px solid var(--line); border-radius:8px; padding:0.4rem 0.9rem; cursor:pointer; font-size:0.82rem; color:var(--ink); font-family:inherit; }
+
+  .breadcrumbs{ padding:1.5rem 2.5rem 0; font-size:0.85rem; color:var(--ink-soft); }
+  .breadcrumbs a:hover{ color:var(--brass); }
+
+  .page{ max-width:1000px; margin:0 auto; padding:1.5rem 2.5rem 5rem; }
+  h1{ font-family:'Fraunces',serif; font-weight:500; font-size:1.9rem; margin:0 0 0.3rem; }
+  .subtitle{ color:var(--ink-soft); font-size:0.9rem; margin-bottom:2rem; }
+
+  .card-grid{ display:grid; grid-template-columns:repeat(auto-fill, minmax(260px,1fr)); gap:1rem; }
+  .card{ background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:1.4rem; }
+  .card:hover{ border-color:var(--brass); }
+  .card h3{ font-family:'Fraunces',serif; font-weight:500; font-size:1.1rem; margin:0 0 0.5rem; }
+
+  .badge{ display:inline-block; font-size:0.7rem; font-weight:600; padding:0.2rem 0.6rem; border-radius:999px; text-transform:uppercase; letter-spacing:0.03em; }
+  .badge.active, .badge.connected, .badge.current, .badge.verified{ background:var(--win-soft); color:var(--win); }
+  .badge.inactive, .badge.missing, .badge.stale, .badge.sync_error, .badge.conflict{ background:var(--concern-soft); color:var(--concern); }
+  .badge.needs_verification, .badge.delayed, .badge.expired, .badge.permission_issue, .badge.partial{ background:var(--watch-soft); color:var(--watch); }
+  .badge.unmapped, .badge.never_synced, .badge.unavailable{ background:var(--muted-soft); color:var(--muted); }
+
+  .section{ background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:1.5rem; margin-bottom:1.2rem; }
+  .section h2{ font-family:'IBM Plex Mono',monospace; font-size:0.75rem; text-transform:uppercase; letter-spacing:0.08em; color:var(--ink-soft); margin:0 0 1rem; }
+
+  table{ width:100%; border-collapse:collapse; font-size:0.88rem; }
+  th{ text-align:left; font-family:'IBM Plex Mono',monospace; font-size:0.7rem; text-transform:uppercase; color:var(--ink-soft); padding:0.5rem 0.6rem; border-bottom:1px solid var(--line); }
+  td{ padding:0.6rem; border-bottom:1px solid var(--line); }
+
+  .warning-strip{ display:flex; gap:0.6rem; align-items:flex-start; background:var(--watch-soft); border:1px solid #EBDBAE; border-radius:10px; padding:0.9rem 1.1rem; font-size:0.85rem; color:#6B5623; margin-bottom:1.2rem; }
+  .pending-box{ background:var(--watch-soft); border:1px solid #EBDBAE; border-radius:10px; padding:1.1rem; margin-top:1rem; }
+  .pending-box .row{ display:flex; gap:0.6rem; margin-top:0.9rem; }
+  button.primary{ font-family:inherit; font-weight:600; font-size:0.82rem; padding:0.5rem 1rem; border-radius:8px; border:none; background:var(--ink); color:var(--porcelain); cursor:pointer; }
+  button.secondary{ font-family:inherit; font-weight:600; font-size:0.82rem; padding:0.5rem 1rem; border-radius:8px; border:1px solid var(--line); background:transparent; color:var(--ink); cursor:pointer; }
+
+  .state{ text-align:center; padding:4rem 2rem; color:var(--ink-soft); }
+  .state h2{ font-family:'Fraunces',serif; font-weight:500; color:var(--ink); font-size:1.3rem; margin-bottom:0.5rem; }
+  .pulse{ animation:pulse 1.4s ease-in-out infinite; }
+  @keyframes pulse{ 0%,100%{opacity:1;} 50%{opacity:0.5;} }
+
+  .hidden{ display:none !important; }
+  @media (max-width:640px){ .page{ padding:1rem; } .topbar{ padding:1rem; flex-wrap:wrap; gap:0.6rem; } }
+</style>
+</head>
+<body>
+
+  <div class="topbar">
+    <div class="brand">Orb Intelligence <span class="tag">Mission Control</span></div>
+    <div class="topbar-right">
+      <span id="userEmail"></span>
+      <button class="logout-btn" id="logoutBtn">Log out</button>
+    </div>
+  </div>
+
+  <div class="breadcrumbs" id="breadcrumbs"></div>
+
+  <div class="page">
+    <div id="loadingState" class="state hidden"><h2 class="pulse">Loading…</h2></div>
+    <div id="errorState" class="state hidden"><h2>Something went wrong</h2><p id="errorMessage"></p></div>
+    <div id="deniedState" class="state hidden"><h2>Access denied</h2><p>You don't have permission to view this, or it doesn't exist.</p></div>
+    <div id="content"></div>
+  </div>
+
+<script>
+  const SUPABASE_URL = 'https://vdhsvasxccdrashmvvdk.supabase.co';
+  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZkaHN2YXN4Y2NkcmFzaG12dmRrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUzNDMyMDUsImV4cCI6MjEwMDkxOTIwNX0.rZvlbqrdYXlIeAKou-dllsO6MQr3ehzm7h3FBK2sZ6o';
+  const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+    auth: { persistSession: true, autoRefreshToken: true },
+  });
+
+  let session = null;
+
+  function showOnly(id){
+    ['loadingState','errorState','deniedState'].forEach(s => document.getElementById(s).classList.toggle('hidden', s !== id));
+    document.getElementById('content').classList.toggle('hidden', Boolean(id));
+  }
+
+  function showContent(){
+    ['loadingState','errorState','deniedState'].forEach(s => document.getElementById(s).classList.add('hidden'));ddocument.getElementById('content').classList.remove('hidden');
+  }
+
+  async function apiFetch(path, options = {}){
+    const { data } = await client.auth.getSession();
+    if (!data.session) { window.location.href = '/login.html'; throw new Error('No session'); }
+    const res = await fetch(path, {
+      ...options,
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${data.session.access_token}`, ...(options.headers||{}) },
+    });
+    if (res.status === 401) { window.location.href = '/login.html'; throw new Error('Session expired'); }
+    const body = await res.json();
+    if (!res.ok || !body.success) { throw Object.assign(new Error(body.error?.message || `HTTP ${res.status}`), { status: res.status }); }
+    return body.data;
+  }
+
+  function setBreadcrumbs(parts){
+    document.getElementById('breadcrumbs').innerHTML = parts.map((p,i) =>
+      i === parts.length-1 ? `<span>${p.label}</span>` : `<a onclick="${p.action}">${p.label}</a> / `
+    ).join('');
+  }
+
+  async function viewOrganizations(){
+    setBreadcrumbs([{ label: 'Mission Control' }]);
+    showOnly('loadingState');
+    try {
+      const orgs = await apiFetch('/api/mc/organizations');
+      showContent();
+      const content = document.getElementById('content');
+      if (!orgs.length){
+        content.innerHTML = `<div class="state"><h2>No organizations yet</h2><p>Nothing has been added to Mission Control's schema yet.</p></div>`;
+        return;
+      }
+      content.innerHTML = `
+        <h1>Organizations</h1>
+        <div class="subtitle">${orgs.length} organization${orgs.length===1?'':'s'} you have access to</div>
+        <div class="card-grid">
+          ${orgs.map(o => `
+            <div class="card" onclick="viewOrganization('${o.id}')">
+              <h3>${escapeHtml(o.name)}</h3>
+              <span class="badge ${o.status}">${o.status}</span>
+              ${o.ownership_group_status === 'unverified' ? '<span class="badge unmapped" style="margin-left:0.4rem;">ownership unverified</span>' : ''}
+            </div>
+          `).join('')}
+        </div>`;
+    } catch (err) {
+      handleError(err);
+    }
+  }
+
+  async function viewOrganization(orgId){
+    showOnly('loadingState');
+    try {
+      const { organization, locations } = await apiFetch(`/api/mc/organizations/${orgId}`);
+      setBreadcrumbs([
+        { label: 'Mission Control', action: 'viewOrganizations()' },
+        { label: organization.name },
+      ]);
+      showContent();
+      const content = document.getElementById('content');
+      content.innerHTML = `
+        <h1>${escapeHtml(organization.name)}</h1>
+        <div class="subtitle">
+          <span class="badge ${organization.status}">${organization.status}</span>
+          ${organization.status === 'inactive' ? ' — this organization is disabled; members have lost access' : ''}
+        </div>
+        ${locations.length === 0 ? `<div class="state"><h2>No locations yet</h2></div>` : `
+        <div class="card-grid">
+          ${locations.map(l => `
+            <div class="card" onclick="viewLocation('${l.id}')">
+              <h3>${escapeHtml(l.name)}</h3>
+              <div style="margin-bottom:0.5rem; color:var(--ink-soft); font-size:0.85rem;">${escapeHtml(l.city||'')}${l.city&&l.state?', ':''}${escapeHtml(l.state||'')}</div>
+              <span class="badge ${l.active ? 'active' : 'inactive'}">${l.active ? 'active' : 'inactive'}</span>
+            </div>
+          `).join('')}
+        </div>`}`;
+    } catch (err) {
+      handleError(err);
+    }
+  }
+
+  async function viewLocation(locId){
+    showOnly('loadingState');
+    try {
+      const { location, connections, mapping, metrics, feed } = await apiFetch(`/api/mc/locations/${locId}`);
+      setBreadcrumbs([
+        { label: 'Mission Control', action: 'viewOrganizations()' },
+        { label: location.organizations?.name || 'Organization', action: `viewOrganization('${location.organization_id}')` },
+        { label: location.name },
+      ]);
+      showContent();
+      const content = document.getElementById('content');
+
+      const inactiveWarning = !location.active
+        ? `<div class="warning-strip"><span>⚠</span><span>This location is marked inactive. Access is currently blocked for all non-platform-admin roles.</span></div>` : '';
+
+      const mappingBlock = !mapping
+        ? `<div class="section"><h2>Dashboard Mapping</h2><span class="badge unmapped">unmapped</span><p style="margin-top:0.8rem; color:var(--ink-soft); font-size:0.85rem;">No Oviond dashboard has been mapped to this location yet.</p></div>`
+        : `<div class="section">
+            <h2>Dashboard Mapping</h2>
+            <span class="badge ${mapping.dashboard_mapping_status}">${mapping.dashboard_mapping_status.replace(/_/g,' ')}</span>
+            <p style="margin-top:0.8rem; font-size:0.85rem; color:var(--ink-soft);">
+              Oviond client ID: ${escapeHtml(mapping.oviond_client_id || 'not set')}<br/>
+              Confirmed dashboard URL: ${escapeHtml(mapping.dashboard_access_url || 'not set')}<br/>
+              Last verified: ${mapping.dashboard_last_verified_at ? new Date(mapping.dashboard_last_verified_at).toLocaleString() : 'never'}
+            </p>
+            ${mapping.dashboard_mapping_status === 'needs_verification' ? `
+              <div class="pending-box">
+                <strong style="font-size:0.85rem;">Pending change detected</strong>
+                <p style="font-size:0.85rem; margin:0.5rem 0;">New dashboard ID: ${escapeHtml(mapping.pending_dashboard_id || '—')}<br/>New URL: ${escapeHtml(mapping.pending_access_url || '—')}</p>
+                <div class="row">
+                  <button class="primary" onclick="approveMapping('${mapping.id}', '${locId}')">Approve</button>
+<button class="secondary" onclick="rejectMapping('${mapping.id}', '${locId}')">Reject</button>
+                </div>
+              </div>` : ''}
+          </div>`;
+
+      const connectionsBlock = `<div class="section"><h2>Connection Health</h2>
+        ${connections.length === 0 ? '<p style="color:var(--ink-soft); font-size:0.85rem;">No connections tracked yet.</p>' : `
+        <table><thead><tr><th>Channel</th><th>Status</th><th>Freshness</th><th>Last Synced</th></tr></thead><tbody>
+          ${connections.map(c => `<tr>
+            <td>${escapeHtml(c.channel)}</td>
+            <td><span class="badge ${c.status}">${c.status.replace(/_/g,' ')}</span></td>
+            <td><span class="badge ${c.freshness_status}">${c.freshness_status}</span></td>
+            <td>${c.last_successful_sync_at ? new Date(c.last_successful_sync_at).toLocaleDateString() : 'never'}</td>
+          </tr>`).join('')}
+        </tbody></table>`}
+      </div>`;
+
+      const metricsBlock = `<div class="section"><h2>Historical Metrics</h2>
+        ${metrics.length === 0 ? '<p style="color:var(--ink-soft); font-size:0.85rem;">No historical metrics on file yet for this location.</p>' : `
+        <table><thead><tr><th>Channel</th><th>Period</th><th>Spend</th><th>Impressions</th><th>Clicks</th><th>CTR</th><th>CPC</th></tr></thead><tbody>
+          ${metrics.map(m => `<tr>
+            <td>${escapeHtml(m.channel)}</td>
+            <td>${m.period_start} → ${m.period_end}</td>
+            <td>$${Number(m.ad_spend||0).toLocaleString()}</td>
+            <td>${Number(m.impressions||0).toLocaleString()}</td>
+            <td>${Number(m.clicks||0).toLocaleString()}</td>
+            <td>${m.ctr ? m.ctr+'%' : '—'}</td>
+            <td>${m.cpc ? '$'+m.cpc : '—'}</td>
+          </tr>`).join('')}
+        </tbody></table>`}
+      </div>`;
+
+      const feedIcon = { signal: '������', recommendation: '������', action: '������', outcome: '������' };
+      const feedBlock = `<div class="section"><h2>Intelligence Feed</h2>
+        ${!feed || feed.length === 0 ? '<p style="color:var(--ink-soft); font-size:0.85rem;">No signals, recommendations, actions, or outcomes recorded yet.</p>' : `
+        <div style="display:flex; flex-direction:column; gap:0.8rem;">
+          ${feed.map(item => `
+            <div style="border-left:3px solid var(--brass); padding:0.5rem 0 0.5rem 1rem;">
+              <div style="font-size:0.7rem; text-transform:uppercase; letter-spacing:0.05em; color:var(--ink-soft); margin-bottom:0.2rem;">
+                ${feedIcon[item.item_type]||''} ${escapeHtml(item.item_type)}${item.subtype ? ' · ' + escapeHtml(item.subtype) : ''} · ${new Date(item.occurred_at).toLocaleDateString()}
+              </div>
+              <div style="font-size:0.88rem;">${escapeHtml(item.description)}</div>
+            </div>
+          `).join('')}
+        </div>`}
+      </div>`;
+
+      content.innerHTML = `
+        <h1>${escapeHtml(location.name)}</h1>
+        <div class="subtitle"><span class="badge ${location.active?'active':'inactive'}">${location.active?'active':'inactive'}</span></div>
+        ${inactiveWarning}
+        ${mappingBlock}
+        ${connectionsBlock}
+        ${metricsBlock}
+        ${feedBlock}
+      `;
+    } catch (err) {
+      handleError(err);
+    }
+  }
+
+  async function approveMapping(mappingId, locId){
+    try { await apiFetch(`/api/mc/dashboard-mappings/${mappingId}/approve`, { method: 'POST' }); viewLocation(locId); }
+    catch (err) { alert('Could not approve: ' + err.message); }
+  }
+  async function rejectMapping(mappingId, locId){
+    try { await apiFetch(`/api/mc/dashboard-mappings/${mappingId}/reject`, { method: 'POST' }); viewLocation(locId); }
+    catch (err) { alert('Could not reject: ' + err.message); }
+  }
+
+  function handleError(err){
+    if (err.status === 404) { showOnly('deniedState'); return; }
+    showOnly('errorState');
+    document.getElementById('errorMessage').textContent = err.message;
+  }
+
+  function escapeHtml(s){ const d = document.createElement('div'); d.textContent = s ?? ''; return d.innerHTML; }
+
+  document.getElementById('logoutBtn').addEventListener('click', async () => {
+    await client.auth.signOut();
+    window.location.href = '/login.html';
+  });
+
+  client.auth.onAuthStateChange((event) => {
+    if (event === 'SIGNED_OUT') window.location.href = '/login.html';
+  });
+
+  client.auth.getSession().then(({ data }) => {
+    if (!data.session) { window.location.href = '/login.html'; return; }
+    session = data.session;
+    document.getElementById('userEmail').textContent = session.user.email;
+    viewOrganizations();
+  });
+</script>
+</body>
+</html>
