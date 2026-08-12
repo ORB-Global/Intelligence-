@@ -102,7 +102,7 @@
   }
 
   function showContent(){
-    ['loadingState','errorState','deniedState'].forEach(s => document.getElementById(s).classList.add('hidden'));ddocument.getElementById('content').classList.remove('hidden');
+    ['loadingState','errorState','deniedState'].forEach(s => document.getElementById(s).classList.add('hidden'));document.getElementById('content').classList.remove('hidden');
   }
 
   async function apiFetch(path, options = {}){
