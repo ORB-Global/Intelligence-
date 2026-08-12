@@ -8,9 +8,70 @@
 
 const express = require('express');
 const requireSupabaseAuth = require('../middleware/requireSupabaseAuth');
+const chatService = require('../services/chatService');
+const { buildChannelComparison } = require('../utils/metrics');
 
 const router = express.Router();
 router.use(requireSupabaseAuth);
+
+const CHANNEL_LABELS = {
+  'fb-ads': 'Meta Ads', 'inst-ads': 'Meta Ads (Instagram)', 'gadw': 'Google Ads',
+  'gmb': 'Google Business Profile', 'fb-pg': 'Facebook', 'inst': 'Instagram',
+  meta: 'Meta Ads', google: 'Google Ads',
+};
+function labelChannel(c) { return CHANNEL_LABELS[c] || c; }
+
+const MAX_QUESTION_LENGTH = 500;
+const HISTORY_TURNS_INCLUDED = 6; // caps conversation replay - cost/scale control, not full history
+
+/**
+ * Real, tenant-scoped context assembly - every query here goes through
+ * req.supabase (the user's own token), so RLS decides what's visible
+ * before this function ever runs. Capped/summarized, not a raw dump:
+ * only the two most recent periods for channel comparison, only the
+ * most recent 15 timeline items (oldest-first so the model reads them
+ * in causal order), not the client's entire history.
+ */
+async function buildTenantChatContext(supabase, locationId) {
+  const [
+    { data: location },
+    { data: metrics },
+    { data: health },
+    { data: feedRaw },
+    { data: servicesManaged },
+  ] = await Promise.all([
+    supabase.from('locations').select('id, name, organizations(name)').eq('id', locationId).maybeSingle(),
+    supabase.from('historical_metrics').select('*').eq('location_id', locationId).order('period_start', { ascending: false }).limit(4),
+    supabase.from('health_scores').select('*').eq('location_id', locationId).order('calculated_at', { ascending: false }).limit(1).maybeSingle(),
+    supabase.from('intelligence_feed').select('*').eq('location_id', locationId).order('occurred_at', { ascending: false }).limit(15),
+    supabase.from('services_managed').select('service, status').eq('location_id', locationId),
+  ]);
+
+  let healthWithFactors = null;
+  if (health) {
+    const { data: factors } = await supabase.from('health_score_factors').select('factor, score, weight, status, explanation').eq('health_score_id', health.id);
+    healthWithFactors = { ...health, factors: factors || [] };
+  }
+
+  const metricsLabeled = (metrics || []).map((m) => ({ ...m, channel: labelChannel(m.channel) }));
+  const periods = [...new Set(metricsLabeled.map((m) => `${m.period_start}_${m.period_end}`))];
+  const currentRows = metricsLabeled.filter((m) => `${m.period_start}_${m.period_end}` === periods[0]);
+  const previousRows = periods[1] ? metricsLabeled.filter((m) => `${m.period_start}_${m.period_end}` === periods[1]) : [];
+  const channelComparisons = buildChannelComparison(currentRows, previousRows);
+
+  const feed = (feedRaw || []).slice().reverse(); // oldest-first for the model
+
+  return {
+    client: { name: location?.name, organization: location?.organizations?.name },
+    channelComparisons,
+    snapshots: metricsLabeled,
+    healthScore: healthWithFactors,
+    servicesManaged: servicesManaged || [],
+    intelligenceFeed: feed,
+    accountNotes: [],
+    insights: [],
+  };
+}
 
 router.get('/organizations', async (req, res) => {
   const { data, error } = await req.supabase
@@ -67,6 +128,127 @@ router.get('/locations/:id', async (req, res) => {
     success: true,
     data: { location, connections: connections || [], mapping: mapping || null, metrics: metrics || [], feed: feed || [] },
   });
+});
+
+// POST /api/mc/locations/:id/ask - "Explore with Orb Intelligence."
+// Uses the SAME chatService/chatPrompt as the internal admin chat -
+// one intelligence engine, not a parallel one. Only the data-assembly
+// layer differs (RLS-scoped here vs service-role for admin), because
+// that's a real, necessary difference in authentication model, not a
+// duplicated product.
+router.post('/locations/:id/ask', async (req, res) => {
+  const { id: locationId } = req.params;
+  const { question, conversationId } = req.body || {};
+
+  if (!question || typeof question !== 'string' || !question.trim()) {
+    return res.status(400).json({ success: false, error: { message: 'A question is required.' } });
+  }
+  if (question.length > MAX_QUESTION_LENGTH) {
+    return res.status(400).json({ success: false, error: { message: `Question exceeds ${MAX_QUESTION_LENGTH} characters.` } });
+  }
+
+  try {
+    const { data: location } = await req.supabase
+      .from('locations').select('id, organization_id, daily_ai_question_limit').eq('id', locationId).maybeSingle();
+    if (!location) return res.status(404).json({ success: false, error: { message: 'Location not found or not accessible.' } });
+
+    // Real server-side rate limit, checked BEFORE any AI call or data
+    // assembly - not a UI-only cosmetic limit.
+    const limit = location.daily_ai_question_limit ?? 10;
+    const startOfDay = new Date(); startOfDay.setHours(0, 0, 0, 0);
+    const { count: usedToday, error: usageError } = await req.supabase
+      .from('ai_usage_log')
+      .select('id', { count: 'exact', head: true })
+      .eq('location_id', locationId)
+      .eq('feature', 'tenant_chat')
+      .gte('created_at', startOfDay.toISOString());
+    if (usageError) return res.status(500).json({ success: false, error: { message: usageError.message } });
+
+    if ((usedToday || 0) >= limit) {
+      return res.status(429).json({
+        success: false,
+        error: { message: `Daily question limit reached (${limit} per day). Resets at midnight.` },
+        data: { remaining: 0, limit },
+      });
+    }
+
+    let convoId = conversationId;
+    let history = [];
+    if (convoId) {
+      const { data: existingMessages } = await req.supabase
+        .from('ai_messages').select('role, content').eq('conversation_id', convoId)
+        .order('created_at', { ascending: true }).limit(HISTORY_TURNS_INCLUDED * 2);
+      history = existingMessages || [];
+    } else {
+      const { data: newConvo, error: convoError } = await req.supabase
+        .from('ai_conversations').insert({ organization_id: location.organization_id, location_id: locationId }).select().single();
+      if (convoError) return res.status(500).json({ success: false, error: { message: convoError.message } });
+      convoId = newConvo.id;
+    }
+
+    await req.supabase.from('ai_messages').insert({ conversation_id: convoId, role: 'user', content: question });
+
+    const context = await buildTenantChatContext(req.supabase, locationId);
+
+    let result;
+    try {
+      result = await chatService.askQuestion({ ...context, question }, { tenantMode: true, conversationHistory: history });
+    } catch (aiErr) {
+      return res.status(502).json({ success: false, error: { message: `Could not generate an answer: ${aiErr.message}` } });
+    }
+
+    const answerText = [result.answer.findings, result.answer.recommended_actions, result.answer.insufficient_data]
+      .filter(Boolean).join('\n\n');
+    await req.supabase.from('ai_messages').insert({ conversation_id: convoId, role: 'assistant', content: answerText });
+
+    await req.supabase.from('ai_usage_log').insert({
+      location_id: locationId,
+      client_id: null,
+      feature: 'tenant_chat',
+      question,
+      model_name: result.model_name,
+      input_tokens: result.usage ? result.usage.input_tokens : null,
+      output_tokens: result.usage ? result.usage.output_tokens : null,
+      estimated_cost_usd: result.usage ? (result.usage.input_tokens / 1e6) * 1.0 + (result.usage.output_tokens / 1e6) * 5.0 : null,
+    });
+
+    return res.json({
+      success: true,
+      data: { conversationId: convoId, answer: result.answer, remaining: limit - (usedToday || 0) - 1, limit },
+    });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: { message: err.message || 'Something went wrong answering that question.' } });
+  }
+});
+
+router.get('/locations/:id/usage', async (req, res) => {
+  const { id: locationId } = req.params;
+  const { data: location, error: locError } = await req.supabase
+    .from('locations').select('daily_ai_question_limit').eq('id', locationId).maybeSingle();
+  if (locError) return res.status(500).json({ success: false, error: { message: locError.message } });
+  if (!location) return res.status(404).json({ success: false, error: { message: 'Location not found or not accessible.' } });
+
+  const limit = location.daily_ai_question_limit ?? 10;
+  const startOfDay = new Date(); startOfDay.setHours(0, 0, 0, 0);
+  const { count, error } = await req.supabase
+    .from('ai_usage_log').select('id', { count: 'exact', head: true })
+    .eq('location_id', locationId).eq('feature', 'tenant_chat').gte('created_at', startOfDay.toISOString());
+  if (error) return res.status(500).json({ success: false, error: { message: error.message } });
+
+  return res.json({ success: true, data: { used: count || 0, limit, remaining: Math.max(0, limit - (count || 0)) } });
+});
+
+router.get('/locations/:id/conversations/latest', async (req, res) => {
+  const { id: locationId } = req.params;
+  const { data: convo } = await req.supabase
+    .from('ai_conversations').select('id').eq('location_id', locationId).order('updated_at', { ascending: false }).limit(1).maybeSingle();
+  if (!convo) return res.json({ success: true, data: { conversationId: null, messages: [] } });
+
+  const { data: messages, error } = await req.supabase
+    .from('ai_messages').select('role, content, created_at').eq('conversation_id', convo.id).order('created_at', { ascending: true });
+  if (error) return res.status(500).json({ success: false, error: { message: error.message } });
+
+  return res.json({ success: true, data: { conversationId: convo.id, messages: messages || [] } });
 });
 
 router.post('/recommendations/:id/status', async (req, res) => {

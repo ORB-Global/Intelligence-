@@ -1,4 +1,4 @@
-const { CHAT_SYSTEM_PROMPT, buildChatUserPrompt } = require('../config/chatPrompt');
+const { buildChatUserPrompt, getSystemPrompt } = require('../config/chatPrompt');
 
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
 const MODEL = process.env.CLAUDE_MODEL || 'claude-sonnet-5';
@@ -47,12 +47,21 @@ function validateAnswerPayload(input) {
   return input;
 }
 
-async function askQuestion(context) {
+async function askQuestion(context, options = {}) {
   if (!ANTHROPIC_API_KEY) {
     throw new Error('ANTHROPIC_API_KEY is not configured on the server.');
   }
 
   const userPrompt = buildChatUserPrompt(context);
+  const systemPrompt = getSystemPrompt(Boolean(options.tenantMode));
+
+  // conversationHistory: prior turns from a persisted conversation
+  // (tenant mode only - the old admin path has none). Kept small by
+  // the caller, not dumped in full.
+  const priorMessages = (options.conversationHistory || []).map((m) => ({
+    role: m.role,
+    content: m.role === 'assistant' ? m.content : m.content,
+  }));
 
   const res = await fetch(API_URL, {
     method: 'POST',
@@ -64,8 +73,8 @@ async function askQuestion(context) {
     body: JSON.stringify({
       model: MODEL,
       max_tokens: MAX_RESPONSE_TOKENS,
-      system: CHAT_SYSTEM_PROMPT,
-      messages: [{ role: 'user', content: userPrompt }],
+      system: systemPrompt,
+      messages: [...priorMessages, { role: 'user', content: userPrompt }],
       tools: [ANSWER_TOOL],
       tool_choice: { type: 'tool', name: TOOL_NAME },
     }),
