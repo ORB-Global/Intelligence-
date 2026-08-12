@@ -251,6 +251,51 @@ router.get('/locations/:id/conversations/latest', async (req, res) => {
   return res.json({ success: true, data: { conversationId: convo.id, messages: messages || [] } });
 });
 
+// Admin portfolio summary - relies entirely on RLS (platform_admin
+// bypasses every policy, so these queries naturally return portfolio-
+// wide totals for an admin caller and would return near-nothing for
+// a client caller - no separate admin-only auth check needed here,
+// the database already enforces the real boundary).
+router.get('/admin/portfolio-summary', async (req, res) => {
+  const [
+    { count: totalLocations },
+    { count: activeAccess },
+    { count: notProvisioned },
+    { count: recommendationsWaiting },
+    { count: actionsInProgress },
+    { data: healthScores },
+    { data: connectionIssues },
+  ] = await Promise.all([
+    req.supabase.from('locations').select('id', { count: 'exact', head: true }),
+    req.supabase.from('locations').select('id', { count: 'exact', head: true }).eq('client_access_status', 'active'),
+    req.supabase.from('locations').select('id', { count: 'exact', head: true }).eq('client_access_status', 'not_provisioned'),
+    req.supabase.from('recommendations').select('id', { count: 'exact', head: true }).eq('status', 'proposed'),
+    req.supabase.from('tasks').select('id', { count: 'exact', head: true }).eq('status', 'in_progress'),
+    req.supabase.from('health_scores').select('location_id, overall_score').order('calculated_at', { ascending: false }),
+    req.supabase.from('connection_health').select('location_id', { count: 'exact' }).neq('status', 'connected'),
+  ]);
+
+  const latestByLocation = new Map();
+  (healthScores || []).forEach((h) => { if (!latestByLocation.has(h.location_id)) latestByLocation.set(h.location_id, h.overall_score); });
+  const scores = [...latestByLocation.values()];
+  const healthy = scores.filter((s) => s >= 70).length;
+  const needingAttention = scores.filter((s) => s < 50).length;
+
+  return res.json({
+    success: true,
+    data: {
+      locationsMonitored: totalLocations || 0,
+      locationsHealthy: healthy,
+      locationsNeedingAttention: needingAttention,
+      clientAccessActive: activeAccess || 0,
+      clientAccessNotProvisioned: notProvisioned || 0,
+      recommendationsWaiting: recommendationsWaiting || 0,
+      actionsInProgress: actionsInProgress || 0,
+      dataConnectionIssues: connectionIssues ? connectionIssues.length : 0,
+    },
+  });
+});
+
 router.post('/recommendations/:id/status', async (req, res) => {
   const { id } = req.params;
   const { status, actionTitle, actionDescription, outcomeDescription, measuredImpact } = req.body || {};

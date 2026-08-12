@@ -8,6 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Public+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <style>
   :root{
     --ink:#161B26; --ink-soft:#4B5468; --porcelain:#F7F5F2; --surface:#FFFFFF; --line:#E7E2D9;
@@ -114,6 +115,40 @@
   .explore-input-row input{ flex:1; padding:0.6rem 0.8rem; border:1px solid var(--line); border-radius:8px; font-family:inherit; font-size:0.87rem; }
   .explore-backdrop{ position:fixed; inset:0; background:rgba(0,0,0,0.2); z-index:99; opacity:0; pointer-events:none; transition:opacity 0.25s ease; }
   .explore-backdrop.open{ opacity:1; pointer-events:auto; }
+  .explore-remaining-badge{ display:inline-block; background:var(--brass-soft); color:#6B5623; font-size:0.75rem; font-weight:600; padding:0.3rem 0.7rem; border-radius:999px; }
+
+  /* Real visual redesign - hero dominant, executive intelligence
+     prominent, charts instead of tables, compact status chips */
+  .hero{ padding:2.4rem 2.4rem 2.2rem; }
+  .hero .hero-eyebrow{ font-size:0.75rem; }
+  .hero h1{ font-size:2.3rem; }
+  .hero-stats{ margin-top:1.8rem; gap:1.6rem; }
+  .hero-stat .num{ font-size:2.5rem; }
+  .confidence-pill{ display:inline-flex; align-items:center; gap:0.3rem; font-size:0.72rem; color:#B9C0CE; margin-top:0.5rem; }
+  .confidence-pill .dot{ width:6px; height:6px; border-radius:50%; }
+  .confidence-pill .dot.high{ background:#7FD9B9; } .confidence-pill .dot.medium{ background:#F0C674; } .confidence-pill .dot.low{ background:#F0968A; }
+
+  .executive-section{ background:linear-gradient(180deg, var(--brass-soft) 0%, var(--surface) 45%); border:1px solid #E8D9BC; border-radius:16px; padding:1.8rem 2rem; margin-bottom:1.2rem; }
+  .executive-section h2{ color:#6B5623; font-size:0.8rem; }
+
+  .compact-row{ display:flex; align-items:center; justify-content:space-between; background:var(--surface); border:1px solid var(--line); border-radius:10px; padding:0.8rem 1.1rem; margin-bottom:0.6rem; }
+  .compact-row .compact-label{ font-size:0.85rem; font-weight:500; }
+  .compact-row .compact-detail{ font-size:0.78rem; color:var(--ink-soft); }
+
+  .capability-chip{ display:inline-flex; align-items:center; gap:0.5rem; background:var(--muted-soft); border-radius:999px; padding:0.4rem 0.9rem; font-size:0.8rem; color:var(--ink-soft); margin-right:0.5rem; margin-bottom:0.5rem; }
+  .capability-chip .chip-dot{ width:6px; height:6px; border-radius:50%; background:var(--muted); }
+
+  .chart-wrap{ position:relative; height:180px; margin-bottom:0.8rem; }
+  .channel-tabs{ display:flex; gap:0.4rem; margin-bottom:1rem; }
+  .channel-tabs button{ font-family:inherit; font-size:0.8rem; padding:0.4rem 0.9rem; border-radius:999px; border:1px solid var(--line); background:transparent; cursor:pointer; color:var(--ink-soft); }
+  .channel-tabs button.active{ background:var(--ink); color:var(--porcelain); border-color:var(--ink); }
+  .detail-toggle{ font-size:0.8rem; color:var(--brass); cursor:pointer; text-decoration:underline; margin-top:0.5rem; display:inline-block; }
+
+  .story-flow{ display:flex; flex-direction:column; gap:0; }
+  .story-chain{ border:1px solid var(--line); border-radius:12px; padding:1.2rem; margin-bottom:0.8rem; }
+  .story-step{ display:flex; align-items:flex-start; gap:0.7rem; padding:0.4rem 0; }
+  .story-step:not(:last-child){ border-bottom:1px dashed var(--line); margin-bottom:0.2rem; padding-bottom:0.7rem; }
+  .story-arrow{ text-align:center; color:var(--muted); font-size:0.8rem; margin:0.1rem 0; }
 </style>
 </head>
 <body>
@@ -261,6 +296,8 @@
   let currentLocationId = null;
   let currentConversationId = null;
 
+  let activeChart = null;
+
   async function viewLocation(locId){
     showOnly('loadingState');
     currentLocationId = locId;
@@ -280,17 +317,21 @@
 
       const scoreClass = !health ? 'watch' : health.overall_score >= 70 ? 'strong' : health.overall_score >= 50 ? 'watch' : 'weak';
       const scoreLabel = !health ? 'Calculating' : health.overall_score >= 70 ? 'Strong' : health.overall_score >= 50 ? 'Fair' : 'Needs Attention';
+      const confidence = health?.confidence_level || 'low';
 
       const positiveFactors = (health?.factors || []).filter(f => f.status === 'improving');
       const watchFactors = (health?.factors || []).filter(f => f.status === 'watch' || f.status === 'declining');
 
       const recommendations = feed.filter(i => i.item_type === 'recommendation' && (i.subtype === 'proposed' || i.subtype === 'accepted'));
       const signalsRecent = feed.filter(i => i.item_type === 'signal');
+      const connectedCount = connections.filter(c => c.status === 'connected').length;
 
+      // ---------- Hero: dominant, immediate 5-second read ----------
       const hero = `<div class="hero">
         <div class="hero-eyebrow">Orb Intelligence</div>
         <h1>${escapeHtml(location.name)}</h1>
-        <div class="hero-sub">Last analyzed ${health ? new Date(health.calculated_at).toLocaleString() : '—'}</div>
+        <div class="hero-sub">Last analyzed ${health ? new Date(health.calculated_at).toLocaleString() : 'Not yet analyzed'}</div>
+        <div class="confidence-pill"><span class="dot ${confidence}"></span> ${confidence.charAt(0).toUpperCase()+confidence.slice(1)} confidence</div>
         ${inactiveWarning}
         <div class="hero-stats">
           <div class="hero-stat ${scoreClass}"><div class="num">${health ? health.overall_score : '—'}</div><div class="stat-label">Marketing Health · ${scoreLabel}</div></div>
@@ -300,7 +341,8 @@
         </div>
       </div>`;
 
-      const executiveBlock = `<div class="section"><h2>Executive Intelligence</h2>
+      // ---------- Executive Intelligence: visually dominant, not equal-weight ----------
+      const executiveBlock = `<div class="executive-section"><h2>Executive Intelligence</h2>
         <div class="intel-grid">
           <div>
             <div style="font-size:0.75rem; text-transform:uppercase; color:var(--win); font-weight:600; margin-bottom:0.5rem;">What's Working</div>
@@ -313,79 +355,127 @@
               watchFactors.map(f => `<div class="intel-item"><div class="intel-dot watch"></div><div>${escapeHtml(f.explanation || f.factor)}</div></div>`).join('')}
           </div>
         </div>
+        ${recommendations.length ? `
+        <div style="margin-top:1.2rem; padding-top:1.2rem; border-top:1px solid #E8D9BC;">
+          <div style="font-size:0.75rem; text-transform:uppercase; color:var(--brass); font-weight:600; margin-bottom:0.5rem;">Recommended Next</div>
+          ${recommendations.map(r => `<div class="intel-item"><div class="intel-dot watch"></div><div>${escapeHtml(r.description)}</div></div>`).join('')}
+        </div>` : ''}
       </div>`;
 
-      const recommendationsBlock = `<div class="section"><h2>Recommended Actions</h2>
-        ${recommendations.length === 0 ? '<p style="color:var(--ink-soft); font-size:0.85rem;">No open recommendations right now.</p>' :
-          recommendations.map(r => `<div class="intel-item"><div class="intel-dot watch"></div><div>${escapeHtml(r.description)}</div></div>`).join('')}
-      </div>`;
-
-      const metricsByChannel = {};
-      metrics.slice(0, 8).forEach(m => { (metricsByChannel[m.channel] = metricsByChannel[m.channel] || []).push(m); });
+      // ---------- Performance: real charts, table hidden behind drill-down ----------
+      const channels = [...new Set(metrics.map(m => m.channel))];
+      const chartId = 'perfChart';
       const performanceBlock = `<div class="section"><h2>Performance &amp; History</h2>
         ${metrics.length === 0 ? '<p style="color:var(--ink-soft); font-size:0.85rem;">No performance history on file yet.</p>' : `
-        ${Object.entries(metricsByChannel).map(([ch, rows]) => `
-          <div style="margin-bottom:1rem;">
-            <div style="font-weight:600; font-size:0.85rem; margin-bottom:0.4rem;">${escapeHtml(channelLabel(ch))}</div>
-            <table><thead><tr><th>Period</th><th>Spend</th><th>Impressions</th><th>Clicks</th><th>CTR</th><th>CPC</th></tr></thead><tbody>
-              ${rows.map(m => `<tr>
-                <td>${m.period_start} → ${m.period_end}</td>
-                <td>$${Number(m.ad_spend||0).toLocaleString()}</td>
-                <td>${Number(m.impressions||0).toLocaleString()}</td>
-                <td>${Number(m.clicks||0).toLocaleString()}</td>
-                <td>${m.ctr ? Number(m.ctr).toFixed(2)+'%' : '—'}</td>
-                <td>${m.cpc ? '$'+Number(m.cpc).toFixed(2) : '—'}</td>
-              </tr>`).join('')}
-            </tbody></table>
-          </div>`).join('')}`}
-      </div>`;
-
-      const dataConnectionsBlock = `<div class="section"><h2>Data Connections</h2>
-        ${connections.length === 0 ? '<p style="color:var(--ink-soft); font-size:0.85rem;">No sources connected yet.</p>' : `
-        <div class="intel-grid">
-          ${connections.map(c => `<div class="intel-item"><div class="intel-dot ${c.status==='connected'?'positive':'watch'}"></div><div>${escapeHtml(channelLabel(c.channel))} — <span style="color:var(--ink-soft);">${c.status === 'connected' ? 'Connected' : c.status.replace(/_/g,' ')}</span></div></div>`).join('')}
+        <div class="channel-tabs" id="channelTabs">
+          ${channels.map((ch, i) => `<button class="${i===0?'active':''}" onclick="switchChannelChart('${ch}', this)">${escapeHtml(channelLabel(ch))}</button>`).join('')}
+        </div>
+        <div class="chart-wrap"><canvas id="${chartId}"></canvas></div>
+        <span class="detail-toggle" onclick="document.getElementById('detailTable').classList.toggle('hidden')">View detailed data</span>
+        <div id="detailTable" class="hidden" style="margin-top:0.8rem;">
+          <table><thead><tr><th>Channel</th><th>Period</th><th>Spend</th><th>Impressions</th><th>Clicks</th><th>CTR</th><th>CPC</th></tr></thead><tbody>
+            ${metrics.map(m => `<tr>
+              <td>${escapeHtml(channelLabel(m.channel))}</td>
+              <td>${m.period_start} → ${m.period_end}</td>
+              <td>$${Number(m.ad_spend||0).toLocaleString()}</td>
+              <td>${Number(m.impressions||0).toLocaleString()}</td>
+              <td>${Number(m.clicks||0).toLocaleString()}</td>
+              <td>${m.ctr ? Number(m.ctr).toFixed(2)+'%' : '—'}</td>
+              <td>${m.cpc ? '$'+Number(m.cpc).toFixed(2) : '—'}</td>
+            </tr>`).join('')}
+          </tbody></table>
         </div>`}
       </div>`;
 
-      const timelineIcon = { signal: 'signal', recommendation: 'recommendation', action: 'action', outcome: 'outcome' };
+      // ---------- Creative / Market / Competitive: compact capability chips, not empty boxes ----------
+      const capabilityBlock = `<div class="section"><h2>Additional Intelligence</h2>
+        <span class="capability-chip"><span class="chip-dot"></span> Creative Intelligence — Building</span>
+        <span class="capability-chip"><span class="chip-dot"></span> Market Intelligence — Building</span>
+        <span class="capability-chip"><span class="chip-dot"></span> Competitive Intelligence — Building</span>
+        <p style="color:var(--ink-soft); font-size:0.8rem; margin-top:0.7rem;">These will populate automatically as they come online — no action needed.</p>
+      </div>`;
+
+      // ---------- Intelligence Timeline: visual story, signal -> recommendation -> action -> outcome ----------
       const timelineTitle = { signal: 'CHANGE DETECTED', recommendation: 'RECOMMENDATION', action: 'ACTION', outcome: 'OUTCOME' };
       const timelineBlock = `<div class="section"><h2>Intelligence Timeline</h2>
         ${!feed || feed.length === 0 ? '<p style="color:var(--ink-soft); font-size:0.85rem;">No intelligence recorded yet.</p>' : `
-        <div class="timeline">
-          ${feed.map(item => `
-            <div class="timeline-item">
-              <div class="timeline-dot ${item.item_type}"></div>
-              <div>
-                <div class="timeline-label">${timelineTitle[item.item_type] || item.item_type}</div>
-                <div class="timeline-desc">${escapeHtml(item.description)}</div>
-                <div class="timeline-date">${new Date(item.occurred_at).toLocaleDateString()}</div>
+        <div class="story-chain">
+          <div class="timeline">
+            ${feed.map((item, i) => `
+              <div class="timeline-item">
+                <div class="timeline-dot ${item.item_type}"></div>
+                <div>
+                  <div class="timeline-label">${timelineTitle[item.item_type] || item.item_type}</div>
+                  <div class="timeline-desc">${escapeHtml(item.description)}</div>
+                  <div class="timeline-date">${new Date(item.occurred_at).toLocaleDateString()}</div>
+                </div>
               </div>
-            </div>
-          `).join('')}
+              ${i < feed.length - 1 ? '<div class="story-arrow">↓</div>' : ''}
+            `).join('')}
+          </div>
         </div>`}
       </div>`;
 
-      const creativeBlock = `<div class="section"><h2>Creative Intelligence</h2><div class="not-available">Not yet available for this account.</div></div>`;
-      const marketBlock = `<div class="section"><h2>Market Intelligence</h2><div class="not-available">Not yet available for this account.</div></div>`;
-      const competitiveBlock = `<div class="section"><h2>Competitive Intelligence</h2><div class="not-available">Not yet available for this account.</div></div>`;
+      // ---------- Data Connections: compact single indicator, not a major section ----------
+      const dataConnectionsBlock = `<div class="compact-row">
+        <div>
+          <div class="compact-label">Data Health</div>
+          <div class="compact-detail">${connections.map(c => channelLabel(c.channel)).join(' · ') || 'No sources connected yet'}</div>
+        </div>
+        <span class="badge ${connectedCount === connections.length && connections.length > 0 ? 'active' : 'needs_verification'}">${connectedCount} of ${connections.length} connected</span>
+      </div>`;
 
       content.innerHTML = `
         ${hero}
         ${executiveBlock}
-        ${recommendationsBlock}
         ${performanceBlock}
-        ${creativeBlock}
-        ${marketBlock}
-        ${competitiveBlock}
+        ${capabilityBlock}
         ${timelineBlock}
         ${dataConnectionsBlock}
       `;
+
+      if (channels.length && window.Chart) {
+        window.__metricsData = metrics;
+        renderChannelChart(channels[0], chartId);
+      }
 
       loadExploreUsage(locId);
       loadExploreHistory(locId);
     } catch (err) {
       handleError(err);
     }
+  }
+
+  function renderChannelChart(channel, canvasId){
+    const rows = (window.__metricsData || []).filter(m => m.channel === channel).slice().sort((a,b) => a.period_start.localeCompare(b.period_start));
+    const ctx = document.getElementById(canvasId);
+    if (!ctx) return;
+    if (activeChart) activeChart.destroy();
+    activeChart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: rows.map(m => m.period_start),
+        datasets: [
+          { label: 'Spend ($)', data: rows.map(m => m.ad_spend), borderColor: '#AD8A4E', backgroundColor: 'rgba(173,138,78,0.08)', tension: 0.3, fill: true, yAxisID: 'y' },
+          { label: 'Clicks', data: rows.map(m => m.clicks), borderColor: '#2E6F5E', backgroundColor: 'transparent', tension: 0.3, yAxisID: 'y1' },
+        ],
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { position: 'bottom', labels: { font: { size: 11 } } } },
+        scales: {
+          y: { position: 'left', ticks: { font: { size: 10 } } },
+          y1: { position: 'right', grid: { drawOnChartArea: false }, ticks: { font: { size: 10 } } },
+          x: { ticks: { font: { size: 10 } } },
+        },
+      },
+    });
+  }
+
+  function switchChannelChart(channel, btn){
+    document.querySelectorAll('#channelTabs button').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    renderChannelChart(channel, 'perfChart');
   }
 
   // ---------- Explore with Orb Intelligence ----------
