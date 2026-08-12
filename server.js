@@ -134,7 +134,7 @@ app.get('/api/clients/:id/insights', requireAdmin, async (req, res) => {
   }
 });
 
-app.get('/api/admin/summary', async (req, res) => {
+app.get('/api/admin/summary', requireAdmin, async (req, res) => {
   const errors = [];
 
   const clientResult = await supabase
@@ -177,6 +177,7 @@ app.get('/admin', requireAdmin, (req, res) => {
 
 app.use('/api', require('./src/routes/generateInsight'));
 app.use('/api', require('./src/routes/chat'));
+app.use('/api', require('./src/routes/publicAuth'));
 app.use('/api/mc', require('./src/routes/missionControl'));
 app.use((req, res) => {
   res.status(404).json({

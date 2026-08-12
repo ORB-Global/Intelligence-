@@ -27,12 +27,12 @@
 <body>
   <div class="card">
     <h1>Orb Intelligence</h1>
-    <div class="subtitle">Mission Control — staff sign in</div>
+    <div class="subtitle">Sign in to your account</div>
     <div id="errorMsg" class="error"></div>
     <div id="statusMsg" class="status"></div>
     <form id="loginForm">
-      <label for="email">Email</label>
-      <input type="email" id="email" required autocomplete="email" />
+      <label for="account">Account</label>
+      <input type="text" id="account" required autocomplete="username" placeholder="e.g. Easley" />
       <label for="password">Password</label>
       <input type="password" id="password" required autocomplete="current-password" />
       <button type="submit" id="loginBtn">Sign In</button>
@@ -48,6 +48,24 @@
     if (data.session) window.location.href = '/mission-control.html';
   });
 
+  // Resolves a client-facing account name ("Easley") to its real
+  // internal email via the server (which never exposes the email
+  // itself unless the alias is valid and active). If the input looks
+  // like an email already (staff/admin login), skip resolution and
+  // use it directly - keeps the existing internal admin login working
+  // unchanged on this same page.
+  async function resolveAccountToEmail(account) {
+    if (account.includes('@')) return account;
+    const res = await fetch('/api/resolve-login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ account }),
+    });
+    const body = await res.json();
+    if (!res.ok || !body.success) throw new Error(body.error?.message || 'Account not found.');
+    return body.data.email;
+  }
+
   document.getElementById('loginForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     const errorEl = document.getElementById('errorMsg');
@@ -55,11 +73,22 @@
     errorEl.textContent = '';
     btn.disabled = true;
     btn.textContent = 'Signing in…';
-    const email = document.getElementById('email').value.trim();
+    const account = document.getElementById('account').value.trim();
     const password = document.getElementById('password').value;
+
+    let email;
+    try {
+      email = await resolveAccountToEmail(account);
+    } catch (err) {
+      errorEl.textContent = err.message || 'Sign in failed.';
+      btn.disabled = false;
+      btn.textContent = 'Sign In';
+      return;
+    }
+
     const { error } = await client.auth.signInWithPassword({ email, password });
     if (error) {
-      errorEl.textContent = error.message || 'Sign in failed.';
+      errorEl.textContent = 'Incorrect account or password.'; // deliberately generic - never confirm which part was wrong
       btn.disabled = false;
       btn.textContent = 'Sign In';
       return;
@@ -72,17 +101,20 @@
     const statusEl = document.getElementById('statusMsg');
     errorEl.textContent = '';
     statusEl.textContent = '';
-    const email = document.getElementById('email').value.trim();
-    if (!email) {
-      errorEl.textContent = 'Enter your email above first, then click "Forgot password?"';
+    const account = document.getElementById('account').value.trim();
+    if (!account) {
+      errorEl.textContent = 'Enter your account above first, then click "Forgot password?"';
+      return;
+    }
+    let email;
+    try {
+      email = await resolveAccountToEmail(account);
+    } catch (err) {
+      statusEl.textContent = 'If that account exists, a reset link has been sent.'; // generic either way
       return;
     }
     const { error } = await client.auth.resetPasswordForEmail(email, { redirectTo: window.location.origin + '/login.html' });
-    if (error) {
-      errorEl.textContent = error.message || 'Could not send reset email.';
-    } else {
-      statusEl.textContent = 'If that email has an account, a reset link has been sent.';
-    }
+    statusEl.textContent = 'If that account exists, a reset link has been sent.';
   });
 </script>
 </body>
