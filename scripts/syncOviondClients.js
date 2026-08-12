@@ -222,6 +222,100 @@ async function pullMetricsForDatasource(location, oviondClientId, datasourceNume
   }
 }
 
+/**
+ * Organic social (Facebook Page, Instagram) - real fields confirmed
+ * live via describe_datasource this session, not guessed. STATUS:
+ * built, needs live verification - unlike fb-ads/gadw, these specific
+ * calls have not yet been proven against a real 200 response, only
+ * confirmed to be real field names that exist on the datasource.
+ */
+async function pullSocialMetrics(location, oviondClientId, datasourceId, periodStart, periodEnd) {
+  const startedAt = new Date().toISOString();
+  try {
+    const metrics = datasourceId === 'fb-pg'
+      ? ['page_follows', 'page_post_engagements', 'total_published_posts']
+      : ['account_follower_count', 'account_reach']; // inst
+    const result = await withRetry(() =>
+      oviondFetch('/v1/data/query', {
+        method: 'POST',
+        body: JSON.stringify({
+          datasource_id: datasourceId,
+          client_id: oviondClientId,
+          date_range: { current_start: periodStart, current_end: periodEnd },
+          metrics,
+          dimensions: ['DATE'],
+          data_view: 'PERFORMANCE',
+        }),
+      })
+    );
+    const dailyRows = result && result.data && result.data.current ? result.data.current : [];
+    if (dailyRows.length) {
+      let followerGrowth = 0, reach = 0, engagements = 0, postsPublished = 0;
+      for (const row of dailyRows) {
+        followerGrowth += Number(row.page_follows ?? row.account_follower_count ?? 0);
+        reach += Number(row.account_reach ?? 0);
+        engagements += Number(row.page_post_engagements ?? 0);
+        postsPublished += Number(row.total_published_posts ?? 0);
+      }
+      await supabase.from('social_content_metrics').upsert(
+        { organization_id: location.organization_id, location_id: location.id, channel: datasourceId,
+          period_start: periodStart, period_end: periodEnd,
+          follower_growth: followerGrowth, reach: reach || null, post_engagements: engagements || null, posts_published: postsPublished || null },
+        { onConflict: 'location_id,channel,period_start,period_end' }
+      );
+    }
+    await logSync({ locationId: location.id, oviondClientId, datasource: datasourceId, status: 'success', recordsSynced: dailyRows.length, startedAt });
+  } catch (e) {
+    await logSync({ locationId: location.id, oviondClientId, datasource: datasourceId, status: 'failed', error: e.message, startedAt });
+  }
+}
+
+/**
+ * Local visibility (Google Business Profile) - real fields confirmed
+ * live. Same "built, needs live verification" status as social above.
+ */
+async function pullLocalVisibilityMetrics(location, oviondClientId, periodStart, periodEnd) {
+  const startedAt = new Date().toISOString();
+  try {
+    const result = await withRetry(() =>
+      oviondFetch('/v1/data/query', {
+        method: 'POST',
+        body: JSON.stringify({
+          datasource_id: 'gmb',
+          client_id: oviondClientId,
+          date_range: { current_start: periodStart, current_end: periodEnd },
+          metrics: ['business_impressions_desktop_maps', 'business_impressions_mobile_maps', 'business_impressions_desktop_search', 'business_impressions_mobile_search', 'business_direction_requests', 'call_clicks', 'website_clicks', 'business_conversations'],
+          dimensions: ['DATE'],
+          data_view: 'PERFORMANCE',
+        }),
+      })
+    );
+    const dailyRows = result && result.data && result.data.current ? result.data.current : [];
+    if (dailyRows.length) {
+      let mapsImpr = 0, searchImpr = 0, directions = 0, calls = 0, websiteClicks = 0, conversations = 0;
+      for (const row of dailyRows) {
+        mapsImpr += Number(row.business_impressions_desktop_maps ?? 0) + Number(row.business_impressions_mobile_maps ?? 0);
+        searchImpr += Number(row.business_impressions_desktop_search ?? 0) + Number(row.business_impressions_mobile_search ?? 0);
+        directions += Number(row.business_direction_requests ?? 0);
+        calls += Number(row.call_clicks ?? 0);
+        websiteClicks += Number(row.website_clicks ?? 0);
+        conversations += Number(row.business_conversations ?? 0);
+      }
+      await supabase.from('local_visibility_metrics').upsert(
+        { organization_id: location.organization_id, location_id: location.id,
+          period_start: periodStart, period_end: periodEnd,
+          maps_impressions: mapsImpr || null, search_impressions: searchImpr || null,
+          direction_requests: directions || null, call_clicks: calls || null,
+          website_clicks: websiteClicks || null, conversations: conversations || null },
+        { onConflict: 'location_id,period_start,period_end' }
+      );
+    }
+    await logSync({ locationId: location.id, oviondClientId, datasource: 'gmb', status: 'success', recordsSynced: dailyRows.length, startedAt });
+  } catch (e) {
+    await logSync({ locationId: location.id, oviondClientId, datasource: 'gmb', status: 'failed', error: e.message, startedAt });
+  }
+}
+
 async function syncOneClient(oviondClient) {
   const { location, action } = await matchOrCreateLocation(oviondClient);
   if (DRY_RUN) return { name: oviondClient.name, action, connectionsCreated: 0 };
@@ -229,6 +323,7 @@ async function syncOneClient(oviondClient) {
   await upsertDashboardMapping(location, oviondClient);
   const connectionsCreated = await upsertConnectionHealth(location, oviondClient);
 
+  const availableDatasourceIds = (oviondClient.datasources || []).map((d) => d.datasource_id);
   const now = new Date();
   for (let m = 0; m < MONTHS; m++) {
     const periodEnd = new Date(now.getFullYear(), now.getMonth() - m, 0);
@@ -239,6 +334,9 @@ async function syncOneClient(oviondClient) {
       if (!['fb-ads', 'gadw'].includes(ds.datasource_id)) continue;
       await pullMetricsForDatasource(location, oviondClient.id, ds.datasource_id, fmt(periodStart), fmt(periodEnd));
     }
+    if (availableDatasourceIds.includes('fb-pg')) await pullSocialMetrics(location, oviondClient.id, 'fb-pg', fmt(periodStart), fmt(periodEnd));
+    if (availableDatasourceIds.includes('inst')) await pullSocialMetrics(location, oviondClient.id, 'inst', fmt(periodStart), fmt(periodEnd));
+    if (availableDatasourceIds.includes('gmb')) await pullLocalVisibilityMetrics(location, oviondClient.id, fmt(periodStart), fmt(periodEnd));
   }
 
   return { name: oviondClient.name, action, connectionsCreated };
