@@ -66,6 +66,54 @@
 
   .hidden{ display:none !important; }
   @media (max-width:640px){ .page{ padding:1rem; } .topbar{ padding:1rem; flex-wrap:wrap; gap:0.6rem; } }
+
+  /* Client Mission Control - intelligence-first hierarchy */
+  .hero{ background:linear-gradient(135deg, var(--ink) 0%, #232a3a 100%); color:var(--porcelain); border-radius:16px; padding:2rem 2.2rem; margin-bottom:1.5rem; }
+  .hero .hero-eyebrow{ font-family:'IBM Plex Mono',monospace; font-size:0.72rem; text-transform:uppercase; letter-spacing:0.1em; color:#B9C0CE; margin-bottom:0.3rem; }
+  .hero h1{ color:var(--porcelain); margin-bottom:0.2rem; }
+  .hero .hero-sub{ color:#B9C0CE; font-size:0.85rem; margin-bottom:1.5rem; }
+  .hero-stats{ display:grid; grid-template-columns:repeat(auto-fit, minmax(130px,1fr)); gap:1.2rem; }
+  .hero-stat .num{ font-family:'Fraunces',serif; font-size:2.1rem; font-weight:600; line-height:1; }
+  .hero-stat .stat-label{ font-size:0.72rem; text-transform:uppercase; letter-spacing:0.06em; color:#B9C0CE; margin-top:0.35rem; }
+  .hero-stat.strong .num{ color:#7FD9B9; } .hero-stat.watch .num{ color:#F0C674; } .hero-stat.weak .num{ color:#F0968A; }
+
+  .intel-grid{ display:grid; grid-template-columns:1fr 1fr; gap:1rem; }
+  @media (max-width:800px){ .intel-grid{ grid-template-columns:1fr; } }
+  .intel-item{ display:flex; gap:0.7rem; padding:0.7rem 0; border-bottom:1px solid var(--line); }
+  .intel-item:last-child{ border-bottom:none; }
+  .intel-dot{ width:8px; height:8px; border-radius:50%; margin-top:0.4rem; flex-shrink:0; }
+  .intel-dot.positive{ background:var(--win); } .intel-dot.watch{ background:var(--watch); } .intel-dot.negative{ background:var(--concern); }
+
+  .timeline{ display:flex; flex-direction:column; }
+  .timeline-item{ display:flex; gap:1rem; padding-bottom:1.4rem; position:relative; }
+  .timeline-item::before{ content:''; position:absolute; left:5px; top:22px; bottom:0; width:1px; background:var(--line); }
+  .timeline-item:last-child::before{ display:none; }
+  .timeline-dot{ width:11px; height:11px; border-radius:50%; margin-top:5px; flex-shrink:0; z-index:1; }
+  .timeline-dot.signal{ background:var(--muted); } .timeline-dot.recommendation{ background:var(--brass); }
+  .timeline-dot.action{ background:var(--watch); } .timeline-dot.outcome{ background:var(--win); }
+  .timeline-label{ font-family:'IBM Plex Mono',monospace; font-size:0.68rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-soft); margin-bottom:0.2rem; }
+  .timeline-desc{ font-size:0.9rem; }
+  .timeline-date{ font-size:0.75rem; color:var(--muted); margin-top:0.2rem; }
+
+  .not-available{ padding:2rem; text-align:center; color:var(--muted); font-size:0.85rem; border:1px dashed var(--line); border-radius:10px; }
+
+  /* Explore with Orb Intelligence */
+  .explore-btn{ position:fixed; bottom:1.5rem; right:1.5rem; background:var(--ink); color:var(--porcelain); border:none; border-radius:999px; padding:0.85rem 1.4rem; font-family:inherit; font-weight:600; font-size:0.88rem; cursor:pointer; box-shadow:0 6px 20px rgba(0,0,0,0.25); z-index:50; }
+  .explore-drawer{ position:fixed; top:0; right:0; bottom:0; width:min(420px, 100vw); background:var(--surface); box-shadow:-8px 0 30px rgba(0,0,0,0.2); z-index:100; display:flex; flex-direction:column; transform:translateX(100%); transition:transform 0.25s ease; }
+  .explore-drawer.open{ transform:translateX(0); }
+  .explore-header{ padding:1.2rem; border-bottom:1px solid var(--line); display:flex; justify-content:space-between; align-items:center; }
+  .explore-header h3{ font-family:'Fraunces',serif; font-size:1.1rem; margin:0; }
+  .explore-usage{ font-size:0.75rem; color:var(--ink-soft); padding:0.5rem 1.2rem; border-bottom:1px solid var(--line); }
+  .explore-messages{ flex:1; overflow-y:auto; padding:1.2rem; display:flex; flex-direction:column; gap:1rem; }
+  .explore-msg{ font-size:0.87rem; line-height:1.5; }
+  .explore-msg.user{ align-self:flex-end; background:var(--ink); color:var(--porcelain); padding:0.6rem 0.9rem; border-radius:10px 10px 2px 10px; max-width:85%; }
+  .explore-msg.assistant{ align-self:flex-start; padding:0.6rem 0; max-width:95%; }
+  .explore-suggested{ display:flex; flex-wrap:wrap; gap:0.4rem; padding:0 1.2rem 1rem; }
+  .explore-suggested button{ font-family:inherit; font-size:0.76rem; padding:0.35rem 0.7rem; border-radius:999px; border:1px solid var(--line); background:transparent; cursor:pointer; color:var(--ink-soft); }
+  .explore-input-row{ display:flex; gap:0.5rem; padding:1rem; border-top:1px solid var(--line); }
+  .explore-input-row input{ flex:1; padding:0.6rem 0.8rem; border:1px solid var(--line); border-radius:8px; font-family:inherit; font-size:0.87rem; }
+  .explore-backdrop{ position:fixed; inset:0; background:rgba(0,0,0,0.2); z-index:99; opacity:0; pointer-events:none; transition:opacity 0.25s ease; }
+  .explore-backdrop.open{ opacity:1; pointer-events:auto; }
 </style>
 </head>
 <body>
@@ -79,6 +127,22 @@
   </div>
 
   <div class="breadcrumbs" id="breadcrumbs"></div>
+
+  <div class="explore-backdrop" id="exploreBackdrop" onclick="closeExplore()"></div>
+  <div class="explore-drawer" id="exploreDrawer">
+    <div class="explore-header">
+      <h3>Explore with Orb Intelligence</h3>
+      <button class="logout-btn" onclick="closeExplore()">Close</button>
+    </div>
+    <div class="explore-usage" id="exploreUsage"></div>
+    <div class="explore-messages" id="exploreMessages"></div>
+    <div class="explore-suggested" id="exploreSuggested"></div>
+    <div class="explore-input-row">
+      <input type="text" id="exploreInput" placeholder="Ask about your marketing performance…" onkeydown="if(event.key==='Enter')sendExploreQuestion()" />
+      <button class="primary" onclick="sendExploreQuestion()">Ask</button>
+    </div>
+  </div>
+  <button class="explore-btn hidden" id="exploreBtn" onclick="openExplore()">💬 Explore with Orb Intelligence</button>
 
   <div class="page">
     <div id="loadingState" class="state hidden"><h2 class="pulse">Loading…</h2></div>
@@ -126,6 +190,8 @@
 
   async function viewOrganizations(){
     setBreadcrumbs([{ label: 'Mission Control' }]);
+    document.getElementById('exploreBtn').classList.add('hidden');
+    closeExplore();
     showOnly('loadingState');
     try {
       const orgs = await apiFetch('/api/mc/organizations');
@@ -154,6 +220,8 @@
 
   async function viewOrganization(orgId){
     showOnly('loadingState');
+    document.getElementById('exploreBtn').classList.add('hidden');
+    closeExplore();
     try {
       const { organization, locations } = await apiFetch(`/api/mc/organizations/${orgId}`);
       setBreadcrumbs([
@@ -183,10 +251,22 @@
     }
   }
 
+  const CHANNEL_LABELS = {
+    'fb-ads': 'Meta Ads', 'inst-ads': 'Meta Ads (Instagram)', 'gadw': 'Google Ads',
+    'gmb': 'Google Business Profile', 'fb-pg': 'Facebook', 'inst': 'Instagram',
+    meta: 'Meta Ads', google: 'Google Ads',
+  };
+  function channelLabel(c){ return CHANNEL_LABELS[c] || c; }
+
+  let currentLocationId = null;
+  let currentConversationId = null;
+
   async function viewLocation(locId){
     showOnly('loadingState');
+    currentLocationId = locId;
+    document.getElementById('exploreBtn').classList.remove('hidden');
     try {
-      const { location, connections, mapping, metrics, feed } = await apiFetch(`/api/mc/locations/${locId}`);
+      const { location, connections, metrics, feed, health } = await apiFetch(`/api/mc/locations/${locId}`);
       setBreadcrumbs([
         { label: 'Mission Control', action: 'viewOrganizations()' },
         { label: location.organizations?.name || 'Organization', action: `viewOrganization('${location.organization_id}')` },
@@ -196,92 +276,183 @@
       const content = document.getElementById('content');
 
       const inactiveWarning = !location.active
-        ? `<div class="warning-strip"><span>⚠</span><span>This location is marked inactive. Access is currently blocked for all non-platform-admin roles.</span></div>` : '';
+        ? `<div class="warning-strip"><span>⚠</span><span>This location is currently inactive.</span></div>` : '';
 
-      const mappingBlock = !mapping
-        ? `<div class="section"><h2>Dashboard Mapping</h2><span class="badge unmapped">unmapped</span><p style="margin-top:0.8rem; color:var(--ink-soft); font-size:0.85rem;">No Oviond dashboard has been mapped to this location yet.</p></div>`
-        : `<div class="section">
-            <h2>Dashboard Mapping</h2>
-            <span class="badge ${mapping.dashboard_mapping_status}">${mapping.dashboard_mapping_status.replace(/_/g,' ')}</span>
-            <p style="margin-top:0.8rem; font-size:0.85rem; color:var(--ink-soft);">
-              Oviond client ID: ${escapeHtml(mapping.oviond_client_id || 'not set')}<br/>
-              Confirmed dashboard URL: ${escapeHtml(mapping.dashboard_access_url || 'not set')}<br/>
-              Last verified: ${mapping.dashboard_last_verified_at ? new Date(mapping.dashboard_last_verified_at).toLocaleString() : 'never'}
-            </p>
-            ${mapping.dashboard_mapping_status === 'needs_verification' ? `
-              <div class="pending-box">
-                <strong style="font-size:0.85rem;">Pending change detected</strong>
-                <p style="font-size:0.85rem; margin:0.5rem 0;">New dashboard ID: ${escapeHtml(mapping.pending_dashboard_id || '—')}<br/>New URL: ${escapeHtml(mapping.pending_access_url || '—')}</p>
-                <div class="row">
-                  <button class="primary" onclick="approveMapping('${mapping.id}', '${locId}')">Approve</button>
-<button class="secondary" onclick="rejectMapping('${mapping.id}', '${locId}')">Reject</button>
-                </div>
-              </div>` : ''}
-          </div>`;
+      const scoreClass = !health ? 'watch' : health.overall_score >= 70 ? 'strong' : health.overall_score >= 50 ? 'watch' : 'weak';
+      const scoreLabel = !health ? 'Calculating' : health.overall_score >= 70 ? 'Strong' : health.overall_score >= 50 ? 'Fair' : 'Needs Attention';
 
-      const connectionsBlock = `<div class="section"><h2>Connection Health</h2>
-        ${connections.length === 0 ? '<p style="color:var(--ink-soft); font-size:0.85rem;">No connections tracked yet.</p>' : `
-        <table><thead><tr><th>Channel</th><th>Status</th><th>Freshness</th><th>Last Synced</th></tr></thead><tbody>
-          ${connections.map(c => `<tr>
-            <td>${escapeHtml(c.channel)}</td>
-            <td><span class="badge ${c.status}">${c.status.replace(/_/g,' ')}</span></td>
-            <td><span class="badge ${c.freshness_status}">${c.freshness_status}</span></td>
-            <td>${c.last_successful_sync_at ? new Date(c.last_successful_sync_at).toLocaleDateString() : 'never'}</td>
-          </tr>`).join('')}
-        </tbody></table>`}
+      const positiveFactors = (health?.factors || []).filter(f => f.status === 'improving');
+      const watchFactors = (health?.factors || []).filter(f => f.status === 'watch' || f.status === 'declining');
+
+      const recommendations = feed.filter(i => i.item_type === 'recommendation' && (i.subtype === 'proposed' || i.subtype === 'accepted'));
+      const signalsRecent = feed.filter(i => i.item_type === 'signal');
+
+      const hero = `<div class="hero">
+        <div class="hero-eyebrow">Orb Intelligence</div>
+        <h1>${escapeHtml(location.name)}</h1>
+        <div class="hero-sub">Last analyzed ${health ? new Date(health.calculated_at).toLocaleString() : '—'}</div>
+        ${inactiveWarning}
+        <div class="hero-stats">
+          <div class="hero-stat ${scoreClass}"><div class="num">${health ? health.overall_score : '—'}</div><div class="stat-label">Marketing Health · ${scoreLabel}</div></div>
+          <div class="hero-stat"><div class="num">${health ? health.data_coverage_percent + '%' : '—'}</div><div class="stat-label">Data Coverage</div></div>
+          <div class="hero-stat"><div class="num">${signalsRecent.length}</div><div class="stat-label">Changes Detected</div></div>
+          <div class="hero-stat"><div class="num">${recommendations.length}</div><div class="stat-label">Recommended Actions</div></div>
+        </div>
       </div>`;
 
-      const metricsBlock = `<div class="section"><h2>Historical Metrics</h2>
-        ${metrics.length === 0 ? '<p style="color:var(--ink-soft); font-size:0.85rem;">No historical metrics on file yet for this location.</p>' : `
-        <table><thead><tr><th>Channel</th><th>Period</th><th>Spend</th><th>Impressions</th><th>Clicks</th><th>CTR</th><th>CPC</th></tr></thead><tbody>
-          ${metrics.map(m => `<tr>
-            <td>${escapeHtml(m.channel)}</td>
-            <td>${m.period_start} → ${m.period_end}</td>
-            <td>$${Number(m.ad_spend||0).toLocaleString()}</td>
-            <td>${Number(m.impressions||0).toLocaleString()}</td>
-            <td>${Number(m.clicks||0).toLocaleString()}</td>
-            <td>${m.ctr ? m.ctr+'%' : '—'}</td>
-            <td>${m.cpc ? '$'+m.cpc : '—'}</td>
-          </tr>`).join('')}
-        </tbody></table>`}
+      const executiveBlock = `<div class="section"><h2>Executive Intelligence</h2>
+        <div class="intel-grid">
+          <div>
+            <div style="font-size:0.75rem; text-transform:uppercase; color:var(--win); font-weight:600; margin-bottom:0.5rem;">What's Working</div>
+            ${positiveFactors.length === 0 ? '<p style="color:var(--ink-soft); font-size:0.85rem;">Nothing flagged as improving yet.</p>' :
+              positiveFactors.map(f => `<div class="intel-item"><div class="intel-dot positive"></div><div>${escapeHtml(f.explanation || f.factor)}</div></div>`).join('')}
+          </div>
+          <div>
+            <div style="font-size:0.75rem; text-transform:uppercase; color:var(--watch); font-weight:600; margin-bottom:0.5rem;">What We're Watching</div>
+            ${watchFactors.length === 0 ? '<p style="color:var(--ink-soft); font-size:0.85rem;">Nothing currently flagged.</p>' :
+              watchFactors.map(f => `<div class="intel-item"><div class="intel-dot watch"></div><div>${escapeHtml(f.explanation || f.factor)}</div></div>`).join('')}
+          </div>
+        </div>
       </div>`;
 
-      const feedIcon = { signal: '������', recommendation: '������', action: '������', outcome: '������' };
-      const feedBlock = `<div class="section"><h2>Intelligence Feed</h2>
-        ${!feed || feed.length === 0 ? '<p style="color:var(--ink-soft); font-size:0.85rem;">No signals, recommendations, actions, or outcomes recorded yet.</p>' : `
-        <div style="display:flex; flex-direction:column; gap:0.8rem;">
+      const recommendationsBlock = `<div class="section"><h2>Recommended Actions</h2>
+        ${recommendations.length === 0 ? '<p style="color:var(--ink-soft); font-size:0.85rem;">No open recommendations right now.</p>' :
+          recommendations.map(r => `<div class="intel-item"><div class="intel-dot watch"></div><div>${escapeHtml(r.description)}</div></div>`).join('')}
+      </div>`;
+
+      const metricsByChannel = {};
+      metrics.slice(0, 8).forEach(m => { (metricsByChannel[m.channel] = metricsByChannel[m.channel] || []).push(m); });
+      const performanceBlock = `<div class="section"><h2>Performance &amp; History</h2>
+        ${metrics.length === 0 ? '<p style="color:var(--ink-soft); font-size:0.85rem;">No performance history on file yet.</p>' : `
+        ${Object.entries(metricsByChannel).map(([ch, rows]) => `
+          <div style="margin-bottom:1rem;">
+            <div style="font-weight:600; font-size:0.85rem; margin-bottom:0.4rem;">${escapeHtml(channelLabel(ch))}</div>
+            <table><thead><tr><th>Period</th><th>Spend</th><th>Impressions</th><th>Clicks</th><th>CTR</th><th>CPC</th></tr></thead><tbody>
+              ${rows.map(m => `<tr>
+                <td>${m.period_start} → ${m.period_end}</td>
+                <td>$${Number(m.ad_spend||0).toLocaleString()}</td>
+                <td>${Number(m.impressions||0).toLocaleString()}</td>
+                <td>${Number(m.clicks||0).toLocaleString()}</td>
+                <td>${m.ctr ? Number(m.ctr).toFixed(2)+'%' : '—'}</td>
+                <td>${m.cpc ? '$'+Number(m.cpc).toFixed(2) : '—'}</td>
+              </tr>`).join('')}
+            </tbody></table>
+          </div>`).join('')}`}
+      </div>`;
+
+      const dataConnectionsBlock = `<div class="section"><h2>Data Connections</h2>
+        ${connections.length === 0 ? '<p style="color:var(--ink-soft); font-size:0.85rem;">No sources connected yet.</p>' : `
+        <div class="intel-grid">
+          ${connections.map(c => `<div class="intel-item"><div class="intel-dot ${c.status==='connected'?'positive':'watch'}"></div><div>${escapeHtml(channelLabel(c.channel))} — <span style="color:var(--ink-soft);">${c.status === 'connected' ? 'Connected' : c.status.replace(/_/g,' ')}</span></div></div>`).join('')}
+        </div>`}
+      </div>`;
+
+      const timelineIcon = { signal: 'signal', recommendation: 'recommendation', action: 'action', outcome: 'outcome' };
+      const timelineTitle = { signal: 'CHANGE DETECTED', recommendation: 'RECOMMENDATION', action: 'ACTION', outcome: 'OUTCOME' };
+      const timelineBlock = `<div class="section"><h2>Intelligence Timeline</h2>
+        ${!feed || feed.length === 0 ? '<p style="color:var(--ink-soft); font-size:0.85rem;">No intelligence recorded yet.</p>' : `
+        <div class="timeline">
           ${feed.map(item => `
-            <div style="border-left:3px solid var(--brass); padding:0.5rem 0 0.5rem 1rem;">
-              <div style="font-size:0.7rem; text-transform:uppercase; letter-spacing:0.05em; color:var(--ink-soft); margin-bottom:0.2rem;">
-                ${feedIcon[item.item_type]||''} ${escapeHtml(item.item_type)}${item.subtype ? ' · ' + escapeHtml(item.subtype) : ''} · ${new Date(item.occurred_at).toLocaleDateString()}
+            <div class="timeline-item">
+              <div class="timeline-dot ${item.item_type}"></div>
+              <div>
+                <div class="timeline-label">${timelineTitle[item.item_type] || item.item_type}</div>
+                <div class="timeline-desc">${escapeHtml(item.description)}</div>
+                <div class="timeline-date">${new Date(item.occurred_at).toLocaleDateString()}</div>
               </div>
-              <div style="font-size:0.88rem;">${escapeHtml(item.description)}</div>
             </div>
           `).join('')}
         </div>`}
       </div>`;
 
+      const creativeBlock = `<div class="section"><h2>Creative Intelligence</h2><div class="not-available">Not yet available for this account.</div></div>`;
+      const marketBlock = `<div class="section"><h2>Market Intelligence</h2><div class="not-available">Not yet available for this account.</div></div>`;
+      const competitiveBlock = `<div class="section"><h2>Competitive Intelligence</h2><div class="not-available">Not yet available for this account.</div></div>`;
+
       content.innerHTML = `
-        <h1>${escapeHtml(location.name)}</h1>
-        <div class="subtitle"><span class="badge ${location.active?'active':'inactive'}">${location.active?'active':'inactive'}</span></div>
-        ${inactiveWarning}
-        ${mappingBlock}
-        ${connectionsBlock}
-        ${metricsBlock}
-        ${feedBlock}
+        ${hero}
+        ${executiveBlock}
+        ${recommendationsBlock}
+        ${performanceBlock}
+        ${creativeBlock}
+        ${marketBlock}
+        ${competitiveBlock}
+        ${timelineBlock}
+        ${dataConnectionsBlock}
       `;
+
+      loadExploreUsage(locId);
+      loadExploreHistory(locId);
     } catch (err) {
       handleError(err);
     }
   }
 
-  async function approveMapping(mappingId, locId){
-    try { await apiFetch(`/api/mc/dashboard-mappings/${mappingId}/approve`, { method: 'POST' }); viewLocation(locId); }
-    catch (err) { alert('Could not approve: ' + err.message); }
+  // ---------- Explore with Orb Intelligence ----------
+  const SUGGESTED_QUESTIONS = [
+    'What changed this month?', 'What is working best?', 'What should I be concerned about?',
+    'How does this compare to last month?', 'What did you recommend previously?',
+  ];
+
+  function openExplore(){
+    document.getElementById('exploreDrawer').classList.add('open');
+    document.getElementById('exploreBackdrop').classList.add('open');
+    const s = document.getElementById('exploreSuggested');
+    if (!s.dataset.loaded) {
+      s.innerHTML = SUGGESTED_QUESTIONS.map(q => `<button onclick="askSuggested('${q.replace(/'/g, "\\'")}')">${escapeHtml(q)}</button>`).join('');
+      s.dataset.loaded = '1';
+    }
   }
-  async function rejectMapping(mappingId, locId){
-    try { await apiFetch(`/api/mc/dashboard-mappings/${mappingId}/reject`, { method: 'POST' }); viewLocation(locId); }
-    catch (err) { alert('Could not reject: ' + err.message); }
+  function closeExplore(){
+    document.getElementById('exploreDrawer').classList.remove('open');
+    document.getElementById('exploreBackdrop').classList.remove('open');
+  }
+  function askSuggested(q){ document.getElementById('exploreInput').value = q; sendExploreQuestion(); }
+
+  async function loadExploreUsage(locId){
+    try {
+      const usage = await apiFetch(`/api/mc/locations/${locId}/usage`);
+      document.getElementById('exploreUsage').textContent = `${usage.remaining} of ${usage.limit} Intelligence questions remaining today`;
+    } catch (err) { /* non-fatal */ }
+  }
+
+  async function loadExploreHistory(locId){
+    try {
+      const { conversationId, messages } = await apiFetch(`/api/mc/locations/${locId}/conversations/latest`);
+      currentConversationId = conversationId;
+      const box = document.getElementById('exploreMessages');
+      box.innerHTML = messages.map(m => `<div class="explore-msg ${m.role}">${escapeHtml(m.content)}</div>`).join('');
+      box.scrollTop = box.scrollHeight;
+    } catch (err) { /* non-fatal */ }
+  }
+
+  async function sendExploreQuestion(){
+    const input = document.getElementById('exploreInput');
+    const question = input.value.trim();
+    if (!question || !currentLocationId) return;
+    input.value = '';
+    const box = document.getElementById('exploreMessages');
+    box.insertAdjacentHTML('beforeend', `<div class="explore-msg user">${escapeHtml(question)}</div>`);
+    box.insertAdjacentHTML('beforeend', `<div class="explore-msg assistant" id="explorePending">…</div>`);
+    box.scrollTop = box.scrollHeight;
+
+    try {
+      const result = await apiFetch(`/api/mc/locations/${currentLocationId}/ask`, {
+        method: 'POST',
+        body: JSON.stringify({ question, conversationId: currentConversationId }),
+      });
+      currentConversationId = result.conversationId;
+      const pending = document.getElementById('explorePending');
+      const answerText = [result.answer.findings, result.answer.recommended_actions, result.answer.insufficient_data].filter(Boolean).join('\n\n');
+      pending.textContent = answerText;
+      pending.removeAttribute('id');
+      document.getElementById('exploreUsage').textContent = `${result.remaining} of ${result.limit} Intelligence questions remaining today`;
+    } catch (err) {
+      const pending = document.getElementById('explorePending');
+      pending.textContent = err.status === 429 ? err.message : 'Sorry, something went wrong answering that.';
+      pending.removeAttribute('id');
+    }
+    box.scrollTop = box.scrollHeight;
   }
 
   function handleError(err){
