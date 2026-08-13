@@ -233,8 +233,8 @@ async function pullSocialMetrics(location, oviondClientId, datasourceId, periodS
   const startedAt = new Date().toISOString();
   try {
     const metrics = datasourceId === 'fb-pg'
-      ? ['page_follows', 'page_post_engagements']
-      : ['account_follower_count']; // inst - simplified to isolate the "bad syntax" error
+      ? ['page_daily_follows', 'page_post_engagements']
+      : ['account_follower_count']; // inst - currently failing, isolated separately
     const result = await withRetry(() =>
       oviondFetch('/v1/data/query', {
         method: 'POST',
@@ -252,7 +252,7 @@ async function pullSocialMetrics(location, oviondClientId, datasourceId, periodS
     if (dailyRows.length) {
       let followerGrowth = 0, reach = 0, engagements = 0, postsPublished = 0;
       for (const row of dailyRows) {
-        followerGrowth += Number(row.page_follows ?? row.account_follower_count ?? 0);
+        followerGrowth += Number(row.page_daily_follows ?? row.account_follower_count ?? 0);
         reach += Number(row.account_reach ?? 0);
         engagements += Number(row.page_post_engagements ?? 0);
         postsPublished += Number(row.total_published_posts ?? 0);
