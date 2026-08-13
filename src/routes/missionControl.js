@@ -377,11 +377,15 @@ router.get('/locations/:id/conversations/latest', async (req, res) => {
 // is the actual authorization boundary; this route doesn't re-check it.
 router.post('/locations/:id/activity', async (req, res) => {
   const { id: locationId } = req.params;
-  const { activityType, description, clientVisible } = req.body || {};
+  const { activityType, description, clientVisible, reviewType } = req.body || {};
 
   const validTypes = ['review','optimization','launch','test','creative_change','budget_change','targeting_change','landing_page_update','connection_repair','client_conversation','other'];
   if (!validTypes.includes(activityType)) {
     return res.status(400).json({ success: false, error: { message: `activityType must be one of: ${validTypes.join(', ')}` } });
+  }
+  const validReviewTypes = ['weekly_review','weekly_optimization','monthly_overhaul','strategy_review','performance_review','creative_review','search_review','website_review','market_competitive_review'];
+  if (reviewType && !validReviewTypes.includes(reviewType)) {
+    return res.status(400).json({ success: false, error: { message: `reviewType must be one of: ${validReviewTypes.join(', ')}` } });
   }
   if (!description || typeof description !== 'string' || !description.trim()) {
     return res.status(400).json({ success: false, error: { message: 'A short description is required.' } });
@@ -395,11 +399,18 @@ router.post('/locations/:id/activity', async (req, res) => {
     organization_id: location.organization_id,
     location_id: locationId,
     activity_type: activityType,
+    review_type: reviewType || null,
     description: description.trim(),
     performed_by: req.user.id,
     client_visible: clientVisible !== false,
   }).select().single();
   if (error) return res.status(500).json({ success: false, error: { message: error.message } });
+
+  // Real cadence tracking updates automatically - not a separate step
+  // staff have to remember to do.
+  if (reviewType) {
+    await req.supabase.rpc('record_review_cadence', { p_location_id: locationId, p_review_type: reviewType, p_occurred_at: activity.occurred_at });
+  }
 
   return res.json({ success: true, data: activity });
 });
