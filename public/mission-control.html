@@ -118,7 +118,7 @@
   .explore-remaining-badge{ display:inline-block; background:var(--brass-soft); color:#6B5623; font-size:0.75rem; font-weight:600; padding:0.3rem 0.7rem; border-radius:999px; }
 
   /* ---------- Brain Center: real multi-column command-center layout ---------- */
-  .brain-hero{ background:linear-gradient(160deg, #12151f 0%, #232a3a 55%, #1a2130 100%); color:var(--porcelain); border-radius:20px; padding:2.6rem 2.8rem; margin-bottom:1.4rem; position:relative; overflow:hidden; }
+  .brain-hero{ background:linear-gradient(160deg, #12151f 0%, #232a3a 55%, #1a2130 100%); color:var(--porcelain); border-radius:20px; padding:2.6rem 2.8rem; margin-bottom:1.4rem; position:relative; overflow:hidden; max-width:1180px; margin-left:auto; margin-right:auto; }
   .orb-thread{ display:flex; flex-direction:column; gap:0.5rem; max-width:600px; }
   .orb-greeting{ font-family:'Fraunces',serif; font-weight:500; font-size:1.7rem; color:#F7F8FA; margin-bottom:0.9rem; line-height:1.25; }
   .orb-msg.minor{ background:transparent; border:none; padding:0.3rem 0.2rem; }
@@ -517,7 +517,14 @@
           text: nextAction.action,
         });
       }
-      threadMessages.push({ weight: 'minor', label: "What's driving this", text: drivingView });
+      // Real de-duplication: the top signal often IS the same thing
+      // the next-action block already surfaced (screenshots showed
+      // this rendering as near-identical back-to-back text). Only
+      // show "what's driving this" when it says something new.
+      const drivingViewIsRedundant = nextAction && drivingView && nextAction.action.includes(drivingView.slice(0, 40));
+      if (!drivingViewIsRedundant) {
+        threadMessages.push({ weight: 'minor', label: "What's driving this", text: drivingView });
+      }
       threadMessages.push({ weight: 'normal', label: 'What I believe matters most', text: mattersMost, recId: mattersMostRecId, subtext: portfolioContext });
       threadMessages.push({ weight: 'minor', label: "What I'm watching next", text: watchingNext });
       threadMessages.push({ weight: 'minor', label: "What I've done", text: doneText });
