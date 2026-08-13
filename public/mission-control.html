@@ -129,6 +129,12 @@
   .brain-finding .dot{ width:6px; height:6px; border-radius:50%; margin-top:0.5rem; flex-shrink:0; background:var(--brass); }
   .brain-ask-cta{ background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.15); border-radius:12px; padding:0.9rem 1.2rem; display:flex; justify-content:space-between; align-items:center; cursor:pointer; max-width:520px; }
   .command-option{ font-family:inherit; font-size:0.82rem; padding:0.5rem 0.9rem; border-radius:999px; border:1px solid rgba(255,255,255,0.18); background:rgba(255,255,255,0.05); color:#E4E8EE; cursor:pointer; }
+  .next-action{ border-radius:14px; padding:1.2rem 1.4rem; margin:1rem 0 1.2rem; max-width:600px; }
+  .next-action.tier-needs_attention{ background:rgba(224,121,111,0.12); border:1px solid rgba(224,121,111,0.35); }
+  .next-action.tier-opportunity{ background:rgba(173,138,78,0.12); border:1px solid rgba(173,138,78,0.4); }
+  .next-action.tier-watching{ background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.15); }
+  .next-action.tier-healthy{ background:rgba(79,191,154,0.1); border:1px solid rgba(79,191,154,0.3); }
+  .next-action-label{ font-size:0.7rem; text-transform:uppercase; letter-spacing:0.08em; margin-bottom:0.4rem; opacity:0.85; }
   .command-option:hover{ background:rgba(255,255,255,0.12); }
   .brain-ask-cta:hover{ background:rgba(255,255,255,0.13); }
   .brain-ask-cta span.label{ font-weight:600; font-size:0.88rem; }
@@ -373,7 +379,7 @@
     currentLocationId = locId;
     document.getElementById('exploreBtn').classList.remove('hidden');
     try {
-      const { location, connections, metrics, feed, health, socialMetrics, localMetrics, briefing, marketProfile, competitors, openQuestions, brainState, recentActivity, memory, investigations, performance, activitySummary, competitivePulse: competitivePulseData, thesis } = await apiFetch(`/api/mc/locations/${locId}`);
+      const { location, connections, metrics, feed, health, socialMetrics, localMetrics, briefing, marketProfile, competitors, openQuestions, brainState, recentActivity, memory, investigations, performance, activitySummary, competitivePulse: competitivePulseData, thesis, nextAction } = await apiFetch(`/api/mc/locations/${locId}`);
       setBreadcrumbs([
         { label: 'Mission Control', action: 'viewOrganizations()' },
         { label: location.organizations?.name || 'Organization', action: `viewOrganization('${location.organization_id}')` },
@@ -481,6 +487,11 @@
             <div class="brain-greeting">${timeGreeting}, ${escapeHtml(location.name)}.</div>
             <div class="brain-subline">${performance?.momentum ? escapeHtml(performance.momentum) : 'Orb has been monitoring your business'}</div>
             <div class="brain-briefing">${briefing ? escapeHtml(briefing) : "Orb is still gathering enough history to brief you - check back soon."}</div>
+
+            ${nextAction ? `<div class="next-action tier-${nextAction.tier}">
+              <div class="next-action-label">${({needs_attention:'Needs Attention', opportunity:'Opportunity', watching:'Watching', healthy:'Healthy - Nothing To Do'})[nextAction.tier] || 'What Should I Do?'}</div>
+              <div style="font-size:1.02rem; line-height:1.5; color:#F0F2F5; font-weight:500;">${escapeHtml(nextAction.action)}</div>
+            </div>` : ''}
 
             <div style="margin:1.1rem 0; display:flex; flex-direction:column; gap:0.7rem; max-width:600px;">
               <div><div style="font-size:0.68rem; text-transform:uppercase; letter-spacing:0.06em; color:#8F98AC; margin-bottom:0.2rem;">What's driving the current view</div><div style="font-size:0.9rem; color:#D6DAE3; line-height:1.5;">${escapeHtml(drivingView)}</div></div>

@@ -206,6 +206,12 @@ router.get('/locations/:id', async (req, res) => {
     competitivePulse = pulseData;
   } catch (e) { /* non-fatal - the client-side fallback text still works */ }
 
+  let nextAction = null;
+  try {
+    const { data: actionData } = await req.supabase.rpc('synthesize_next_action', { p_location_id: id });
+    nextAction = actionData;
+  } catch (e) { /* non-fatal */ }
+
   return res.json({
     success: true,
     data: {
@@ -222,6 +228,7 @@ router.get('/locations/:id', async (req, res) => {
       performance,
       activitySummary,
       competitivePulse,
+      nextAction,
     },
   });
 });
