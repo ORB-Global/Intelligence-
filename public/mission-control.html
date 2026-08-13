@@ -119,6 +119,18 @@
 
   /* ---------- Brain Center: real multi-column command-center layout ---------- */
   .brain-hero{ background:linear-gradient(160deg, #12151f 0%, #232a3a 55%, #1a2130 100%); color:var(--porcelain); border-radius:20px; padding:2.6rem 2.8rem; margin-bottom:1.4rem; position:relative; overflow:hidden; }
+  .orb-thread{ display:flex; flex-direction:column; gap:0.65rem; max-width:600px; }
+  .orb-msg{ background:rgba(255,255,255,0.055); border-radius:16px 16px 16px 4px; padding:0.85rem 1.1rem; max-width:92%; animation: msgIn 0.35s ease-out backwards; }
+  .orb-msg.tier-needs_attention{ background:rgba(224,121,111,0.14); border:1px solid rgba(224,121,111,0.3); }
+  .orb-msg.tier-opportunity{ background:rgba(173,138,78,0.14); border:1px solid rgba(173,138,78,0.32); }
+  .orb-msg.tier-healthy{ background:rgba(79,191,154,0.1); border:1px solid rgba(79,191,154,0.25); }
+  .orb-msg-label{ font-size:0.64rem; text-transform:uppercase; letter-spacing:0.08em; color:#8F98AC; margin-bottom:0.3rem; }
+  .orb-msg-text{ font-size:0.92rem; line-height:1.55; color:#EBEDF2; }
+  @keyframes msgIn{ from{ opacity:0; transform:translateY(6px); } to{ opacity:1; transform:translateY(0); } }
+  .reply-box{ display:flex; gap:0.5rem; margin-top:1rem; max-width:600px; }
+  .reply-box input{ flex:1; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.18); border-radius:999px; padding:0.7rem 1.1rem; color:#E4E8EE; font-family:inherit; font-size:0.88rem; }
+  .reply-box button{ background:var(--brass); color:#1A1E28; border:none; border-radius:999px; padding:0.7rem 1.3rem; font-weight:600; cursor:pointer; font-size:0.85rem; }
+  .quick-replies{ display:flex; flex-wrap:wrap; gap:0.5rem; margin-top:0.7rem; max-width:600px; }
   .brain-hero-top{ display:flex; gap:2.5rem; align-items:center; flex-wrap:wrap; }
   .brain-hero-text{ flex:1; min-width:300px; }
   .brain-greeting{ font-family:'Fraunces',serif; font-size:1.7rem; font-weight:500; margin-bottom:0.3rem; }
@@ -481,41 +493,56 @@
       // manufacture a client-facing pattern.
       const qualifyingMemory = (memory || []).filter(m => m.confidence !== 'emerging');
 
+      // Real message-thread presentation: same real data as before,
+      // presented as a sequence of things Orb has already said,
+      // ending in a live reply box - not a static hero + card grid.
+      const threadMessages = [];
+      threadMessages.push({ tier: null, label: null, text: `${timeGreeting}, ${location.name}. Here's what I've been seeing.` });
+      if (performance?.momentum || briefing) {
+        threadMessages.push({ tier: null, label: performance?.momentum || null, text: briefing || "I'm still gathering enough history to brief you - check back soon." });
+      }
+      if (nextAction) {
+        threadMessages.push({
+          tier: nextAction.tier,
+          label: ({needs_attention:'Needs Attention', opportunity:'Opportunity', watching:'Watching', healthy:'Healthy - Nothing To Do'})[nextAction.tier],
+          text: nextAction.action,
+        });
+      }
+      threadMessages.push({ tier: null, label: "What's driving this", text: drivingView });
+      threadMessages.push({ tier: null, label: 'What I believe matters most', text: mattersMost, recId: mattersMostRecId });
+      threadMessages.push({ tier: null, label: "What I'm watching next", text: watchingNext });
+      threadMessages.push({ tier: null, label: "What I've done", text: doneText });
+      if (qualifyingMemory.length) {
+        qualifyingMemory.forEach(m => threadMessages.push({ tier: null, label: 'Already on my radar', text: m.observation }));
+      }
+      if (competitivePulse && !competitivePulse.includes('not yet established')) {
+        threadMessages.push({ tier: null, label: 'Your market', text: competitivePulse });
+      }
+
       const brainHero = `<div class="brain-hero">
         <div class="brain-hero-top">
           <div class="brain-hero-text">
-            <div class="brain-greeting">${timeGreeting}, ${escapeHtml(location.name)}.</div>
-            <div class="brain-subline">${performance?.momentum ? escapeHtml(performance.momentum) : 'Orb has been monitoring your business'}</div>
-            <div class="brain-briefing">${briefing ? escapeHtml(briefing) : "Orb is still gathering enough history to brief you - check back soon."}</div>
-
-            ${nextAction ? `<div class="next-action tier-${nextAction.tier}">
-              <div class="next-action-label">${({needs_attention:'Needs Attention', opportunity:'Opportunity', watching:'Watching', healthy:'Healthy - Nothing To Do'})[nextAction.tier] || 'What Should I Do?'}</div>
-              <div style="font-size:1.02rem; line-height:1.5; color:#F0F2F5; font-weight:500;">${escapeHtml(nextAction.action)}</div>
-            </div>` : ''}
-
-            <div style="margin:1.1rem 0; display:flex; flex-direction:column; gap:0.7rem; max-width:600px;">
-              <div><div style="font-size:0.68rem; text-transform:uppercase; letter-spacing:0.06em; color:#8F98AC; margin-bottom:0.2rem;">What's driving the current view</div><div style="font-size:0.9rem; color:#D6DAE3; line-height:1.5;">${escapeHtml(drivingView)}</div></div>
-              <div><div style="font-size:0.68rem; text-transform:uppercase; letter-spacing:0.06em; color:#8F98AC; margin-bottom:0.2rem;">What Orb believes matters most</div><div style="font-size:0.9rem; color:#D6DAE3; line-height:1.5;">${escapeHtml(mattersMost)}</div>
-                ${mattersMostRecId ? `<div style="margin-top:0.4rem; display:flex; align-items:center; gap:0.5rem;"><span style="font-size:0.74rem; color:#8F98AC;">Was Orb right about this?</span><button class="command-option" style="padding:0.2rem 0.6rem; font-size:0.78rem;" onclick="submitRecFeedback('${mattersMostRecId}', true, this)">👍</button><button class="command-option" style="padding:0.2rem 0.6rem; font-size:0.78rem;" onclick="submitRecFeedback('${mattersMostRecId}', false, this)">👎</button></div>` : ''}
-              </div>
-              <div><div style="font-size:0.68rem; text-transform:uppercase; letter-spacing:0.06em; color:#8F98AC; margin-bottom:0.2rem;">What Orb is watching next</div><div style="font-size:0.9rem; color:#D6DAE3; line-height:1.5;">${escapeHtml(watchingNext)}</div></div>
-              <div><div style="font-size:0.68rem; text-transform:uppercase; letter-spacing:0.06em; color:#8F98AC; margin-bottom:0.2rem;">What Orb has done</div><div style="font-size:0.9rem; color:#D6DAE3; line-height:1.5;">${escapeHtml(doneText)}</div></div>
-              ${qualifyingMemory.length ? `<div><div style="font-size:0.68rem; text-transform:uppercase; letter-spacing:0.06em; color:#8F98AC; margin-bottom:0.2rem;">Already on our radar</div>${qualifyingMemory.map(m => `<div style="font-size:0.9rem; color:#D6DAE3; line-height:1.5;">${escapeHtml(m.observation)}</div>`).join('')}</div>` : ''}
+            <div class="orb-thread">
+              ${threadMessages.map((m, i) => `<div class="orb-msg ${m.tier ? 'tier-'+m.tier : ''}" style="animation-delay:${i*0.06}s;">
+                ${m.label ? `<div class="orb-msg-label">${escapeHtml(m.label)}</div>` : ''}
+                <div class="orb-msg-text">${escapeHtml(m.text)}</div>
+                ${m.recId ? `<div style="margin-top:0.5rem; display:flex; align-items:center; gap:0.5rem;"><span style="font-size:0.72rem; color:#8F98AC;">Was Orb right about this?</span><button class="command-option" style="padding:0.15rem 0.55rem; font-size:0.76rem;" onclick="submitRecFeedback('${m.recId}', true, this)">👍</button><button class="command-option" style="padding:0.15rem 0.55rem; font-size:0.76rem;" onclick="submitRecFeedback('${m.recId}', false, this)">👎</button></div>` : ''}
+              </div>`).join('')}
             </div>
 
-            <div class="command-surface" style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); border-radius:12px; padding:1.1rem 1.2rem; margin-bottom:1rem;">
-              <div style="font-size:0.8rem; color:#9CA4B5; margin-bottom:0.7rem;">What do you want to do?</div>
-              <div style="display:flex; flex-wrap:wrap; gap:0.5rem;">
-                <button class="command-option" onclick="toggleWhyPanel()">Understand my business</button>
-                <button class="command-option" onclick="askSuggested('What are my competitors doing?')">See what competitors are doing</button>
-                <button class="command-option" onclick="askSuggested('Where are my biggest opportunities right now?')">Find opportunities</button>
-                <button class="command-option" onclick="startCreateFlow()">Create something</button>
-                <button class="command-option" onclick="openExplore()">Ask Orb anything</button>
-              </div>
+            <div class="reply-box">
+              <input type="text" id="orbReplyInput" placeholder="Reply to Orb, or tell it something about this week…" onkeydown="if(event.key==='Enter') sendOrbReply()">
+              <button onclick="sendOrbReply()">Send</button>
             </div>
-            <span class="detail-toggle" onclick="showExploreLayer()">Explore the full picture →</span>
+            <div class="quick-replies">
+              <button class="command-option" onclick="askSuggested('What are my competitors doing?')">See what competitors are doing</button>
+              <button class="command-option" onclick="askSuggested('Where are my biggest opportunities right now?')">Find opportunities</button>
+              <button class="command-option" onclick="startCreateFlow()">Create something</button>
+              <button class="command-option" onclick="toggleWhyPanel()">Show me the evidence</button>
+            </div>
+            <div style="margin-top:0.6rem;"><span class="detail-toggle" onclick="showExploreLayer()">Explore the full picture →</span></div>
 
-            <div id="whyPanel" class="hidden" style="margin-top:1.2rem; background:rgba(255,255,255,0.06); border-radius:10px; padding:1.1rem 1.3rem; font-size:0.85rem; color:#C9CFDA;">
+            <div id="whyPanel" class="hidden orb-msg" style="margin-top:1rem;">
               ${topFindings.length ? (() => {
                 const top = topFindings[0];
                 const evidenceLines = humanizeEvidence(top.evidence);
@@ -535,21 +562,7 @@
                 </div>`;
               })() : '<p>No findings with evidence yet.</p>'}
             </div>
-            <div id="createPanel" class="hidden" style="margin-top:1.2rem; background:rgba(255,255,255,0.06); border-radius:10px; padding:1.1rem 1.3rem; font-size:0.85rem; color:#C9CFDA;"></div>
-            <div style="margin-top:1.2rem; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); border-radius:10px; padding:1rem 1.2rem;">
-              <div style="font-size:0.8rem; color:#9CA4B5; margin-bottom:0.6rem;">Anything Orb should know about this week?</div>
-              <textarea id="checkinNote" placeholder="e.g. we ran a big Saturday promotion, Tuesday was slow, we're overstocked on adjustable bases…" style="width:100%; min-height:50px; background:rgba(0,0,0,0.2); border:1px solid rgba(255,255,255,0.15); border-radius:6px; padding:0.6rem; color:#E4E8EE; font-family:inherit; font-size:0.85rem; resize:vertical;"></textarea>
-              <div style="display:flex; gap:0.6rem; margin-top:0.6rem; align-items:center;">
-                <select id="checkinTraffic" style="background:rgba(0,0,0,0.2); border:1px solid rgba(255,255,255,0.15); border-radius:6px; color:#E4E8EE; padding:0.4rem; font-size:0.8rem;">
-                  <option value="">Traffic: not sure</option>
-                  <option value="low">Traffic: low</option>
-                  <option value="normal">Traffic: normal</option>
-                  <option value="busy">Traffic: busy</option>
-                </select>
-                <button class="command-option" onclick="submitCheckin()">Tell Orb</button>
-                <span id="checkinStatus" style="font-size:0.78rem; color:#9CA4B5;"></span>
-              </div>
-            </div>
+            <div id="createPanel" class="hidden orb-msg" style="margin-top:1rem;"></div>
           </div>
           <div>
             ${brainSvg}
@@ -784,23 +797,53 @@
     }
   }
 
-  async function submitCheckin(){
-    const noteText = document.getElementById('checkinNote').value.trim();
-    const trafficLevel = document.getElementById('checkinTraffic').value;
-    const status = document.getElementById('checkinStatus');
-    if (!noteText && !trafficLevel) { status.textContent = 'Add a note or pick a traffic level first.'; return; }
-    status.textContent = 'Saving…';
+  function appendThreadMessage(text, label){
+    const thread = document.querySelector('.orb-thread');
+    if (!thread) return;
+    const el = document.createElement('div');
+    el.className = 'orb-msg';
+    el.innerHTML = `${label ? `<div class="orb-msg-label">${escapeHtml(label)}</div>` : ''}<div class="orb-msg-text">${escapeHtml(text)}</div>`;
+    thread.appendChild(el);
+    el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+
+  function askSuggested(q){
+    document.getElementById('orbReplyInput').value = q;
+    sendOrbReply();
+  }
+
+  // Real dual action: whatever the owner types becomes real business
+  // context (stored, wired into future investigations/Ask Orb) AND
+  // gets a real conversational reply, appended right into the same
+  // thread - not a separate form, not a separate chat drawer.
+  async function sendOrbReply(){
+    const input = document.getElementById('orbReplyInput');
+    const text = input.value.trim();
+    if (!text || !currentLocationId) return;
+    input.value = '';
+    appendThreadMessage(text, 'You');
+    appendThreadMessage('…', 'Orb');
+
     try {
       await apiFetch(`/api/mc/locations/${currentLocationId}/checkin`, {
-        method: 'POST',
-        body: JSON.stringify({ noteText: noteText || null, trafficLevel: trafficLevel || null }),
+        method: 'POST', body: JSON.stringify({ noteText: text }),
+      }).catch(() => {});
+
+      const result = await apiFetch(`/api/mc/locations/${currentLocationId}/ask`, {
+        method: 'POST', body: JSON.stringify({ question: text, conversationId: currentConversationId }),
       });
-      status.textContent = 'Got it — thanks.';
-      document.getElementById('checkinNote').value = '';
+      currentConversationId = result.conversationId;
+      const answerText = [result.answer.findings, result.answer.recommended_actions, result.answer.insufficient_data].filter(Boolean).join(' ');
+      const pendingMsgs = document.querySelectorAll('.orb-msg-label');
+      const lastMsg = [...pendingMsgs].reverse().find(l => l.textContent === 'Orb');
+      if (lastMsg) lastMsg.nextElementSibling.textContent = answerText;
     } catch (err) {
-      status.textContent = `Could not save: ${err.message}`;
+      const pendingMsgs = document.querySelectorAll('.orb-msg-label');
+      const lastMsg = [...pendingMsgs].reverse().find(l => l.textContent === 'Orb');
+      if (lastMsg) lastMsg.nextElementSibling.textContent = `Could not get a response: ${err.message}`;
     }
   }
+
 
   async function startCreateFlow(){
     const panel = document.getElementById('createPanel');
@@ -843,7 +886,6 @@
     document.getElementById('exploreDrawer').classList.remove('open');
     document.getElementById('exploreBackdrop').classList.remove('open');
   }
-  function askSuggested(q){ document.getElementById('exploreInput').value = q; sendExploreQuestion(); }
 
   async function loadExploreUsage(locId){
     try {
