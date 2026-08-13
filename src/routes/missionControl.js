@@ -202,13 +202,13 @@ router.get('/locations/:id', async (req, res) => {
   // as every other write-oriented RPC in this file.
   let competitivePulse = null;
   try {
-    const { data: pulseData } = await req.supabase.rpc('synthesize_competitive_pulse', { p_location_id: id });
+    const { data: pulseData } = await supabaseService.rpc('synthesize_competitive_pulse', { p_location_id: id });
     competitivePulse = pulseData;
   } catch (e) { /* non-fatal - the client-side fallback text still works */ }
 
   let nextAction = null;
   try {
-    const { data: actionData } = await req.supabase.rpc('synthesize_next_action', { p_location_id: id });
+    const { data: actionData } = await supabaseService.rpc('synthesize_next_action', { p_location_id: id });
     nextAction = actionData;
   } catch (e) { /* non-fatal */ }
 
@@ -572,7 +572,7 @@ router.post('/locations/:id/activity', async (req, res) => {
   // Real cadence tracking updates automatically - not a separate step
   // staff have to remember to do.
   if (reviewType) {
-    await req.supabase.rpc('record_review_cadence', { p_location_id: locationId, p_review_type: reviewType, p_occurred_at: activity.occurred_at });
+    await supabaseService.rpc('record_review_cadence', { p_location_id: locationId, p_review_type: reviewType, p_occurred_at: activity.occurred_at });
   }
 
   return res.json({ success: true, data: activity });
@@ -634,6 +634,20 @@ router.get('/admin/locations', async (req, res) => {
   });
 
   return res.json({ success: true, data: rows });
+});
+
+router.get('/admin/agency-thesis', async (req, res) => {
+  // synthesize_agency_thesis() is SECURITY DEFINER and returns
+  // cross-tenant portfolio data by design - unlike RLS-scoped queries
+  // elsewhere in this file, this MUST have an explicit admin check,
+  // the same real class of gap found and fixed twice already tonight.
+  const { data: roleData, error: roleError } = await supabaseService.from('platform_roles').select('role').eq('user_id', req.user.id).maybeSingle();
+  if (roleError) return res.status(500).json({ success: false, error: { message: roleError.message } });
+  if (!roleData) return res.status(403).json({ success: false, error: { message: 'Not authorized.' } });
+
+  const { data, error } = await supabaseService.rpc('synthesize_agency_thesis');
+  if (error) return res.status(500).json({ success: false, error: { message: error.message } });
+  return res.json({ success: true, data });
 });
 
 router.get('/admin/portfolio-summary', async (req, res) => {
@@ -710,7 +724,7 @@ router.post('/recommendations/:id/feedback', async (req, res) => {
   if (recError) return res.status(500).json({ success: false, error: { message: recError.message } });
   if (!rec) return res.status(404).json({ success: false, error: { message: 'Recommendation not found or not accessible.' } });
 
-  const { data: verdictId, error } = await req.supabase.rpc('record_client_feedback', {
+  const { data: verdictId, error } = await supabaseService.rpc('record_client_feedback', {
     p_recommendation_id: recommendationId, p_helped: helped, p_feedback_text: feedbackText || null,
   });
   if (error) return res.status(500).json({ success: false, error: { message: error.message } });

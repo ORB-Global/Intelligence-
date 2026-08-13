@@ -119,7 +119,12 @@
 
   /* ---------- Brain Center: real multi-column command-center layout ---------- */
   .brain-hero{ background:linear-gradient(160deg, #12151f 0%, #232a3a 55%, #1a2130 100%); color:var(--porcelain); border-radius:20px; padding:2.6rem 2.8rem; margin-bottom:1.4rem; position:relative; overflow:hidden; }
-  .orb-thread{ display:flex; flex-direction:column; gap:0.65rem; max-width:600px; }
+  .orb-thread{ display:flex; flex-direction:column; gap:0.5rem; max-width:600px; }
+  .orb-greeting{ font-family:'Fraunces',serif; font-weight:500; font-size:1.7rem; color:#F7F8FA; margin-bottom:0.9rem; line-height:1.25; }
+  .orb-msg.minor{ background:transparent; border:none; padding:0.3rem 0.2rem; }
+  .orb-msg.minor .orb-msg-text{ font-size:0.84rem; color:#AEB4C2; }
+  .orb-msg.dominant{ padding:1.3rem 1.5rem; border-radius:16px; }
+  .orb-msg.dominant .orb-msg-text{ font-size:1.08rem; font-weight:500; }
   .orb-msg{ background:rgba(255,255,255,0.055); border-radius:16px 16px 16px 4px; padding:0.85rem 1.1rem; max-width:92%; animation: msgIn 0.35s ease-out backwards; }
   .orb-msg.tier-needs_attention{ background:rgba(224,121,111,0.14); border:1px solid rgba(224,121,111,0.3); }
   .orb-msg.tier-opportunity{ background:rgba(173,138,78,0.14); border:1px solid rgba(173,138,78,0.32); }
@@ -496,34 +501,39 @@
       // Real message-thread presentation: same real data as before,
       // presented as a sequence of things Orb has already said,
       // ending in a live reply box - not a static hero + card grid.
+      // Real visual hierarchy restored: greeting stands alone and
+      // large, the one thing that matters most is visually dominant,
+      // everything else is genuinely secondary/scannable-past, not
+      // uniform bubbles competing for the same attention.
       const threadMessages = [];
-      threadMessages.push({ tier: null, label: null, text: `${timeGreeting}, ${location.name}. Here's what I've been seeing.` });
       if (performance?.momentum || briefing) {
-        threadMessages.push({ tier: null, label: performance?.momentum || null, text: briefing || "I'm still gathering enough history to brief you - check back soon." });
+        threadMessages.push({ weight: 'normal', label: performance?.momentum || null, text: briefing || "I'm still gathering enough history to brief you - check back soon." });
       }
       if (nextAction) {
         threadMessages.push({
+          weight: 'dominant',
           tier: nextAction.tier,
           label: ({needs_attention:'Needs Attention', opportunity:'Opportunity', watching:'Watching', healthy:'Healthy - Nothing To Do'})[nextAction.tier],
           text: nextAction.action,
         });
       }
-      threadMessages.push({ tier: null, label: "What's driving this", text: drivingView });
-      threadMessages.push({ tier: null, label: 'What I believe matters most', text: mattersMost, recId: mattersMostRecId });
-      threadMessages.push({ tier: null, label: "What I'm watching next", text: watchingNext });
-      threadMessages.push({ tier: null, label: "What I've done", text: doneText });
+      threadMessages.push({ weight: 'minor', label: "What's driving this", text: drivingView });
+      threadMessages.push({ weight: 'normal', label: 'What I believe matters most', text: mattersMost, recId: mattersMostRecId });
+      threadMessages.push({ weight: 'minor', label: "What I'm watching next", text: watchingNext });
+      threadMessages.push({ weight: 'minor', label: "What I've done", text: doneText });
       if (qualifyingMemory.length) {
-        qualifyingMemory.forEach(m => threadMessages.push({ tier: null, label: 'Already on my radar', text: m.observation }));
+        qualifyingMemory.forEach(m => threadMessages.push({ weight: 'minor', label: 'Already on my radar', text: m.observation }));
       }
       if (competitivePulse && !competitivePulse.includes('not yet established')) {
-        threadMessages.push({ tier: null, label: 'Your market', text: competitivePulse });
+        threadMessages.push({ weight: 'minor', label: 'Your market', text: competitivePulse });
       }
 
       const brainHero = `<div class="brain-hero">
         <div class="brain-hero-top">
           <div class="brain-hero-text">
+            <div class="orb-greeting">${timeGreeting}, ${escapeHtml(location.name)}.</div>
             <div class="orb-thread">
-              ${threadMessages.map((m, i) => `<div class="orb-msg ${m.tier ? 'tier-'+m.tier : ''}" style="animation-delay:${i*0.06}s;">
+              ${threadMessages.map((m, i) => `<div class="orb-msg ${m.weight === 'minor' ? 'minor' : ''} ${m.weight === 'dominant' ? 'dominant' : ''} ${m.tier ? 'tier-'+m.tier : ''}" style="animation-delay:${i*0.06}s;">
                 ${m.label ? `<div class="orb-msg-label">${escapeHtml(m.label)}</div>` : ''}
                 <div class="orb-msg-text">${escapeHtml(m.text)}</div>
                 ${m.recId ? `<div style="margin-top:0.5rem; display:flex; align-items:center; gap:0.5rem;"><span style="font-size:0.72rem; color:#8F98AC;">Was Orb right about this?</span><button class="command-option" style="padding:0.15rem 0.55rem; font-size:0.76rem;" onclick="submitRecFeedback('${m.recId}', true, this)">👍</button><button class="command-option" style="padding:0.15rem 0.55rem; font-size:0.76rem;" onclick="submitRecFeedback('${m.recId}', false, this)">👎</button></div>` : ''}
