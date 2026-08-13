@@ -117,6 +117,47 @@
   .explore-backdrop.open{ opacity:1; pointer-events:auto; }
   .explore-remaining-badge{ display:inline-block; background:var(--brass-soft); color:#6B5623; font-size:0.75rem; font-weight:600; padding:0.3rem 0.7rem; border-radius:999px; }
 
+  /* ---------- Brain Center: real multi-column command-center layout ---------- */
+  .brain-hero{ background:linear-gradient(160deg, #12151f 0%, #232a3a 55%, #1a2130 100%); color:var(--porcelain); border-radius:20px; padding:2.6rem 2.8rem; margin-bottom:1.4rem; position:relative; overflow:hidden; }
+  .brain-hero-top{ display:flex; gap:2.5rem; align-items:flex-start; flex-wrap:wrap; }
+  .brain-hero-text{ flex:1; min-width:300px; }
+  .brain-greeting{ font-family:'Fraunces',serif; font-size:1.7rem; font-weight:500; margin-bottom:0.3rem; }
+  .brain-subline{ font-family:'IBM Plex Mono',monospace; font-size:0.72rem; text-transform:uppercase; letter-spacing:0.1em; color:#8F98AC; margin-bottom:1rem; }
+  .brain-briefing{ font-size:1.02rem; line-height:1.55; color:#E4E8EE; max-width:600px; margin-bottom:1.4rem; }
+  .brain-findings{ display:flex; flex-direction:column; gap:0.55rem; margin-bottom:1.5rem; }
+  .brain-finding{ display:flex; gap:0.6rem; align-items:flex-start; font-size:0.87rem; color:#D6DAE3; }
+  .brain-finding .dot{ width:6px; height:6px; border-radius:50%; margin-top:0.5rem; flex-shrink:0; background:var(--brass); }
+  .brain-ask-cta{ background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.15); border-radius:12px; padding:0.9rem 1.2rem; display:flex; justify-content:space-between; align-items:center; cursor:pointer; max-width:520px; }
+  .brain-ask-cta:hover{ background:rgba(255,255,255,0.13); }
+  .brain-ask-cta span.label{ font-weight:600; font-size:0.88rem; }
+  .brain-ask-cta span.sub{ font-size:0.76rem; color:#9CA4B5; display:block; margin-top:0.15rem; }
+  .brain-viz-wrap{ width:180px; height:180px; flex-shrink:0; }
+
+  @keyframes nodepulse{ 0%,100%{ opacity:0.35; r:3.2; } 50%{ opacity:1; r:4.4; } }
+  @keyframes edgeflow{ 0%{ stroke-dashoffset:24; } 100%{ stroke-dashoffset:0; } }
+  .brain-node{ animation: nodepulse 3.4s ease-in-out infinite; }
+  .brain-node.inactive{ animation: none; opacity:0.15; }
+  .brain-edge{ stroke-dasharray:4 4; animation: edgeflow 6s linear infinite; opacity:0.4; }
+  @media (prefers-reduced-motion: reduce){ .brain-node{ animation:none; opacity:0.75; } .brain-edge{ animation:none; } }
+
+  .pulse-row{ display:grid; grid-template-columns:repeat(auto-fit, minmax(150px,1fr)); gap:0.9rem; margin-bottom:1.4rem; }
+  .pulse-card{ background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:1.1rem 1.2rem; }
+  .pulse-card .pulse-label{ font-family:'IBM Plex Mono',monospace; font-size:0.66rem; text-transform:uppercase; letter-spacing:0.05em; color:var(--ink-soft); margin-bottom:0.4rem; }
+  .pulse-card .pulse-value{ font-family:'Fraunces',serif; font-size:1.6rem; font-weight:600; }
+  .pulse-card .pulse-trend{ font-size:0.76rem; margin-top:0.2rem; }
+  .pulse-trend.up{ color:var(--win); } .pulse-trend.down{ color:var(--concern); } .pulse-trend.flat{ color:var(--ink-soft); }
+
+  .brain-columns{ display:grid; grid-template-columns:repeat(3, 1fr); gap:1.1rem; align-items:start; }
+  @media (max-width:1000px){ .brain-columns{ grid-template-columns:1fr 1fr; } }
+  @media (max-width:680px){ .brain-columns{ grid-template-columns:1fr; } }
+  .brain-col{ display:flex; flex-direction:column; gap:1.1rem; }
+  .brain-card{ background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:1.3rem 1.4rem; }
+  .brain-card h3{ font-family:'IBM Plex Mono',monospace; font-size:0.7rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-soft); margin:0 0 0.8rem; }
+  .brain-card .empty-honest{ font-size:0.82rem; color:var(--muted); }
+  .activity-item{ display:flex; gap:0.6rem; padding:0.5rem 0; border-bottom:1px solid var(--line); font-size:0.85rem; }
+  .activity-item:last-child{ border-bottom:none; }
+  .activity-badge{ font-size:0.64rem; text-transform:uppercase; font-weight:600; padding:0.15rem 0.5rem; border-radius:999px; background:var(--brass-soft); color:#6B5623; flex-shrink:0; height:fit-content; }
+
   /* Real visual redesign - hero dominant, executive intelligence
      prominent, charts instead of tables, compact status chips */
   .hero{ padding:2.4rem 2.4rem 2.2rem; }
@@ -303,7 +344,7 @@
     currentLocationId = locId;
     document.getElementById('exploreBtn').classList.remove('hidden');
     try {
-      const { location, connections, metrics, feed, health, socialMetrics, localMetrics, briefing, marketProfile, competitors, openQuestions, brainState } = await apiFetch(`/api/mc/locations/${locId}`);
+      const { location, connections, metrics, feed, health, socialMetrics, localMetrics, briefing, marketProfile, competitors, openQuestions, brainState, recentActivity, memory } = await apiFetch(`/api/mc/locations/${locId}`);
       setBreadcrumbs([
         { label: 'Mission Control', action: 'viewOrganizations()' },
         { label: location.organizations?.name || 'Organization', action: `viewOrganization('${location.organization_id}')` },
@@ -315,134 +356,159 @@
       const inactiveWarning = !location.active
         ? `<div class="warning-strip"><span>⚠</span><span>This location is currently inactive.</span></div>` : '';
 
-      const scoreClass = !health ? 'watch' : health.overall_score >= 70 ? 'strong' : health.overall_score >= 50 ? 'watch' : 'weak';
-      const scoreLabel = !health ? 'Calculating' : health.overall_score >= 70 ? 'Strong' : health.overall_score >= 50 ? 'Fair' : 'Needs Attention';
-      const confidence = health?.confidence_level || 'low';
+      // ---------- Canonical state: render FROM brainState, not
+      // independently-reconstructed pieces ----------
+      const score = brainState?.overall_score ?? null;
+      const coverage = brainState?.data_coverage_percent ?? null;
+      const confidence = brainState?.confidence_level || 'low';
+      const scoreLabel = score === null ? 'Calculating' : score >= 70 ? 'Strong' : score >= 50 ? 'Fair' : 'Needs Attention';
+      const hasRealAnalysis = Boolean(brainState) || (briefing && !briefing.startsWith('Not enough'));
+
+      const hour = new Date().getHours();
+      const timeGreeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
 
       const positiveFactors = (health?.factors || []).filter(f => f.status === 'improving');
       const watchFactors = (health?.factors || []).filter(f => f.status === 'watch' || f.status === 'declining');
-
       const recommendations = feed.filter(i => i.item_type === 'recommendation' && (i.subtype === 'proposed' || i.subtype === 'accepted'));
       const signalsRecent = feed.filter(i => i.item_type === 'signal');
-      const connectedCount = connections.filter(c => c.status === 'connected').length;
-
       const crossSourceSignals = signalsRecent.filter(s => s.subtype === 'channel_divergence' || (s.description && s.description.includes('moved together')));
       const workingItems = [...positiveFactors.map(f => f.explanation || f.factor), ...crossSourceSignals.map(s => s.description)];
-      const hasRealAnalysis = Boolean(health) || (briefing && !briefing.startsWith('Not enough'));
+      const connectedCount = connections.filter(c => c.status === 'connected').length;
 
-      // ---------- Hero: dominant, immediate 5-second read ----------
-      const hero = `<div class="hero">
-        <div class="hero-eyebrow">Orb Intelligence</div>
-        <h1>${escapeHtml(location.name)}</h1>
-        <div class="hero-sub">Last analyzed ${brainState?.last_run_at ? new Date(brainState.last_run_at).toLocaleString() : hasRealAnalysis ? 'just now' : 'Not yet analyzed'}</div>
-        <div class="confidence-pill"><span class="dot ${confidence}"></span> ${confidence.charAt(0).toUpperCase()+confidence.slice(1)} confidence</div>
+      // Top 3-5 findings for the hero, prioritized: signals first, then recommendations
+      const topFindings = [...signalsRecent, ...recommendations].slice(0, 4);
+
+      // ---------- Evidence-domain state for the brain visualization ----------
+      const domains = [
+        { key: 'paid', active: metrics.length > 0 },
+        { key: 'social', active: socialMetrics && socialMetrics.length > 0 },
+        { key: 'local', active: localMetrics && localMetrics.length > 0 },
+        { key: 'market', active: Boolean(marketProfile) },
+        { key: 'competitive', active: competitors && competitors.length > 0 },
+        { key: 'creative', active: false },
+      ];
+      const nodePositions = [[90,20],[152,58],[152,122],[90,160],[28,122],[28,58]];
+      const brainSvg = `<svg class="brain-viz-wrap" viewBox="0 0 180 180" xmlns="http://www.w3.org/2000/svg">
+        ${domains.map((d,i) => domains.map((d2,j) => i<j ? `<line class="brain-edge" x1="${nodePositions[i][0]}" y1="${nodePositions[i][1]}" x2="${nodePositions[j][0]}" y2="${nodePositions[j][1]}" stroke="${d.active&&d2.active?'#AD8A4E':'#3A4256'}" stroke-width="1"/>` : '').join('')).join('')}
+        <circle cx="90" cy="90" r="14" fill="none" stroke="#AD8A4E" stroke-width="1.5" opacity="0.6"/>
+        ${domains.map((d,i) => `<circle class="brain-node ${d.active?'':'inactive'}" cx="${nodePositions[i][0]}" cy="${nodePositions[i][1]}" r="3.5" fill="${d.active?'#E8C481':'#5A6272'}"/>`).join('')}
+      </svg>`;
+
+      // ---------- Brain hero ----------
+      const brainHero = `<div class="brain-hero">
+        <div class="brain-hero-top">
+          <div class="brain-hero-text">
+            <div class="brain-greeting">${timeGreeting}, ${escapeHtml(location.name)}.</div>
+            <div class="brain-subline">Last analyzed ${brainState?.last_run_at ? new Date(brainState.last_run_at).toLocaleString() : hasRealAnalysis ? 'just now' : 'Not yet analyzed'} · ${confidence} confidence</div>
+            <div class="brain-briefing">${briefing ? escapeHtml(briefing) : "Orb is still gathering enough history to brief you - check back soon."}</div>
+            ${topFindings.length ? `<div class="brain-findings">
+              ${topFindings.map(f => `<div class="brain-finding"><div class="dot"></div><div>${escapeHtml(f.description)}</div></div>`).join('')}
+            </div>` : ''}
+            <div class="brain-ask-cta" onclick="openExplore()">
+              <div><span class="label">Ask Orb Intelligence</span><span class="sub">Explore the evidence, ask why, or ask what's next</span></div>
+              <span>→</span>
+            </div>
+          </div>
+          ${brainSvg}
+        </div>
         ${inactiveWarning}
-        ${briefing ? `<p style="margin-top:1.2rem; font-size:0.95rem; color:#E4E8EE; max-width:640px; line-height:1.5;">${escapeHtml(briefing)}</p>` : ''}
-        <div class="hero-stats">
-          <div class="hero-stat ${scoreClass}"><div class="num">${health ? health.overall_score : '—'}</div><div class="stat-label">Marketing Health · ${scoreLabel}</div></div>
-          <div class="hero-stat"><div class="num">${health ? health.data_coverage_percent + '%' : '—'}</div><div class="stat-label">Data Coverage</div></div>
-          <div class="hero-stat"><div class="num">${signalsRecent.length}</div><div class="stat-label">Changes Detected</div></div>
-          <div class="hero-stat"><div class="num">${recommendations.length}</div><div class="stat-label">Recommended Actions</div></div>
-        </div>
       </div>`;
 
-      const socialLocalBlock = (socialMetrics && socialMetrics.length) || (localMetrics && localMetrics.length) ? `<div class="compact-row">
-        <div>
-          <div class="compact-label">Social &amp; Local Presence</div>
-          <div class="compact-detail">
-            ${socialMetrics && socialMetrics.length ? `Facebook: ${socialMetrics[0].follower_growth ?? '—'} new followers, ${(socialMetrics[0].post_engagements ?? 0).toLocaleString()} engagements this month` : ''}
-            ${localMetrics && localMetrics.length ? ` · Google Business: ${(localMetrics[0].maps_impressions ?? 0).toLocaleString()} map views` : ''}
-          </div>
-        </div>
-      </div>` : '';
+      // ---------- Live Business Pulse: dynamic KPI cards from real evidence ----------
+      const pulseCards = [];
+      pulseCards.push({ label: 'Marketing Health', value: score ?? '—', trend: null, trendClass: 'flat' });
+      pulseCards.push({ label: 'Data Coverage', value: coverage !== null ? coverage+'%' : '—', trend: null, trendClass: 'flat' });
+      if (socialMetrics && socialMetrics.length >= 2) {
+        const [cur, prev] = socialMetrics.filter(s=>s.channel==='fb-pg');
+        if (cur && prev && prev.post_engagements) {
+          const pct = Math.round(((cur.post_engagements - prev.post_engagements)/prev.post_engagements)*100);
+          pulseCards.push({ label: 'Customer Interactions', value: cur.post_engagements.toLocaleString(), trend: (pct>=0?'+':'')+pct+'%', trendClass: pct>0?'up':pct<0?'down':'flat' });
+        }
+      }
+      if (localMetrics && localMetrics.length >= 2) {
+        const [cur, prev] = localMetrics;
+        const curTotal = (cur.maps_impressions||0)+(cur.search_impressions||0);
+        const prevTotal = (prev.maps_impressions||0)+(prev.search_impressions||0);
+        if (prevTotal) {
+          const pct = Math.round(((curTotal-prevTotal)/prevTotal)*100);
+          pulseCards.push({ label: 'Local Visibility', value: curTotal.toLocaleString(), trend: (pct>=0?'+':'')+pct+'%', trendClass: pct>0?'up':pct<0?'down':'flat' });
+        }
+      }
+      pulseCards.push({ label: 'Open Questions', value: (openQuestions||[]).length, trend: null, trendClass: 'flat' });
+      pulseCards.push({ label: 'Recommended Actions', value: recommendations.length, trend: null, trendClass: 'flat' });
 
-      // Real fix for the contradictory-states bug: "What's Working" now
-      // also considers real cross-source signals (finding_type=inference,
-      // severity=high, positive direction implied by the briefing text
-      // itself), not only health_score_factors - these were two
-      // disconnected sources that could contradict each other.
-      const executiveBlock = `<div class="executive-section"><h2>Executive Intelligence</h2>
-        <div class="intel-grid">
-          <div>
-            <div style="font-size:0.75rem; text-transform:uppercase; color:var(--win); font-weight:600; margin-bottom:0.5rem;">What's Working</div>
-            ${workingItems.length === 0 ? '<p style="color:var(--ink-soft); font-size:0.85rem;">Nothing flagged as improving yet.</p>' :
-              workingItems.map(text => `<div class="intel-item"><div class="intel-dot positive"></div><div>${escapeHtml(text)}</div></div>`).join('')}
-          </div>
-          <div>
-            <div style="font-size:0.75rem; text-transform:uppercase; color:var(--watch); font-weight:600; margin-bottom:0.5rem;">What We're Watching</div>
-            ${watchFactors.length === 0 ? '<p style="color:var(--ink-soft); font-size:0.85rem;">Nothing currently flagged.</p>' :
-              watchFactors.map(f => `<div class="intel-item"><div class="intel-dot watch"></div><div>${escapeHtml(f.explanation || f.factor)}</div></div>`).join('')}
-          </div>
-        </div>
-        ${recommendations.length ? `
-        <div style="margin-top:1.2rem; padding-top:1.2rem; border-top:1px solid #E8D9BC;">
-          <div style="font-size:0.75rem; text-transform:uppercase; color:var(--brass); font-weight:600; margin-bottom:0.5rem;">Recommended Next</div>
-          ${recommendations.map(r => `<div class="intel-item"><div class="intel-dot watch"></div><div>${escapeHtml(r.description)}</div></div>`).join('')}
-        </div>` : ''}
+      const pulseRow = `<div class="pulse-row">
+        ${pulseCards.map(c => `<div class="pulse-card">
+          <div class="pulse-label">${escapeHtml(c.label)}</div>
+          <div class="pulse-value">${c.value}</div>
+          ${c.trend ? `<div class="pulse-trend ${c.trendClass}">${c.trend} vs prior period</div>` : ''}
+        </div>`).join('')}
       </div>`;
 
-      // ---------- Performance: real charts, table hidden behind drill-down ----------
-      const channels = [...new Set(metrics.map(m => m.channel))];
-      const chartId = 'perfChart';
-      const performanceBlock = `<div class="section"><h2>Performance &amp; History</h2>
-        ${metrics.length === 0 ? '<p style="color:var(--ink-soft); font-size:0.85rem;">No performance history on file yet.</p>' : `
-        <div class="channel-tabs" id="channelTabs">
-          ${channels.map((ch, i) => `<button class="${i===0?'active':''}" onclick="switchChannelChart('${ch}', this)">${escapeHtml(channelLabel(ch))}</button>`).join('')}
-        </div>
-        <div class="chart-wrap"><canvas id="${chartId}"></canvas></div>
-        <span class="detail-toggle" onclick="document.getElementById('detailTable').classList.toggle('hidden')">View detailed data</span>
-        <div id="detailTable" class="hidden" style="margin-top:0.8rem;">
-          <table><thead><tr><th>Channel</th><th>Period</th><th>Spend</th><th>Impressions</th><th>Clicks</th><th>CTR</th><th>CPC</th></tr></thead><tbody>
-            ${metrics.map(m => `<tr>
-              <td>${escapeHtml(channelLabel(m.channel))}</td>
-              <td>${m.period_start} → ${m.period_end}</td>
-              <td>$${Number(m.ad_spend||0).toLocaleString()}</td>
-              <td>${Number(m.impressions||0).toLocaleString()}</td>
-              <td>${Number(m.clicks||0).toLocaleString()}</td>
-              <td>${m.ctr ? Number(m.ctr).toFixed(2)+'%' : '—'}</td>
-              <td>${m.cpc ? '$'+Number(m.cpc).toFixed(2) : '—'}</td>
-            </tr>`).join('')}
-          </tbody></table>
-        </div>`}
+      // ---------- Multi-column command center ----------
+      const whatChangedCard = `<div class="brain-card"><h3>What Changed</h3>
+        ${signalsRecent.length ? signalsRecent.slice(0,4).map(s => `<div class="intel-item"><div class="intel-dot watch"></div><div style="font-size:0.85rem;">${escapeHtml(s.description)}</div></div>`).join('') : '<p class="empty-honest">Nothing notable detected this period.</p>'}
       </div>`;
 
-      // ---------- Creative / Market / Competitive: compact capability chips, not empty boxes ----------
-      const marketBlock = marketProfile ? `<div class="section"><h2>Your Market</h2>
-        <p style="font-size:0.88rem; margin-bottom:0.6rem;">${escapeHtml(marketProfile.primary_market || '')} — serving ${(marketProfile.nearby_communities||[]).map(escapeHtml).join(', ')}</p>
-      </div>` : '';
+      const attentionCard = `<div class="brain-card"><h3>What Needs Your Attention</h3>
+        ${watchFactors.length || recommendations.length ? [...watchFactors.map(f=>f.explanation||f.factor), ...recommendations.map(r=>r.description)].slice(0,4).map(t => `<div class="intel-item"><div class="intel-dot watch"></div><div style="font-size:0.85rem;">${escapeHtml(t)}</div></div>`).join('') : '<p class="empty-honest">Nothing requires attention right now.</p>'}
+      </div>`;
 
-      const competitiveBlock = (competitors && competitors.length) ? `<div class="section"><h2>Competitive Landscape</h2>
-        <div class="intel-grid">
-          ${competitors.map(c => `<div class="intel-item"><div class="intel-dot watch"></div><div><strong>${escapeHtml(c.name)}</strong><br/><span style="color:var(--ink-soft); font-size:0.82rem;">${escapeHtml(c.category||'')}</span></div></div>`).join('')}
-        </div>
-      </div>` : '';
+      const activityTypeLabels = { review:'Reviewed', optimization:'Optimized', launch:'Launched', test:'Tested', creative_change:'Creative Updated', budget_change:'Budget Adjusted', targeting_change:'Targeting Updated', landing_page_update:'Page Updated', connection_repair:'Connection Fixed', client_conversation:'Client Contacted', other:'Activity' };
+      const activityCard = `<div class="brain-card"><h3>This Week at Orb</h3>
+        ${(recentActivity && recentActivity.length) ? recentActivity.slice(0,4).map(a => `<div class="activity-item"><span class="activity-badge">${escapeHtml(activityTypeLabels[a.activity_type]||a.activity_type)}</span><span>${escapeHtml(a.description)}</span></div>`).join('') : '<p class="empty-honest">No recorded activity yet this period.</p>'}
+      </div>`;
 
-      const openQuestionsBlock = (openQuestions && openQuestions.length) ? `<div class="section"><h2>What We're Still Learning</h2>
-        ${openQuestions.map(q => `<div class="intel-item"><div class="intel-dot watch"></div><div style="font-size:0.85rem; color:var(--ink-soft);">${escapeHtml(q.question)}</div></div>`).join('')}
-      </div>` : '';
+      const socialCard = `<div class="brain-card"><h3>Social &amp; Community</h3>
+        ${socialMetrics && socialMetrics.length ? `<div class="intel-item"><div class="intel-dot positive"></div><div style="font-size:0.85rem;">${socialMetrics[0].follower_growth ?? 0} new followers, ${(socialMetrics[0].post_engagements ?? 0).toLocaleString()} engagements this month on Facebook.</div></div>` : '<p class="empty-honest">No organic social data on file yet.</p>'}
+      </div>`;
 
-      // ---------- Intelligence Timeline: visual story, signal -> recommendation -> action -> outcome ----------
-      const timelineTitle = { signal: 'CHANGE DETECTED', recommendation: 'RECOMMENDATION', action: 'ACTION', outcome: 'OUTCOME' };
+      const paidCard = `<div class="brain-card"><h3>Paid Marketing</h3>
+        ${metrics.length ? `<div class="chart-wrap" style="height:140px;"><canvas id="perfChart"></canvas></div><div class="channel-tabs" id="channelTabs">${[...new Set(metrics.map(m=>m.channel))].map((ch,i)=>`<button class="${i===0?'active':''}" onclick="switchChannelChart('${ch}', this)">${escapeHtml(channelLabel(ch))}</button>`).join('')}</div>` : '<p class="empty-honest">No paid performance data on file yet.</p>'}
+      </div>`;
+
+      const localCard = `<div class="brain-card"><h3>Local Visibility</h3>
+        ${localMetrics && localMetrics.length ? `<div class="intel-item"><div class="intel-dot positive"></div><div style="font-size:0.85rem;">${(localMetrics[0].maps_impressions||0).toLocaleString()} map views, ${(localMetrics[0].search_impressions||0).toLocaleString()} search views this month.</div></div><div class="intel-item"><div class="intel-dot"></div><div style="font-size:0.85rem; color:var(--ink-soft);">${localMetrics[0].call_clicks||0} calls · ${localMetrics[0].direction_requests||0} direction requests</div></div>` : '<p class="empty-honest">No local visibility data on file yet.</p>'}
+      </div>`;
+
+      const marketCard = `<div class="brain-card"><h3>Your Market</h3>
+        ${marketProfile ? `<div class="intel-item"><div class="intel-dot"></div><div style="font-size:0.85rem;">${escapeHtml(marketProfile.primary_market||'')} — serving ${(marketProfile.nearby_communities||[]).map(escapeHtml).join(', ')}</div></div>` : '<p class="empty-honest">Market profile not yet resolved.</p>'}
+      </div>`;
+
+      const competitiveCard = `<div class="brain-card"><h3>Competitive Landscape</h3>
+        ${(competitors && competitors.length) ? competitors.map(c => `<div class="intel-item"><div class="intel-dot watch"></div><div style="font-size:0.85rem;"><strong>${escapeHtml(c.name)}</strong> — ${escapeHtml(c.category||'')}</div></div>`).join('') : '<p class="empty-honest">No competitors identified yet.</p>'}
+      </div>`;
+
+      const creativeCard = `<div class="brain-card"><h3>Creative Intelligence</h3><p class="empty-honest">No creative-level data available yet for this account.</p></div>`;
+
+      const learningCard = `<div class="brain-card"><h3>What Orb Is Learning</h3>
+        ${(memory && memory.length) ? memory.map(m => `<div class="intel-item"><div class="intel-dot positive"></div><div style="font-size:0.85rem;">${escapeHtml(m.observation)} <span style="color:var(--muted); font-size:0.76rem;">(${m.confidence} confidence)</span></div></div>`).join('') : '<p class="empty-honest">No confirmed patterns yet - this builds over time as evidence repeats.</p>'}
+      </div>`;
+
+      const commandCenter = `<div class="brain-columns">
+        <div class="brain-col">${whatChangedCard}${attentionCard}${activityCard}</div>
+        <div class="brain-col">${socialCard}${paidCard}${localCard}</div>
+        <div class="brain-col">${marketCard}${competitiveCard}${creativeCard}${learningCard}</div>
+      </div>`;
+
+      // ---------- Intelligence Timeline (condensed, story-flow) ----------
+      const timelineTitle = { signal: 'CHANGE DETECTED', recommendation: 'RECOMMENDATION', action: 'ACTION', outcome: 'OUTCOME', orb_activity: 'ORB ACTIVITY' };
       const timelineBlock = `<div class="section"><h2>Intelligence Timeline</h2>
         ${!feed || feed.length === 0 ? '<p style="color:var(--ink-soft); font-size:0.85rem;">No intelligence recorded yet.</p>' : `
-        <div class="story-chain">
-          <div class="timeline">
-            ${feed.map((item, i) => `
-              <div class="timeline-item">
-                <div class="timeline-dot ${item.item_type}"></div>
-                <div>
-                  <div class="timeline-label">${timelineTitle[item.item_type] || item.item_type}</div>
-                  <div class="timeline-desc">${escapeHtml(item.description)}</div>
-                  <div class="timeline-date">${new Date(item.occurred_at).toLocaleDateString()}</div>
-                </div>
+        <div class="timeline">
+          ${feed.slice(0, 12).map(item => `
+            <div class="timeline-item">
+              <div class="timeline-dot ${item.item_type}"></div>
+              <div>
+                <div class="timeline-label">${timelineTitle[item.item_type] || item.item_type}</div>
+                <div class="timeline-desc">${escapeHtml(item.description)}</div>
+                <div class="timeline-date">${new Date(item.occurred_at).toLocaleDateString()}</div>
               </div>
-              ${i < feed.length - 1 ? '<div class="story-arrow">↓</div>' : ''}
-            `).join('')}
-          </div>
+            </div>
+          `).join('')}
         </div>`}
       </div>`;
 
-      // ---------- Data Connections: compact single indicator, not a major section ----------
       const dataConnectionsBlock = `<div class="compact-row">
         <div>
           <div class="compact-label">Data Health</div>
@@ -452,20 +518,16 @@
       </div>`;
 
       content.innerHTML = `
-        ${hero}
-        ${executiveBlock}
-        ${performanceBlock}
-        ${socialLocalBlock}
-        ${marketBlock}
-        ${competitiveBlock}
-        ${openQuestionsBlock}
+        ${brainHero}
+        ${pulseRow}
+        ${commandCenter}
         ${timelineBlock}
         ${dataConnectionsBlock}
       `;
 
-      if (channels.length && window.Chart) {
+      if (metrics.length && window.Chart) {
         window.__metricsData = metrics;
-        renderChannelChart(channels[0], chartId);
+        renderChannelChart([...new Set(metrics.map(m=>m.channel))][0], 'perfChart');
       }
 
       loadExploreUsage(locId);
