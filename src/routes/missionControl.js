@@ -254,6 +254,7 @@ router.get('/locations/:id', async (req, res) => {
  */
 function buildCrossSourceBriefing(metrics, socialMetrics, localMetrics) {
   const parts = [];
+  const money = (n) => `$${n.toFixed(2)}`;
 
   const periods = [...new Set((metrics || []).map((m) => `${m.period_start}_${m.period_end}`))].sort().reverse();
   if (periods.length >= 2) {
@@ -269,11 +270,11 @@ function buildCrossSourceBriefing(metrics, socialMetrics, localMetrics) {
       const prevCpc = prevClicks > 0 ? prevSpend / prevClicks : null;
       if (prevCpc) {
         const pctChange = ((curCpc - prevCpc) / prevCpc) * 100;
-        // Plain language, matching the required tone directly at the
-        // source: "your ads are bringing in more people for less
-        // money" instead of "cost-per-click improved period-over-period"
-        if (pctChange < -5) parts.push('Your ads are bringing in more people for less money than last period.');
-        else if (pctChange > 5) parts.push('Your ads are costing more to bring in the same amount of people right now.');
+        // Real numbers embedded directly, not just direction - "your
+        // cost per click went from $2.10 to $1.45" reads as a system
+        // actually watching the numbers, not a vague reassurance.
+        if (pctChange < -5) parts.push(`Your cost per click went from ${money(prevCpc)} to ${money(curCpc)} - you're paying less to bring in the same or more people.`);
+        else if (pctChange > 5) parts.push(`Your cost per click went from ${money(prevCpc)} to ${money(curCpc)} - it's costing more to bring in people right now.`);
       }
     }
   }
@@ -284,7 +285,7 @@ function buildCrossSourceBriefing(metrics, socialMetrics, localMetrics) {
     if (cur.post_engagements && prev.post_engagements) {
       const pct = ((cur.post_engagements - prev.post_engagements) / prev.post_engagements) * 100;
       if (Math.abs(pct) > 10) {
-        parts.push(pct > 0 ? 'More people are interacting with your Facebook posts than last month.' : 'Fewer people are interacting with your Facebook posts than last month.');
+        parts.push(`Facebook engagement went from ${prev.post_engagements.toLocaleString()} to ${cur.post_engagements.toLocaleString()} interactions (${pct>0?'+':''}${Math.round(pct)}%).`);
       }
     }
   }
@@ -295,7 +296,7 @@ function buildCrossSourceBriefing(metrics, socialMetrics, localMetrics) {
     if (cur.maps_impressions && prev.maps_impressions) {
       const pct = ((cur.maps_impressions - prev.maps_impressions) / prev.maps_impressions) * 100;
       if (Math.abs(pct) > 25) {
-        parts.push(pct > 0 ? 'A lot more people are finding your business on Google Maps than usual.' : 'Fewer people are finding your business on Google Maps than usual.');
+        parts.push(`${cur.maps_impressions.toLocaleString()} people found you on Google Maps, up from ${prev.maps_impressions.toLocaleString()} (${pct>0?'+':''}${Math.round(pct)}%).`);
       }
     }
   }
