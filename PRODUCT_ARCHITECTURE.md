@@ -61,3 +61,16 @@ Not yet real: the animated Brain visualization is a first genuine pass (real SVG
 ## Summary: the actual gap between "AI Brain" and "dashboard," honestly
 
 The deterministic reasoning loop (observe → detect → investigate → remember → recheck → decay) is real, tested against more than one location every time, and now running on a schedule. That is the Brain, and it is not decorative. What's still dashboard-shaped is the *external intelligence surface area* (Industry, Search/Demand) and the *action surface* (Create) — both correctly identified as missing, both architecturally scoped above, neither started. The path from here is: build those following the exact pattern already proven for Market/Competitors (real schema, real provenance, wired into detection and the briefing — not a page the Brain doesn't read from), and only then invest in the fuller visual treatment, since a beautiful visualization of an incomplete Brain is the dashboard mistake in a different costume.
+
+---
+
+## Addendum: the self-evaluating decision loop (this session)
+
+The prior version of this document described a Brain that detects, investigates, and remembers. It was missing the piece that makes those decisions *self-correcting*: judgment on whether Orb's own past recommendations were right.
+
+**Real, tested this session:**
+- `location_thesis` (table) + `synthesize_thesis()` (function): one persistent narrative belief per location, deterministically composed from real current signals/investigations/memory, never AI-generated fresh on page load. Preserves the previous thesis so "did my belief change" is a checkable fact (`changed_from_previous`), not an assumption. Tested on 2 locations - genuinely different real content each (Easley: 4 signals, 1 pattern, 1 open investigation; Hannibal: 1 signal, 0 patterns, no open investigation).
+- `recommendation_verdicts` + `judge_recommendation_outcome()`: renders an explicit verdict (`validated` / `not_validated` / `inconclusive`) on whether a recommendation's linked outcome actually supports it, using the outcome's measured percent-change. Tested on the one real linked outcome that exists - correctly returned `inconclusive` because the measurement is honestly still pending, not fabricated as a false positive.
+- `recommendation_track_record`: accumulates verdicts by recommendation category per location - the raw material for eventually saying "recommendations like this have historically worked/not worked for this business," though nothing yet reads this table to *change* future recommendation generation - that wiring is the next real step, not done tonight.
+
+**Honest limitation, stated plainly:** the verdict-judging heuristic (percent-change threshold) is simple by necessity - there is exactly one real recommendation-outcome pair in the data, and it's an honest "not yet measurable" case. The `validated`/`not_validated` paths are implemented and logically tested but have never yet fired against real data. That's not a gap to hide; it's what happens when the discipline is "prove it against real data" and the real data hasn't accumulated yet.

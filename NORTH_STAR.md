@@ -29,3 +29,19 @@ A credential/provider/account action only the user can perform; an irreversible/
 - Orb should read as already ahead of the account ("Orb reviewed this during the weekly review", "Orb made an adjustment and is monitoring") - only when backed by real Orb Activity, never invented.
 - Create must support both intelligence-driven ("Create from this opportunity") and simple everyday requests ("make me a Facebook post about X"), auto-carrying business identity/context either way.
 - The 30-second test: a business owner with no marketing background should understand momentum, customer attention, ad performance direction, audience growth, local discovery, what Orb has done, and what's next - then be able to say "make me a post for that."
+
+## THE CENTRAL DIFFERENTIATING CAPABILITY (added this session, supersedes prior framing as "one of many features")
+
+Orb Intelligence is not a system that is intelligent about the business. It is a system that is intelligent about its own decisions regarding the business.
+
+The loop that makes this different from every prior version of this build:
+
+UNDERSTAND -> FORM A THESIS -> DETECT -> INVESTIGATE -> DECIDE -> ACT/CREATE -> WATCH -> JUDGE WHETHER THE DECISION WAS RIGHT -> UPDATE THE THESIS/MEMORY -> DECIDE DIFFERENTLY NEXT TIME.
+
+The system must be able to say, eventually, for real: "I thought this. I recommended this. We did this. This happened. I learned this. Therefore I am changing what I recommend next." That sentence - not any individual feature - is the product.
+
+Two structural requirements this implies, real and built this session:
+1. A persistent THESIS - one coherent current belief, not a signals table - that visibly changes (or doesn't) from one Brain run to the next.
+2. A VERDICT mechanism - not just "did an outcome get measured" but "was the recommendation that caused this outcome actually right," accumulating into a real track record that could inform future recommendation confidence.
+
+I do not care whether every individual ingredient exists elsewhere. What matters is whether the complete closed loop is real, persistent, evidence-backed, and makes the system meaningfully smarter about one specific business over time - not whether any single piece is unprecedented.

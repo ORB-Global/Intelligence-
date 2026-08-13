@@ -151,6 +151,7 @@ router.get('/locations/:id', async (req, res) => {
     { data: recentActivity },
     { data: memory },
     { data: investigations },
+    { data: thesis },
   ] = await Promise.all([
     req.supabase.from('locations').select('*, organizations(name)').eq('id', id).maybeSingle(),
     req.supabase.from('connection_health').select('*').eq('location_id', id).order('channel'),
@@ -167,6 +168,7 @@ router.get('/locations/:id', async (req, res) => {
     req.supabase.from('orb_activity').select('*').eq('location_id', id).eq('client_visible', true).order('occurred_at', { ascending: false }).limit(10),
     req.supabase.from('business_memory').select('*').eq('location_id', id).order('last_confirmed_at', { ascending: false }),
     req.supabase.from('investigations').select('*').eq('location_id', id).eq('client_visible', true).order('created_at', { ascending: false }),
+    req.supabase.from('location_thesis').select('*').eq('location_id', id).maybeSingle(),
   ]);
 
   if (locError) return res.status(500).json({ success: false, error: { message: locError.message } });
@@ -202,6 +204,7 @@ router.get('/locations/:id', async (req, res) => {
       recentActivity: recentActivity || [],
       memory: memory || [],
       investigations: investigations || [],
+      thesis: thesis || null,
       briefing,
       performance,
       activitySummary,
