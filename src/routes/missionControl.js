@@ -41,6 +41,9 @@ async function buildTenantChatContext(supabase, locationId) {
     { data: servicesManaged },
     { data: socialMetrics },
     { data: localMetrics },
+    { data: marketProfile },
+    { data: competitors },
+    { data: openQuestions },
   ] = await Promise.all([
     supabase.from('locations').select('id, name, organizations(name)').eq('id', locationId).maybeSingle(),
     supabase.from('historical_metrics').select('*').eq('location_id', locationId).order('period_start', { ascending: false }).limit(4),
@@ -49,6 +52,9 @@ async function buildTenantChatContext(supabase, locationId) {
     supabase.from('services_managed').select('service, status').eq('location_id', locationId),
     supabase.from('social_content_metrics').select('*').eq('location_id', locationId).order('period_start', { ascending: false }).limit(4),
     supabase.from('local_visibility_metrics').select('*').eq('location_id', locationId).order('period_start', { ascending: false }).limit(4),
+    supabase.from('market_profiles').select('*').eq('location_id', locationId).maybeSingle(),
+    supabase.from('competitors').select('name, address, category, status, confidence').eq('location_id', locationId),
+    supabase.from('open_questions').select('question, category').eq('location_id', locationId).eq('status', 'open'),
   ]);
 
   let healthWithFactors = null;
@@ -74,6 +80,9 @@ async function buildTenantChatContext(supabase, locationId) {
     intelligenceFeed: feed,
     socialContentMetrics: socialMetrics || [],
     localVisibilityMetrics: localMetrics || [],
+    marketProfile: marketProfile || null,
+    competitors: competitors || [],
+    openQuestions: openQuestions || [],
     accountNotes: [],
     insights: [],
   };
@@ -118,6 +127,9 @@ router.get('/locations/:id', async (req, res) => {
     { data: health, error: healthError },
     { data: socialMetrics },
     { data: localMetrics },
+    { data: marketProfile },
+    { data: competitors },
+    { data: openQuestions },
   ] = await Promise.all([
     req.supabase.from('locations').select('*, organizations(name)').eq('id', id).maybeSingle(),
     req.supabase.from('connection_health').select('*').eq('location_id', id).order('channel'),
@@ -127,6 +139,9 @@ router.get('/locations/:id', async (req, res) => {
     req.supabase.from('health_scores').select('*').eq('location_id', id).order('calculated_at', { ascending: false }).limit(1).maybeSingle(),
     req.supabase.from('social_content_metrics').select('*').eq('location_id', id).order('period_start', { ascending: false }),
     req.supabase.from('local_visibility_metrics').select('*').eq('location_id', id).order('period_start', { ascending: false }),
+    req.supabase.from('market_profiles').select('*').eq('location_id', id).maybeSingle(),
+    req.supabase.from('competitors').select('*').eq('location_id', id).eq('status', 'auto_discovered'),
+    req.supabase.from('open_questions').select('*').eq('location_id', id).eq('status', 'open'),
   ]);
 
   if (locError) return res.status(500).json({ success: false, error: { message: locError.message } });
@@ -145,6 +160,7 @@ router.get('/locations/:id', async (req, res) => {
       location, connections: connections || [], mapping: mapping || null,
       metrics: metrics || [], feed: feed || [], health: health || null,
       socialMetrics: socialMetrics || [], localMetrics: localMetrics || [],
+      marketProfile: marketProfile || null, competitors: competitors || [], openQuestions: openQuestions || [],
       briefing,
     },
   });

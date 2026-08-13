@@ -303,7 +303,7 @@
     currentLocationId = locId;
     document.getElementById('exploreBtn').classList.remove('hidden');
     try {
-      const { location, connections, metrics, feed, health, socialMetrics, localMetrics, briefing } = await apiFetch(`/api/mc/locations/${locId}`);
+      const { location, connections, metrics, feed, health, socialMetrics, localMetrics, briefing, marketProfile, competitors, openQuestions } = await apiFetch(`/api/mc/locations/${locId}`);
       setBreadcrumbs([
         { label: 'Mission Control', action: 'viewOrganizations()' },
         { label: location.organizations?.name || 'Organization', action: `viewOrganization('${location.organization_id}')` },
@@ -399,10 +399,24 @@
       </div>`;
 
       // ---------- Creative / Market / Competitive: compact capability chips, not empty boxes ----------
+      const marketBlock = marketProfile ? `<div class="section"><h2>Your Market</h2>
+        <p style="font-size:0.88rem; margin-bottom:0.6rem;">${escapeHtml(marketProfile.primary_market || '')} — serving ${(marketProfile.nearby_communities||[]).map(escapeHtml).join(', ')}</p>
+      </div>` : '';
+
+      const competitiveBlock = (competitors && competitors.length) ? `<div class="section"><h2>Competitive Landscape</h2>
+        <div class="intel-grid">
+          ${competitors.map(c => `<div class="intel-item"><div class="intel-dot watch"></div><div><strong>${escapeHtml(c.name)}</strong><br/><span style="color:var(--ink-soft); font-size:0.82rem;">${escapeHtml(c.category||'')}</span></div></div>`).join('')}
+        </div>
+      </div>` : '';
+
+      const openQuestionsBlock = (openQuestions && openQuestions.length) ? `<div class="section"><h2>What We're Still Learning</h2>
+        ${openQuestions.map(q => `<div class="intel-item"><div class="intel-dot watch"></div><div style="font-size:0.85rem; color:var(--ink-soft);">${escapeHtml(q.question)}</div></div>`).join('')}
+      </div>` : '';
+
       const capabilityBlock = `<div class="section"><h2>Additional Intelligence</h2>
         <span class="capability-chip"><span class="chip-dot"></span> Creative Intelligence — Building</span>
-        <span class="capability-chip"><span class="chip-dot"></span> Market Intelligence — Building</span>
-        <span class="capability-chip"><span class="chip-dot"></span> Competitive Intelligence — Building</span>
+        ${marketProfile ? '' : '<span class="capability-chip"><span class="chip-dot"></span> Market Intelligence — Building</span>'}
+        ${(competitors && competitors.length) ? '' : '<span class="capability-chip"><span class="chip-dot"></span> Competitive Intelligence — Building</span>'}
         <p style="color:var(--ink-soft); font-size:0.8rem; margin-top:0.7rem;">These will populate automatically as they come online — no action needed.</p>
       </div>`;
 
@@ -441,6 +455,9 @@
         ${executiveBlock}
         ${performanceBlock}
         ${socialLocalBlock}
+        ${marketBlock}
+        ${competitiveBlock}
+        ${openQuestionsBlock}
         ${capabilityBlock}
         ${timelineBlock}
         ${dataConnectionsBlock}

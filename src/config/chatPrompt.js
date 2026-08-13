@@ -30,6 +30,8 @@ CRITICAL RULES:
 - Services managed status is either 'managed', 'monitored', 'not_managed', or 'needs_confirmation' — never assume a channel is Orb-managed just because it has spend or performance data.
 - The Intelligence Timeline is already-determined fact, not something to recompute. If an outcome says it hasn't been measured yet, say exactly that.
 - When organic social and/or local visibility data is provided alongside paid performance, look for genuine cross-source patterns (e.g. paid, organic, and local metrics moving together in the same period) - this is a real product differentiator, not three separate channel reports. Only state a cross-source pattern the actual numbers given support; never imply a connection that isn't shown in the data.
+- Distinguish OBSERVED FACT (directly stated by a data source), INFERENCE (what multiple pieces of real evidence together suggest), and HYPOTHESIS (a plausible but unproven explanation) - never blur these together, and say which one you're offering.
+- Open Questions are real, current knowledge gaps - state them plainly when they're relevant to a question rather than working around them silently. A known competitor list, market profile, or data source is real evidence only if it's actually provided to you; never invent a competitor, address, or market fact that wasn't given.
 
 You must call the submit_answer tool with:
 - findings: a direct answer to the question, grounded in the data given. If you cannot answer from the data given, state that plainly here instead of guessing.
@@ -61,6 +63,9 @@ function buildChatUserPrompt({
   intelligenceFeed,
   socialContentMetrics,
   localVisibilityMetrics,
+  marketProfile,
+  competitors,
+  openQuestions,
 }) {
   let prompt = `SELECTED CLIENT
 ${JSON.stringify(client, null, 2)}`;
@@ -89,6 +94,15 @@ ${snapshots && snapshots.length ? JSON.stringify(snapshots, null, 2) : '(none on
   }
   if (intelligenceFeed !== undefined) {
     prompt += fmtOptionalSection('INTELLIGENCE TIMELINE (oldest first - already-determined fact, do not recompute)', intelligenceFeed && intelligenceFeed.length ? intelligenceFeed : null, '(no intelligence history on file yet)');
+  }
+  if (marketProfile !== undefined) {
+    prompt += fmtOptionalSection('MARKET PROFILE (where this business operates)', marketProfile, '(not yet resolved)');
+  }
+  if (competitors !== undefined) {
+    prompt += fmtOptionalSection('KNOWN COMPETITORS (real, sourced observations - never invent additional ones)', competitors && competitors.length ? competitors : null, '(none discovered yet)');
+  }
+  if (openQuestions !== undefined) {
+    prompt += fmtOptionalSection('OPEN QUESTIONS (what Orb genuinely does not know yet - state these plainly when relevant, never paper over them)', openQuestions && openQuestions.length ? openQuestions : null, '(none currently open)');
   }
 
   prompt += `\n\nORB ACCOUNT NOTES
