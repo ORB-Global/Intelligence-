@@ -243,7 +243,7 @@ async function pullSocialMetrics(location, oviondClientId, datasourceId, periodS
           client_id: oviondClientId,
           date_range: { current_start: periodStart, current_end: periodEnd },
           metrics,
-          dimensions: ['DATE'],
+          dimensions: [datasourceId === 'inst' ? 'MONTH' : 'DATE'],
           data_view: 'PERFORMANCE',
         }),
       })
