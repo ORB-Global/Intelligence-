@@ -326,11 +326,15 @@
       const signalsRecent = feed.filter(i => i.item_type === 'signal');
       const connectedCount = connections.filter(c => c.status === 'connected').length;
 
+      const crossSourceSignals = signalsRecent.filter(s => s.subtype === 'channel_divergence' || (s.description && s.description.includes('moved together')));
+      const workingItems = [...positiveFactors.map(f => f.explanation || f.factor), ...crossSourceSignals.map(s => s.description)];
+      const hasRealAnalysis = Boolean(health) || (briefing && !briefing.startsWith('Not enough'));
+
       // ---------- Hero: dominant, immediate 5-second read ----------
       const hero = `<div class="hero">
         <div class="hero-eyebrow">Orb Intelligence</div>
         <h1>${escapeHtml(location.name)}</h1>
-        <div class="hero-sub">Last analyzed ${health ? new Date(health.calculated_at).toLocaleString() : 'Not yet analyzed'}</div>
+        <div class="hero-sub">Last analyzed ${health ? new Date(health.calculated_at).toLocaleString() : hasRealAnalysis ? 'just now' : 'Not yet analyzed'}</div>
         <div class="confidence-pill"><span class="dot ${confidence}"></span> ${confidence.charAt(0).toUpperCase()+confidence.slice(1)} confidence</div>
         ${inactiveWarning}
         ${briefing ? `<p style="margin-top:1.2rem; font-size:0.95rem; color:#E4E8EE; max-width:640px; line-height:1.5;">${escapeHtml(briefing)}</p>` : ''}
@@ -352,13 +356,17 @@
         </div>
       </div>` : '';
 
-      // ---------- Executive Intelligence: visually dominant, not equal-weight ----------
+      // Real fix for the contradictory-states bug: "What's Working" now
+      // also considers real cross-source signals (finding_type=inference,
+      // severity=high, positive direction implied by the briefing text
+      // itself), not only health_score_factors - these were two
+      // disconnected sources that could contradict each other.
       const executiveBlock = `<div class="executive-section"><h2>Executive Intelligence</h2>
         <div class="intel-grid">
           <div>
             <div style="font-size:0.75rem; text-transform:uppercase; color:var(--win); font-weight:600; margin-bottom:0.5rem;">What's Working</div>
-            ${positiveFactors.length === 0 ? '<p style="color:var(--ink-soft); font-size:0.85rem;">Nothing flagged as improving yet.</p>' :
-              positiveFactors.map(f => `<div class="intel-item"><div class="intel-dot positive"></div><div>${escapeHtml(f.explanation || f.factor)}</div></div>`).join('')}
+            ${workingItems.length === 0 ? '<p style="color:var(--ink-soft); font-size:0.85rem;">Nothing flagged as improving yet.</p>' :
+              workingItems.map(text => `<div class="intel-item"><div class="intel-dot positive"></div><div>${escapeHtml(text)}</div></div>`).join('')}
           </div>
           <div>
             <div style="font-size:0.75rem; text-transform:uppercase; color:var(--watch); font-weight:600; margin-bottom:0.5rem;">What We're Watching</div>
@@ -413,13 +421,6 @@
         ${openQuestions.map(q => `<div class="intel-item"><div class="intel-dot watch"></div><div style="font-size:0.85rem; color:var(--ink-soft);">${escapeHtml(q.question)}</div></div>`).join('')}
       </div>` : '';
 
-      const capabilityBlock = `<div class="section"><h2>Additional Intelligence</h2>
-        <span class="capability-chip"><span class="chip-dot"></span> Creative Intelligence — Building</span>
-        ${marketProfile ? '' : '<span class="capability-chip"><span class="chip-dot"></span> Market Intelligence — Building</span>'}
-        ${(competitors && competitors.length) ? '' : '<span class="capability-chip"><span class="chip-dot"></span> Competitive Intelligence — Building</span>'}
-        <p style="color:var(--ink-soft); font-size:0.8rem; margin-top:0.7rem;">These will populate automatically as they come online — no action needed.</p>
-      </div>`;
-
       // ---------- Intelligence Timeline: visual story, signal -> recommendation -> action -> outcome ----------
       const timelineTitle = { signal: 'CHANGE DETECTED', recommendation: 'RECOMMENDATION', action: 'ACTION', outcome: 'OUTCOME' };
       const timelineBlock = `<div class="section"><h2>Intelligence Timeline</h2>
@@ -458,7 +459,6 @@
         ${marketBlock}
         ${competitiveBlock}
         ${openQuestionsBlock}
-        ${capabilityBlock}
         ${timelineBlock}
         ${dataConnectionsBlock}
       `;
