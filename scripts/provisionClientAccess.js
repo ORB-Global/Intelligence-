@@ -43,6 +43,18 @@ function slugifyAlias(name) {
   return name.trim().replace(/[^a-zA-Z0-9]+/g, '');
 }
 
+// Real edge case found in production: two distinct locations can
+// legitimately share the same display name (two different
+// organizations both named "Norfolk"). Disambiguates by appending a
+// short suffix derived from the location's own id rather than failing
+// the unique constraint.
+async function resolveUniqueAlias(baseAlias, locationId) {
+  const { data: existing } = await supabase.from('locations').select('id').eq('login_alias', baseAlias).maybeSingle();
+  if (!existing || existing.id === locationId) return baseAlias;
+  const suffix = locationId.replace(/-/g, '').slice(0, 4);
+  return `${baseAlias}${suffix}`;
+}
+
 function generateSecurePassword() {
   // 16 random bytes -> base64url, trimmed to a clean 20-char password.
   // Cryptographically random, not a location-name or predictable pattern.
@@ -50,7 +62,8 @@ function generateSecurePassword() {
 }
 
 async function provisionOne(location) {
-  const alias = location.login_alias || slugifyAlias(location.name);
+  const baseAlias = location.login_alias || slugifyAlias(location.name);
+  const alias = await resolveUniqueAlias(baseAlias, location.id);
   const syntheticEmail = `${alias.toLowerCase()}@client.orbintelligence.internal`;
   const password = generateSecurePassword();
 
