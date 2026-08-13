@@ -371,7 +371,7 @@
     currentLocationId = locId;
     document.getElementById('exploreBtn').classList.remove('hidden');
     try {
-      const { location, connections, metrics, feed, health, socialMetrics, localMetrics, briefing, marketProfile, competitors, openQuestions, brainState, recentActivity, memory, investigations, performance, activitySummary } = await apiFetch(`/api/mc/locations/${locId}`);
+      const { location, connections, metrics, feed, health, socialMetrics, localMetrics, briefing, marketProfile, competitors, openQuestions, brainState, recentActivity, memory, investigations, performance, activitySummary, competitivePulse: competitivePulseData, thesis } = await apiFetch(`/api/mc/locations/${locId}`);
       setBreadcrumbs([
         { label: 'Mission Control', action: 'viewOrganizations()' },
         { label: location.organizations?.name || 'Organization', action: `viewOrganization('${location.organization_id}')` },
@@ -428,12 +428,10 @@
       </div>`;
 
       // ---------- Layer 1: Brain landing - minimal, ~10-second read ----------
-      const competitorChangeSignals = signalsRecent.filter(s => s.subtype === 'competitor_change');
-      const competitivePulse = competitors && competitors.length
-        ? (competitorChangeSignals.length
-            ? `Competitive movement detected: ${competitorChangeSignals.length} change${competitorChangeSignals.length===1?'':'s'} observed. Orb is evaluating whether this matters to your strategy.`
-            : `No significant competitive movement detected recently. Orb is monitoring ${competitors.length} competitor${competitors.length===1?'':'s'}.`)
-        : 'Competitive monitoring not yet established for this account.';
+      // Real backend-computed pulse (checks actual competitor_change
+      // signals, honestly reports discovery-only vs enriched) replaces
+      // the old client-side approximation.
+      const competitivePulse = competitivePulseData?.pulseText || 'Competitive monitoring not yet established for this account.';
       const marketPulse = marketProfile
         ? `Orb is tracking market conditions for ${escapeHtml(marketProfile.primary_market || 'your area')}.`
         : 'Market profile not yet resolved for this account.';
@@ -577,7 +575,7 @@
       </div>`;
 
       const competitiveCard = `<div class="brain-card"><h3>Competitors</h3>
-        ${(competitors && competitors.length) ? competitors.map(c => `<div class="intel-item"><div class="intel-dot watch"></div><div style="font-size:0.85rem;"><strong>${escapeHtml(c.name)}</strong> — ${escapeHtml(c.category||'')}</div></div>`).join('') : '<p class="empty-honest">No competitors identified yet.</p>'}
+        ${(competitors && competitors.length) ? competitors.map(c => `<div class="intel-item"><div class="intel-dot watch"></div><div style="font-size:0.85rem;"><strong>${escapeHtml(c.name)}</strong> — ${escapeHtml(c.category||'')}${c.provider_enriched_at ? '' : ' <span style="color:var(--muted); font-size:0.76rem;">(identified, not yet fully profiled)</span>'}</div></div>`).join('') : '<p class="empty-honest">No competitors identified yet.</p>'}
       </div>`;
 
       // Per instruction: omit the Creative module entirely when no

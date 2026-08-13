@@ -193,6 +193,16 @@ router.get('/locations/:id', async (req, res) => {
   });
   const activitySummary = presentOrbActivitySummary(recentActivity);
 
+  // Real backend-computed competitive pulse - the location access
+  // check above already passed (RLS-scoped), so calling this
+  // RLS-bypassing SECURITY DEFINER function here is safe, same pattern
+  // as every other write-oriented RPC in this file.
+  let competitivePulse = null;
+  try {
+    const { data: pulseData } = await req.supabase.rpc('synthesize_competitive_pulse', { p_location_id: id });
+    competitivePulse = pulseData;
+  } catch (e) { /* non-fatal - the client-side fallback text still works */ }
+
   return res.json({
     success: true,
     data: {
@@ -208,6 +218,7 @@ router.get('/locations/:id', async (req, res) => {
       briefing,
       performance,
       activitySummary,
+      competitivePulse,
     },
   });
 });
