@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Orb Admin — Portfolio</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="robots" content="noindex, nofollow" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<style>
+  :root{ --bg:#0D0F14; --surface:#161A22; --line:#262C38; --ink:#E4E8EE; --ink-soft:#8B93A3;
+    --win:#4FBF9A; --watch:#E0B84F; --concern:#E0796F; --brass:#C9A96A; }
+  *{box-sizing:border-box;}
+  body{ margin:0; background:var(--bg); color:var(--ink); font-family:'Public Sans',sans-serif; }
+  a{ color:inherit; }
+  .topbar{ display:flex; justify-content:space-between; align-items:center; padding:1rem 2rem; border-bottom:1px solid var(--line); }
+  .brand{ font-family:'IBM Plex Mono',monospace; font-size:0.9rem; letter-spacing:0.05em; text-transform:uppercase; }
+  .brand .tag{ color:var(--brass); }
+  .logout-btn{ background:none; border:1px solid var(--line); color:var(--ink); border-radius:6px; padding:0.4rem 0.9rem; cursor:pointer; font-size:0.8rem; font-family:inherit; }
+  .page{ max-width:1500px; margin:0 auto; padding:1.8rem 2rem 4rem; }
+
+  .summary-row{ display:grid; grid-template-columns:repeat(auto-fit, minmax(150px,1fr)); gap:0.9rem; margin-bottom:1.8rem; }
+  .summary-card{ background:var(--surface); border:1px solid var(--line); border-radius:10px; padding:1rem 1.1rem; }
+  .summary-card .label{ font-family:'IBM Plex Mono',monospace; font-size:0.65rem; text-transform:uppercase; color:var(--ink-soft); margin-bottom:0.4rem; }
+  .summary-card .value{ font-size:1.7rem; font-weight:600; }
+  .summary-card.warn .value{ color:var(--watch); }
+  .summary-card.danger .value{ color:var(--concern); }
+
+  table{ width:100%; border-collapse:collapse; font-size:0.85rem; background:var(--surface); border:1px solid var(--line); border-radius:10px; overflow:hidden; }
+  th{ text-align:left; font-family:'IBM Plex Mono',monospace; font-size:0.68rem; text-transform:uppercase; color:var(--ink-soft); padding:0.7rem 0.9rem; border-bottom:1px solid var(--line); background:#12151D; }
+  td{ padding:0.65rem 0.9rem; border-bottom:1px solid var(--line); }
+  tr:last-child td{ border-bottom:none; }
+  tr:hover{ background:#1B202B; }
+  .badge{ display:inline-block; font-size:0.68rem; font-weight:600; padding:0.15rem 0.55rem; border-radius:999px; text-transform:uppercase; }
+  .badge.active{ background:rgba(79,191,154,0.15); color:var(--win); }
+  .badge.not_provisioned{ background:rgba(139,147,163,0.15); color:var(--ink-soft); }
+  .badge.disabled{ background:rgba(224,121,111,0.15); color:var(--concern); }
+  .score-null{ color:var(--ink-soft); }
+  .state{ text-align:center; padding:4rem; color:var(--ink-soft); }
+</style>
+</head>
+<body>
+  <div class="topbar">
+    <div class="brand">Orb Admin <span class="tag">Portfolio</span></div>
+    <div style="display:flex; align-items:center; gap:1rem;">
+      <span id="userEmail" style="font-size:0.8rem; color:var(--ink-soft);"></span>
+      <button class="logout-btn" id="logoutBtn">Log out</button>
+    </div>
+  </div>
+
+  <div class="page">
+    <div id="loadingState" class="state">Loading portfolio…</div>
+    <div id="deniedState" class="state hidden">Access denied — this account is not a platform administrator.</div>
+    <div id="content" class="hidden"></div>
+  </div>
+
+<script>
+  const SUPABASE_URL = 'https://vdhsvasxccdrashmvvdk.supabase.co';
+  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZkaHN2YXN4Y2NkcmFzaG12dmRrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUzNDMyMDUsImV4cCI6MjEwMDkxOTIwNX0.rZvlbqrdYXlIeAKou-dllsO6MQr3ehzm7h3FBK2sZ6o';
+  const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { auth: { persistSession: true, autoRefreshToken: true } });
+
+  async function apiFetch(path){
+    const { data } = await client.auth.getSession();
+    if (!data.session) { window.location.href = '/login.html'; throw new Error('No session'); }
+    const res = await fetch(path, { headers: { Authorization: `Bearer ${data.session.access_token}` } });
+    if (res.status === 401) { window.location.href = '/login.html'; throw new Error('Session expired'); }
+    const body = await res.json();
+    if (!res.ok || !body.success) throw Object.assign(new Error(body.error?.message || `HTTP ${res.status}`), { status: res.status });
+    return body.data;
+  }
+
+  function escapeHtml(s){ const d = document.createElement('div'); d.textContent = s ?? ''; return d.innerHTML; }
+
+  async function load(){
+    try {
+      const whoami = await apiFetch('/api/mc/admin/whoami');
+      if (!whoami.isPlatformAdmin) {
+        document.getElementById('loadingState').classList.add('hidden');
+        document.getElementById('deniedState').classList.remove('hidden');
+        return;
+      }
+
+      const [summary, locations] = await Promise.all([
+        apiFetch('/api/mc/admin/portfolio-summary'),
+        apiFetch('/api/mc/admin/locations'),
+      ]);
+
+      // A genuine platform admin with a real empty portfolio (unlikely,
+      // but honest) shouldn't be told "access denied" - only render
+      // the empty state if the admin check above passed.
+      if (!locations || locations.length === 0) {
+        document.getElementById('loadingState').classList.add('hidden');
+        document.getElementById('content').classList.remove('hidden');
+        document.getElementById('content').innerHTML = '<div class="state">No locations in the portfolio yet.</div>';
+        return;
+      }
+
+      document.getElementById('loadingState').classList.add('hidden');
+      document.getElementById('content').classList.remove('hidden');
+
+      const summaryRow = `<div class="summary-row">
+        <div class="summary-card"><div class="label">Locations Monitored</div><div class="value">${summary.locationsMonitored}</div></div>
+        <div class="summary-card"><div class="label">Healthy</div><div class="value">${summary.locationsHealthy}</div></div>
+        <div class="summary-card warn"><div class="label">Needing Attention</div><div class="value">${summary.locationsNeedingAttention}</div></div>
+        <div class="summary-card"><div class="label">Client Access Active</div><div class="value">${summary.clientAccessActive}</div></div>
+        <div class="summary-card"><div class="label">Not Provisioned</div><div class="value">${summary.clientAccessNotProvisioned}</div></div>
+        <div class="summary-card"><div class="label">Recommendations Waiting</div><div class="value">${summary.recommendationsWaiting}</div></div>
+        <div class="summary-card"><div class="label">Actions In Progress</div><div class="value">${summary.actionsInProgress}</div></div>
+        <div class="summary-card ${summary.dataConnectionIssues > 0 ? 'warn' : ''}"><div class="label">Connection Issues</div><div class="value">${summary.dataConnectionIssues}</div></div>
+      </div>`;
+
+      const table = `<table>
+        <thead><tr>
+          <th>Location</th><th>Organization</th><th>Client Access</th><th>Health</th><th>Confidence</th>
+          <th>Open Signals</th><th>Open Questions</th><th>Connections</th><th>Last Analyzed</th>
+        </tr></thead>
+        <tbody>
+          ${locations.map(l => `<tr>
+            <td>${escapeHtml(l.name)}${l.active ? '' : ' <span class="badge disabled">inactive</span>'}</td>
+            <td style="color:var(--ink-soft);">${escapeHtml(l.organizationName || '')}</td>
+            <td><span class="badge ${l.clientAccessStatus}">${l.clientAccessStatus.replace(/_/g,' ')}</span></td>
+            <td>${l.overallScore !== null ? l.overallScore : '<span class="score-null">—</span>'}</td>
+            <td style="color:var(--ink-soft);">${l.confidenceLevel || '—'}</td>
+            <td>${l.openSignals}</td>
+            <td>${l.openQuestions}</td>
+            <td>${l.connectionsHealthy} / ${l.connectionsTotal}</td>
+            <td style="color:var(--ink-soft); font-size:0.8rem;">${l.lastRunAt ? new Date(l.lastRunAt).toLocaleDateString() : 'Never analyzed'}</td>
+          </tr>`).join('')}
+        </tbody>
+      </table>`;
+
+      document.getElementById('content').innerHTML = summaryRow + table;
+    } catch (err) {
+      document.getElementById('loadingState').classList.add('hidden');
+      document.getElementById('deniedState').classList.remove('hidden');
+      document.getElementById('deniedState').textContent = err.message;
+    }
+  }
+
+  document.getElementById('logoutBtn').addEventListener('click', async () => {
+    await client.auth.signOut();
+    window.location.href = '/login.html';
+  });
+
+  client.auth.getSession().then(({ data }) => {
+    if (!data.session) { window.location.href = '/login.html'; return; }
+    document.getElementById('userEmail').textContent = data.session.user.email;
+    load();
+  });
+</script>
+</body>
+</html>

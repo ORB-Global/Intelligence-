@@ -10,6 +10,12 @@ const express = require('express');
 const requireSupabaseAuth = require('../middleware/requireSupabaseAuth');
 const chatService = require('../services/chatService');
 const { buildChannelComparison } = require('../utils/metrics');
+// Deliberate, single exception to the "never use service role here"
+// rule: platform_roles has no self-select RLS policy at all (by
+// design), so this is the one legitimate case where a direct,
+// authoritative check is needed rather than relying on RLS-scoped
+// results.
+const supabaseService = require('../config/supabase');
 
 const router = express.Router();
 router.use(requireSupabaseAuth);
@@ -384,6 +390,64 @@ router.post('/locations/:id/activity', async (req, res) => {
   if (error) return res.status(500).json({ success: false, error: { message: error.message } });
 
   return res.json({ success: true, data: activity });
+});
+
+// Efficient admin portfolio listing - one real query, not N+1 calls
+// per location. RLS (platform_admin bypass) is the actual boundary
+// determining what this returns for the calling user.
+// Explicit admin check - uses the service-role client specifically
+// for this one query (platform_roles has no self-select RLS policy at
+// all, by design, tested back in Batch 1) so a real yes/no answer is
+// possible, rather than inferring admin status from row counts, which
+// RLS-scoped queries can't reliably distinguish from "a client with
+// exactly one location."
+router.get('/admin/whoami', async (req, res) => {
+  const { data, error } = await supabaseService.from('platform_roles').select('role').eq('user_id', req.user.id).maybeSingle();
+  if (error) return res.status(500).json({ success: false, error: { message: error.message } });
+  return res.json({ success: true, data: { isPlatformAdmin: Boolean(data), role: data?.role || null } });
+});
+
+router.get('/admin/locations', async (req, res) => {
+  const [
+    { data: locations, error: locError },
+    { data: brainStates },
+    { data: connections },
+  ] = await Promise.all([
+    req.supabase.from('locations').select('id, name, active, client_access_status, organization_id, organizations(name)').order('name'),
+    req.supabase.from('location_brain_state').select('*'),
+    req.supabase.from('connection_health').select('location_id, status'),
+  ]);
+  if (locError) return res.status(500).json({ success: false, error: { message: locError.message } });
+
+  const brainByLocation = new Map((brainStates || []).map((b) => [b.location_id, b]));
+  const connCountByLocation = new Map();
+  (connections || []).forEach((c) => {
+    const entry = connCountByLocation.get(c.location_id) || { total: 0, connected: 0 };
+    entry.total++;
+    if (c.status === 'connected') entry.connected++;
+    connCountByLocation.set(c.location_id, entry);
+  });
+
+  const rows = (locations || []).map((loc) => {
+    const brain = brainByLocation.get(loc.id);
+    const conn = connCountByLocation.get(loc.id) || { total: 0, connected: 0 };
+    return {
+      id: loc.id,
+      name: loc.name,
+      organizationName: loc.organizations?.name,
+      active: loc.active,
+      clientAccessStatus: loc.client_access_status,
+      overallScore: brain?.overall_score ?? null,
+      confidenceLevel: brain?.confidence_level ?? null,
+      openSignals: brain?.open_signals_count ?? 0,
+      openQuestions: brain?.open_questions_count ?? 0,
+      lastRunAt: brain?.last_run_at ?? null,
+      connectionsTotal: conn.total,
+      connectionsHealthy: conn.connected,
+    };
+  });
+
+  return res.json({ success: true, data: rows });
 });
 
 router.get('/admin/portfolio-summary', async (req, res) => {
