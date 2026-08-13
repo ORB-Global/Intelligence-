@@ -453,7 +453,13 @@
       // ---------- Live Business Pulse: dynamic KPI cards from real evidence ----------
       const pulseCards = [];
       pulseCards.push({ label: 'Marketing Health', value: score ?? '—', trend: null, trendClass: 'flat' });
-      pulseCards.push({ label: 'Data Coverage', value: coverage !== null ? coverage+'%' : '—', trend: null, trendClass: 'flat' });
+      // 'Data Coverage' (services confirmed managed / connected) is an
+      // internal configuration metric, not customer intelligence -
+      // showing "0%" here is misleading when 6 real sources ARE
+      // connected, it's just that Orb hasn't confirmed which channels
+      // it's formally managing yet. That belongs in Orb Admin. The
+      // Data Health badge already gives the client an honest, correct
+      // signal ("N of N connected").
       if (socialMetrics && socialMetrics.length >= 2) {
         const [cur, prev] = socialMetrics.filter(s=>s.channel==='fb-pg');
         if (cur && prev && prev.post_engagements) {
