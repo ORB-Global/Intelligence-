@@ -564,6 +564,11 @@ router.get('/admin/portfolio-summary', async (req, res) => {
     { count: actionsInProgress },
     { data: healthScores },
     { data: connectionIssues },
+    { count: activeInvestigations },
+    { count: resolvedInvestigations },
+    { data: creativeJobs },
+    { data: usageLog },
+    { count: recentActivityCount },
   ] = await Promise.all([
     req.supabase.from('locations').select('id', { count: 'exact', head: true }),
     req.supabase.from('locations').select('id', { count: 'exact', head: true }).eq('client_access_status', 'active'),
@@ -572,6 +577,11 @@ router.get('/admin/portfolio-summary', async (req, res) => {
     req.supabase.from('tasks').select('id', { count: 'exact', head: true }).eq('status', 'in_progress'),
     req.supabase.from('health_scores').select('location_id, overall_score').order('calculated_at', { ascending: false }),
     req.supabase.from('connection_health').select('location_id', { count: 'exact' }).neq('status', 'connected'),
+    req.supabase.from('investigations').select('id', { count: 'exact', head: true }).in('status', ['open', 'investigating']),
+    req.supabase.from('investigations').select('id', { count: 'exact', head: true }).eq('status', 'resolved'),
+    req.supabase.from('creative_jobs').select('status'),
+    req.supabase.from('ai_usage_log').select('estimated_cost_usd').gte('created_at', new Date(Date.now() - 30 * 86400000).toISOString()),
+    req.supabase.from('orb_activity').select('id', { count: 'exact', head: true }).gte('occurred_at', new Date(Date.now() - 7 * 86400000).toISOString()),
   ]);
 
   const latestByLocation = new Map();
@@ -579,6 +589,9 @@ router.get('/admin/portfolio-summary', async (req, res) => {
   const scores = [...latestByLocation.values()];
   const healthy = scores.filter((s) => s >= 70).length;
   const needingAttention = scores.filter((s) => s < 50).length;
+
+  const creativeJobsByStatus = (creativeJobs || []).reduce((acc, j) => { acc[j.status] = (acc[j.status] || 0) + 1; return acc; }, {});
+  const total30dCostUsd = (usageLog || []).reduce((sum, u) => sum + (Number(u.estimated_cost_usd) || 0), 0);
 
   return res.json({
     success: true,
@@ -591,6 +604,11 @@ router.get('/admin/portfolio-summary', async (req, res) => {
       recommendationsWaiting: recommendationsWaiting || 0,
       actionsInProgress: actionsInProgress || 0,
       dataConnectionIssues: connectionIssues ? connectionIssues.length : 0,
+      activeInvestigations: activeInvestigations || 0,
+      resolvedInvestigations: resolvedInvestigations || 0,
+      creativeJobsByStatus,
+      aiCost30dUsd: Math.round(total30dCostUsd * 100) / 100,
+      activityLast7d: recentActivityCount || 0,
     },
   });
 });

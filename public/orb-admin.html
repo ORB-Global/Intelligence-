@@ -108,6 +108,11 @@
         <div class="summary-card"><div class="label">Recommendations Waiting</div><div class="value">${summary.recommendationsWaiting}</div></div>
         <div class="summary-card"><div class="label">Actions In Progress</div><div class="value">${summary.actionsInProgress}</div></div>
         <div class="summary-card ${summary.dataConnectionIssues > 0 ? 'warn' : ''}"><div class="label">Connection Issues</div><div class="value">${summary.dataConnectionIssues}</div></div>
+        <div class="summary-card"><div class="label">Active Investigations</div><div class="value">${summary.activeInvestigations}</div></div>
+        <div class="summary-card"><div class="label">Resolved Investigations</div><div class="value">${summary.resolvedInvestigations}</div></div>
+        <div class="summary-card"><div class="label">Creative Jobs Complete</div><div class="value">${summary.creativeJobsByStatus?.complete || 0}</div></div>
+        <div class="summary-card"><div class="label">Activity (Last 7d)</div><div class="value">${summary.activityLast7d}</div></div>
+        <div class="summary-card"><div class="label">AI Cost (30d)</div><div class="value">$${summary.aiCost30dUsd?.toFixed(2) || '0.00'}</div></div>
       </div>`;
 
       const table = `<table>
