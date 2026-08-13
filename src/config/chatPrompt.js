@@ -72,6 +72,7 @@ function buildChatUserPrompt({
   orbActivity,
   investigations,
   businessMemory,
+  businessContext,
 }) {
   let prompt = `SELECTED CLIENT
 ${JSON.stringify(client, null, 2)}`;
@@ -118,6 +119,9 @@ ${snapshots && snapshots.length ? JSON.stringify(snapshots, null, 2) : '(none on
   }
   if (businessMemory !== undefined) {
     prompt += fmtOptionalSection('LEARNED PATTERNS (durable observations, only promoted after real repeated evidence - use this to answer "what have you learned")', businessMemory && businessMemory.length ? businessMemory : null, '(nothing confirmed as a pattern yet)');
+  }
+  if (businessContext !== undefined) {
+    prompt += fmtOptionalSection('WHAT THE BUSINESS OWNER HAS TOLD ORB (their own words - treat this as ground truth about their business, weigh it heavily when it explains a signal or informs a recommendation)', businessContext && businessContext.length ? businessContext : null, '(nothing shared yet)');
   }
 
   prompt += `\n\nORB ACCOUNT NOTES

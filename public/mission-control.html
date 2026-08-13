@@ -522,6 +522,20 @@
               })() : '<p>No findings with evidence yet.</p>'}
             </div>
             <div id="createPanel" class="hidden" style="margin-top:1.2rem; background:rgba(255,255,255,0.06); border-radius:10px; padding:1.1rem 1.3rem; font-size:0.85rem; color:#C9CFDA;"></div>
+            <div style="margin-top:1.2rem; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); border-radius:10px; padding:1rem 1.2rem;">
+              <div style="font-size:0.8rem; color:#9CA4B5; margin-bottom:0.6rem;">Anything Orb should know about this week?</div>
+              <textarea id="checkinNote" placeholder="e.g. we ran a big Saturday promotion, Tuesday was slow, we're overstocked on adjustable bases…" style="width:100%; min-height:50px; background:rgba(0,0,0,0.2); border:1px solid rgba(255,255,255,0.15); border-radius:6px; padding:0.6rem; color:#E4E8EE; font-family:inherit; font-size:0.85rem; resize:vertical;"></textarea>
+              <div style="display:flex; gap:0.6rem; margin-top:0.6rem; align-items:center;">
+                <select id="checkinTraffic" style="background:rgba(0,0,0,0.2); border:1px solid rgba(255,255,255,0.15); border-radius:6px; color:#E4E8EE; padding:0.4rem; font-size:0.8rem;">
+                  <option value="">Traffic: not sure</option>
+                  <option value="low">Traffic: low</option>
+                  <option value="normal">Traffic: normal</option>
+                  <option value="busy">Traffic: busy</option>
+                </select>
+                <button class="command-option" onclick="submitCheckin()">Tell Orb</button>
+                <span id="checkinStatus" style="font-size:0.78rem; color:#9CA4B5;"></span>
+              </div>
+            </div>
           </div>
           <div>
             ${brainSvg}
@@ -746,6 +760,24 @@
   // Real end-to-end Create flow from the primary command surface -
   // calls the actual POST /create endpoint, sourced from whatever the
   // top real recommendation is for this location. Not a mockup.
+  async function submitCheckin(){
+    const noteText = document.getElementById('checkinNote').value.trim();
+    const trafficLevel = document.getElementById('checkinTraffic').value;
+    const status = document.getElementById('checkinStatus');
+    if (!noteText && !trafficLevel) { status.textContent = 'Add a note or pick a traffic level first.'; return; }
+    status.textContent = 'Saving…';
+    try {
+      await apiFetch(`/api/mc/locations/${currentLocationId}/checkin`, {
+        method: 'POST',
+        body: JSON.stringify({ noteText: noteText || null, trafficLevel: trafficLevel || null }),
+      });
+      status.textContent = 'Got it — thanks.';
+      document.getElementById('checkinNote').value = '';
+    } catch (err) {
+      status.textContent = `Could not save: ${err.message}`;
+    }
+  }
+
   async function startCreateFlow(){
     const panel = document.getElementById('createPanel');
     panel.classList.remove('hidden');

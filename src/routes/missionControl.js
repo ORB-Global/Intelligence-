@@ -55,6 +55,7 @@ async function buildTenantChatContext(supabase, locationId) {
     { data: activity },
     { data: investigations },
     { data: memory },
+    { data: businessContext },
   ] = await Promise.all([
     supabase.from('locations').select('id, name, organizations(name)').eq('id', locationId).maybeSingle(),
     supabase.from('historical_metrics').select('*').eq('location_id', locationId).order('period_start', { ascending: false }).limit(4),
@@ -69,6 +70,7 @@ async function buildTenantChatContext(supabase, locationId) {
     supabase.from('orb_activity').select('activity_type, description, occurred_at').eq('location_id', locationId).eq('client_visible', true).order('occurred_at', { ascending: false }).limit(10),
     supabase.from('investigations').select('question, evidence_collected, possible_explanations, confidence, status, conclusion').eq('location_id', locationId).eq('client_visible', true),
     supabase.from('business_memory').select('observation, confidence, supporting_evidence_count').eq('location_id', locationId),
+    supabase.from('business_context_entries').select('note_text, sales_estimate, transaction_count, traffic_level, created_at').eq('location_id', locationId).order('created_at', { ascending: false }).limit(8),
   ]);
 
   let healthWithFactors = null;
@@ -100,6 +102,7 @@ async function buildTenantChatContext(supabase, locationId) {
     orbActivity: activity || [],
     investigations: investigations || [],
     businessMemory: memory || [],
+    businessContext: businessContext || [],
     accountNotes: [],
     insights: [],
   };
@@ -486,6 +489,44 @@ router.post('/locations/:id/create', async (req, res) => {
 router.get('/locations/:id/creative', async (req, res) => {
   const { id: locationId } = req.params;
   const { data, error } = await req.supabase.from('creative_jobs').select('*').eq('location_id', locationId).order('created_at', { ascending: false });
+  if (error) return res.status(500).json({ success: false, error: { message: error.message } });
+  return res.json({ success: true, data: data || [] });
+});
+
+// KNOW ME: real, minimal weekly check-in. No POS required - a client
+// can tell Orb something in plain language and/or 3 trivial numbers,
+// and it becomes real evidence for future reasoning, not a chat log.
+router.post('/locations/:id/checkin', async (req, res) => {
+  const { id: locationId } = req.params;
+  const { noteText, salesEstimate, transactionCount, trafficLevel } = req.body || {};
+
+  if (!noteText && salesEstimate === undefined && transactionCount === undefined && !trafficLevel) {
+    return res.status(400).json({ success: false, error: { message: 'Provide at least a note or one of the simple numbers.' } });
+  }
+
+  const { data: location, error: locError } = await req.supabase.from('locations').select('id, organization_id').eq('id', locationId).maybeSingle();
+  if (locError) return res.status(500).json({ success: false, error: { message: locError.message } });
+  if (!location) return res.status(404).json({ success: false, error: { message: 'Location not found or not accessible.' } });
+
+  const { data: entry, error } = await req.supabase.from('business_context_entries').insert({
+    organization_id: location.organization_id,
+    location_id: locationId,
+    submitted_by: req.user.id,
+    entry_type: 'checkin',
+    note_text: noteText || null,
+    sales_estimate: salesEstimate ?? null,
+    transaction_count: transactionCount ?? null,
+    traffic_level: trafficLevel || null,
+    week_of: new Date().toISOString().slice(0, 10),
+  }).select().single();
+  if (error) return res.status(500).json({ success: false, error: { message: error.message } });
+
+  return res.json({ success: true, data: entry });
+});
+
+router.get('/locations/:id/checkins', async (req, res) => {
+  const { id: locationId } = req.params;
+  const { data, error } = await req.supabase.from('business_context_entries').select('*').eq('location_id', locationId).order('created_at', { ascending: false }).limit(12);
   if (error) return res.status(500).json({ success: false, error: { message: error.message } });
   return res.json({ success: true, data: data || [] });
 });
