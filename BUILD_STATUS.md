@@ -107,3 +107,22 @@ The deterministic chain (detect -> investigate -> recheck -> remember) is real a
 
 ### Real Security Finding This Session (for the record)
 Bulk provisioning surfaced a genuine cross-tenant membership bug (two real organizations sharing a location name, a partial-failure path granted incorrect cross-org membership before failing). Found, root-caused, fixed at the data level (revoked), fixed at the code level (alias resolved and checked for uniqueness before any user/membership work), and confirmed no other instance of the same pattern exists in the portfolio.
+
+---
+
+## Gap analysis against NORTH_STAR.md — ordered by dependency, then value
+
+**Tier 1 — no external provider needed, real data already exists, just not surfaced/wired:**
+1. **Orb Admin is missing most of the real intelligence data that now exists.** `investigations`, `creative_jobs`, `ai_usage_log` (cost/usage), `orb_activity`, `location_review_cadence` all have real rows and real RLS, but Orb Admin's portfolio page only shows health/coverage/connections. This is the single highest-value, zero-dependency gap: the data is real, the admin-visibility requirement is explicit (North Star item 16), and it requires no new schema, no new provider, no new AI calls - just read access wired into the existing admin page.
+2. **Ask Orb doesn't yet reason over `creative_jobs`.** A client asking "what have you created for me" today gets nothing, even though real creative jobs may exist.
+
+**Tier 2 — needs schema + Brain-wiring, no external provider required for the architecture itself (population is provider-limited, same pattern as Market/Competitors):**
+3. Search & Demand Intelligence schema (tracked keywords, demand movement, Orb's own search/SEO activity as a distinct activity domain).
+4. Industry Intelligence schema (category-level relevance-filtered observations).
+
+**Tier 3 — genuinely provider-blocked for automated/scaled population:**
+5. Automatic competitor discovery at scale (Google Places or equivalent) - architecture exists, works for one manually-populated location.
+6. SpyFu or equivalent adapter for search/PPC competitive enrichment - `competitor_observations` schema is ready to receive it.
+7. Real image-generation adapter for Create - `creative_jobs.image_url`/`image_provider` columns exist, unused; text generation via Anthropic is real and proven.
+
+**Decision: proceeding with Tier 1, item 1 now** - highest value, zero dependency, directly serves an explicit North Star requirement ("client simplicity must not come at the expense of internal visibility").
