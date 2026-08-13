@@ -348,6 +348,38 @@ router.get('/locations/:id/conversations/latest', async (req, res) => {
 // wide totals for an admin caller and would return near-nothing for
 // a client caller - no separate admin-only auth check needed here,
 // the database already enforces the real boundary).
+// Fast Orb Activity entry - deliberately minimal fields so staff can
+// log real work in seconds, not write a report. RLS (admin-only insert)
+// is the actual authorization boundary; this route doesn't re-check it.
+router.post('/locations/:id/activity', async (req, res) => {
+  const { id: locationId } = req.params;
+  const { activityType, description, clientVisible } = req.body || {};
+
+  const validTypes = ['review','optimization','launch','test','creative_change','budget_change','targeting_change','landing_page_update','connection_repair','client_conversation','other'];
+  if (!validTypes.includes(activityType)) {
+    return res.status(400).json({ success: false, error: { message: `activityType must be one of: ${validTypes.join(', ')}` } });
+  }
+  if (!description || typeof description !== 'string' || !description.trim()) {
+    return res.status(400).json({ success: false, error: { message: 'A short description is required.' } });
+  }
+
+  const { data: location, error: locError } = await req.supabase.from('locations').select('id, organization_id').eq('id', locationId).maybeSingle();
+  if (locError) return res.status(500).json({ success: false, error: { message: locError.message } });
+  if (!location) return res.status(404).json({ success: false, error: { message: 'Location not found or not accessible.' } });
+
+  const { data: activity, error } = await req.supabase.from('orb_activity').insert({
+    organization_id: location.organization_id,
+    location_id: locationId,
+    activity_type: activityType,
+    description: description.trim(),
+    performed_by: req.user.id,
+    client_visible: clientVisible !== false,
+  }).select().single();
+  if (error) return res.status(500).json({ success: false, error: { message: error.message } });
+
+  return res.json({ success: true, data: activity });
+});
+
 router.get('/admin/portfolio-summary', async (req, res) => {
   const [
     { count: totalLocations },
