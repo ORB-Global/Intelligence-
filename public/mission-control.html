@@ -400,19 +400,49 @@
         ${domains.map((d,i) => `<circle class="brain-node ${d.active?'':'inactive'}" cx="${nodePositions[i][0]}" cy="${nodePositions[i][1]}" r="3.5" fill="${d.active?'#E8C481':'#5A6272'}"/>`).join('')}
       </svg>`;
 
-      // ---------- Brain hero ----------
+      // ---------- Layer 1: Brain landing - minimal, ~10-second read ----------
+      const competitorChangeSignals = signalsRecent.filter(s => s.subtype === 'competitor_change');
+      const competitivePulse = competitors && competitors.length
+        ? (competitorChangeSignals.length
+            ? `Competitive movement detected: ${competitorChangeSignals.length} change${competitorChangeSignals.length===1?'':'s'} observed. Orb is evaluating whether this matters to your strategy.`
+            : `No significant competitive movement detected recently. Orb is monitoring ${competitors.length} competitor${competitors.length===1?'':'s'}.`)
+        : 'Competitive monitoring not yet established for this account.';
+      const marketPulse = marketProfile
+        ? `Orb is tracking market conditions for ${escapeHtml(marketProfile.primary_market || 'your area')}.`
+        : 'Market profile not yet resolved for this account.';
+
+      const mostImportant = topFindings[0]?.description || 'Nothing significant to report yet - Orb is still building history on this account.';
+      const opportunityOrRisk = recommendations[0]?.description || crossSourceSignals[0]?.description || 'No specific opportunity or risk identified yet this period.';
+      const watching = openQuestions && openQuestions.length
+        ? `Orb is currently working to resolve ${openQuestions.length} open question${openQuestions.length===1?'':'s'} about this account.`
+        : 'Nothing currently under investigation.';
+
       const brainHero = `<div class="brain-hero">
         <div class="brain-hero-top">
           <div class="brain-hero-text">
             <div class="brain-greeting">${timeGreeting}, ${escapeHtml(location.name)}.</div>
-            <div class="brain-subline">Last analyzed ${brainState?.last_run_at ? new Date(brainState.last_run_at).toLocaleString() : hasRealAnalysis ? 'just now' : 'Not yet analyzed'} · ${confidence} confidence</div>
+            <div class="brain-subline">Orb has been monitoring your business · ${confidence} confidence</div>
             <div class="brain-briefing">${briefing ? escapeHtml(briefing) : "Orb is still gathering enough history to brief you - check back soon."}</div>
-            ${topFindings.length ? `<div class="brain-findings">
-              ${topFindings.map(f => `<div class="brain-finding"><div class="dot"></div><div>${escapeHtml(f.description)}</div></div>`).join('')}
-            </div>` : ''}
-            <div class="brain-ask-cta" onclick="openExplore()">
-              <div><span class="label">Ask Orb Intelligence</span><span class="sub">Explore the evidence, ask why, or ask what's next</span></div>
-              <span>→</span>
+            <div class="brain-findings">
+              <div class="brain-finding"><div class="dot"></div><div><strong>Most important development:</strong> ${escapeHtml(mostImportant)}</div></div>
+              <div class="brain-finding"><div class="dot"></div><div><strong>Opportunity or risk:</strong> ${escapeHtml(opportunityOrRisk)}</div></div>
+              <div class="brain-finding"><div class="dot"></div><div><strong>What Orb is watching:</strong> ${escapeHtml(watching)}</div></div>
+              <div class="brain-finding"><div class="dot"></div><div>${competitivePulse}</div></div>
+              <div class="brain-finding"><div class="dot"></div><div>${marketPulse}</div></div>
+            </div>
+            <div style="display:flex; gap:0.7rem; flex-wrap:wrap;">
+              <div class="brain-ask-cta" onclick="openExplore()" style="flex:1; min-width:200px;">
+                <div><span class="label">Ask Orb</span><span class="sub">Ask anything about your business</span></div><span>→</span>
+              </div>
+              <div class="brain-ask-cta" onclick="toggleWhyPanel()" style="flex:1; min-width:200px;">
+                <div><span class="label">Show Me Why</span><span class="sub">See the evidence behind this briefing</span></div><span>→</span>
+              </div>
+              <div class="brain-ask-cta" onclick="showExploreLayer()" style="flex:1; min-width:200px;">
+                <div><span class="label">Explore My Business</span><span class="sub">Full detail, charts, and history</span></div><span>→</span>
+              </div>
+            </div>
+            <div id="whyPanel" class="hidden" style="margin-top:1.2rem; background:rgba(255,255,255,0.06); border-radius:10px; padding:1rem 1.2rem; font-size:0.85rem; color:#C9CFDA;">
+              ${topFindings.length ? topFindings.map(f => `<div style="margin-bottom:0.6rem;"><strong>${escapeHtml(f.description)}</strong><br/><span style="color:#9CA4B5;">${f.evidence ? escapeHtml(JSON.stringify(f.evidence)) : 'No structured evidence attached.'}</span></div>`).join('') : '<p>No findings with evidence yet.</p>'}
             </div>
           </div>
           ${brainSvg}
@@ -451,25 +481,25 @@
         </div>`).join('')}
       </div>`;
 
-      // ---------- Multi-column command center ----------
-      const whatChangedCard = `<div class="brain-card"><h3>What Changed</h3>
+      // ---------- Layer 2: Explore My Business - all detail lives here ----------
+      const whatChangedCard = `<div class="brain-card"><h3>Orb Is Investigating</h3>
         ${signalsRecent.length ? signalsRecent.slice(0,4).map(s => `<div class="intel-item"><div class="intel-dot watch"></div><div style="font-size:0.85rem;">${escapeHtml(s.description)}</div></div>`).join('') : '<p class="empty-honest">Nothing notable detected this period.</p>'}
       </div>`;
 
-      const attentionCard = `<div class="brain-card"><h3>What Needs Your Attention</h3>
-        ${watchFactors.length || recommendations.length ? [...watchFactors.map(f=>f.explanation||f.factor), ...recommendations.map(r=>r.description)].slice(0,4).map(t => `<div class="intel-item"><div class="intel-dot watch"></div><div style="font-size:0.85rem;">${escapeHtml(t)}</div></div>`).join('') : '<p class="empty-honest">Nothing requires attention right now.</p>'}
+      const attentionCard = `<div class="brain-card"><h3>Orb Needs Your Input</h3>
+        ${(openQuestions && openQuestions.length) ? openQuestions.slice(0,4).map(q => `<div class="intel-item"><div class="intel-dot watch"></div><div style="font-size:0.85rem;">${escapeHtml(q.question)}</div></div>`).join('') : '<p class="empty-honest">Nothing needed from you right now.</p>'}
       </div>`;
 
-      const activityTypeLabels = { review:'Reviewed', optimization:'Optimized', launch:'Launched', test:'Tested', creative_change:'Creative Updated', budget_change:'Budget Adjusted', targeting_change:'Targeting Updated', landing_page_update:'Page Updated', connection_repair:'Connection Fixed', client_conversation:'Client Contacted', other:'Activity' };
-      const activityCard = `<div class="brain-card"><h3>This Week at Orb</h3>
-        ${(recentActivity && recentActivity.length) ? recentActivity.slice(0,4).map(a => `<div class="activity-item"><span class="activity-badge">${escapeHtml(activityTypeLabels[a.activity_type]||a.activity_type)}</span><span>${escapeHtml(a.description)}</span></div>`).join('') : '<p class="empty-honest">No recorded activity yet this period.</p>'}
+      const activityTypeLabels = { review:'Analyzed', optimization:'Optimized', launch:'Launched', test:'Tested', creative_change:'Adjusted', budget_change:'Adjusted', targeting_change:'Adjusted', landing_page_update:'Adjusted', connection_repair:'Reviewed', client_conversation:'Reviewed', other:'Reviewed' };
+      const activityCard = `<div class="brain-card"><h3>What Orb Has Been Doing</h3>
+        ${(recentActivity && recentActivity.length) ? recentActivity.slice(0,4).map(a => `<div class="activity-item"><span class="activity-badge">${escapeHtml(activityTypeLabels[a.activity_type]||'Reviewed')}</span><span>${escapeHtml(a.description)}</span></div>`).join('') : '<p class="empty-honest">No recorded activity yet this period.</p>'}
       </div>`;
 
       const socialCard = `<div class="brain-card"><h3>Social &amp; Community</h3>
         ${socialMetrics && socialMetrics.length ? `<div class="intel-item"><div class="intel-dot positive"></div><div style="font-size:0.85rem;">${socialMetrics[0].follower_growth ?? 0} new followers, ${(socialMetrics[0].post_engagements ?? 0).toLocaleString()} engagements this month on Facebook.</div></div>` : '<p class="empty-honest">No organic social data on file yet.</p>'}
       </div>`;
 
-      const paidCard = `<div class="brain-card"><h3>Paid Marketing</h3>
+      const paidCard = `<div class="brain-card"><h3>Advertising</h3>
         ${metrics.length ? `<div class="chart-wrap" style="height:140px;"><canvas id="perfChart"></canvas></div><div class="channel-tabs" id="channelTabs">${[...new Set(metrics.map(m=>m.channel))].map((ch,i)=>`<button class="${i===0?'active':''}" onclick="switchChannelChart('${ch}', this)">${escapeHtml(channelLabel(ch))}</button>`).join('')}</div>` : '<p class="empty-honest">No paid performance data on file yet.</p>'}
       </div>`;
 
@@ -481,11 +511,11 @@
         ${marketProfile ? `<div class="intel-item"><div class="intel-dot"></div><div style="font-size:0.85rem;">${escapeHtml(marketProfile.primary_market||'')} — serving ${(marketProfile.nearby_communities||[]).map(escapeHtml).join(', ')}</div></div>` : '<p class="empty-honest">Market profile not yet resolved.</p>'}
       </div>`;
 
-      const competitiveCard = `<div class="brain-card"><h3>Competitive Landscape</h3>
+      const competitiveCard = `<div class="brain-card"><h3>Competitors</h3>
         ${(competitors && competitors.length) ? competitors.map(c => `<div class="intel-item"><div class="intel-dot watch"></div><div style="font-size:0.85rem;"><strong>${escapeHtml(c.name)}</strong> — ${escapeHtml(c.category||'')}</div></div>`).join('') : '<p class="empty-honest">No competitors identified yet.</p>'}
       </div>`;
 
-      const creativeCard = `<div class="brain-card"><h3>Creative Intelligence</h3><p class="empty-honest">No creative-level data available yet for this account.</p></div>`;
+      const creativeCard = `<div class="brain-card"><h3>Creative</h3><p class="empty-honest">No creative-level data available yet for this account.</p></div>`;
 
       const learningCard = `<div class="brain-card"><h3>What Orb Is Learning</h3>
         ${(memory && memory.length) ? memory.map(m => `<div class="intel-item"><div class="intel-dot positive"></div><div style="font-size:0.85rem;">${escapeHtml(m.observation)} <span style="color:var(--muted); font-size:0.76rem;">(${m.confidence} confidence)</span></div></div>`).join('') : '<p class="empty-honest">No confirmed patterns yet - this builds over time as evidence repeats.</p>'}
@@ -497,9 +527,8 @@
         <div class="brain-col">${marketCard}${competitiveCard}${creativeCard}${learningCard}</div>
       </div>`;
 
-      // ---------- Intelligence Timeline (condensed, story-flow) ----------
       const timelineTitle = { signal: 'CHANGE DETECTED', recommendation: 'RECOMMENDATION', action: 'ACTION', outcome: 'OUTCOME', orb_activity: 'ORB ACTIVITY' };
-      const timelineBlock = `<div class="section"><h2>Intelligence Timeline</h2>
+      const timelineBlock = `<div class="section"><h2>History</h2>
         ${!feed || feed.length === 0 ? '<p style="color:var(--ink-soft); font-size:0.85rem;">No intelligence recorded yet.</p>' : `
         <div class="timeline" id="timelineRecent">
           ${feed.slice(0, 6).map(item => `
@@ -531,9 +560,15 @@
 
       content.innerHTML = `
         ${brainHero}
-        ${pulseRow}
-        ${commandCenter}
-        ${timelineBlock}
+        <div id="exploreLayer" class="hidden">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+            <h2 style="font-family:'Fraunces',serif; font-weight:500; font-size:1.3rem; margin:0;">Explore My Business</h2>
+            <span class="detail-toggle" onclick="showBrainLayer()">← Back to Brain</span>
+          </div>
+          ${pulseRow}
+          ${commandCenter}
+          ${timelineBlock}
+        </div>
       `;
 
       document.getElementById('dataHealthHeader').innerHTML = `
@@ -588,6 +623,26 @@
     document.querySelectorAll('#channelTabs button').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
     renderChannelChart(channel, 'perfChart');
+  }
+
+  // ---------- Two-layer navigation: Brain landing <-> Explore My Business ----------
+  function showExploreLayer(){
+    document.getElementById('exploreLayer').classList.remove('hidden');
+    document.getElementById('exploreLayer').scrollIntoView({ behavior: 'smooth' });
+    // Chart.js sizes against the container at creation time - since
+    // the canvas was hidden (display:none) when first rendered, it
+    // would have measured 0 width. Re-render now that it's visible.
+    if (window.__metricsData && window.__metricsData.length && window.Chart) {
+      const firstChannel = [...new Set(window.__metricsData.map(m => m.channel))][0];
+      renderChannelChart(firstChannel, 'perfChart');
+    }
+  }
+  function showBrainLayer(){
+    document.getElementById('exploreLayer').classList.add('hidden');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+  function toggleWhyPanel(){
+    document.getElementById('whyPanel').classList.toggle('hidden');
   }
 
   // ---------- Explore with Orb Intelligence ----------
