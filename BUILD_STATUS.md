@@ -79,3 +79,31 @@ Each item evaluated on three layers per the standing instruction: does Orb have 
 ## Honest overall assessment
 
 The deterministic chain (detect -> investigate -> recheck -> remember) is real and, this session, was proven to run correctly across the entire portfolio, not just Easley - that is genuine, tested progress on the core autonomous-loop requirement. The most consequential remaining gap is not a missing function; it's that most of the portfolio has only paid data, so the richer intelligence (cross-source detection, investigations, memory, competitive change detection) currently has nothing to work with outside Easley. The second most consequential gap is that Ask Orb doesn't yet see Orb Activity, investigations, or business memory - three real data sources sit unused by the one interface most likely to be asked about them directly.
+
+---
+
+## Added this update, per the two most recent product-correction documents
+
+### Orb's Operating Cadence (weekly review / monthly overhaul model)
+**NOT BUILT.** No schema exists for review cadence, review type distinction (weekly optimization vs. monthly strategy overhaul vs. creative review vs. search review, etc.), or "last review / next review" tracking. orb_activity's activity_type enum does not yet distinguish these. Real, concrete next step, not yet started.
+
+### Client-Safe Language Audit
+**PARTIALLY IMPLEMENTED.** One real, self-identified violation fixed this session: open_questions gained a client_visible flag after discovering none of the 5 existing questions were genuinely client-answerable business questions - all were internal/provider gaps mislabeled as client-facing. Not yet done: a full audit of every other client-facing text surface (investigation conclusions, business_memory observations, briefing generator edge cases) for similar internal-language leakage.
+
+### Industry & Market Pulse
+**NOT BUILT.** No schema, no provider adapter, no Brain integration. This is architecturally similar to Market Profile/Competitors (timestamped observations, source, confidence) but for category/industry-level trends rather than the specific business or its named competitors. Requires an external content/trends provider not yet identified or connected.
+
+### Search & Keyword Intelligence
+**NOT BUILT.** No schema for tracked keywords, search demand movement, or Orb's own keyword/SEO work. Requires SpyFu or an equivalent search-intelligence provider - correctly not connected yet, and this domain has not been started even at the schema level.
+
+### Website / SEO Activity as a Distinct Orb Activity Domain
+**NOT BUILT.** orb_activity's activity_type enum has no website/SEO/search-specific values yet (landing_page_update exists but is not the same as an ongoing SEO/keyword review cycle).
+
+### Brain Visualization Polish (premium animated neural visualization)
+**PARTIALLY IMPLEMENTED.** A real, lightweight SVG exists with genuinely state-driven nodes (paid/social/local/market/competitive/creative activate based on real data presence) and a subtle CSS pulse. Not yet built: distinct visual states for MONITORING/ANALYZING/INVESTIGATING/SIGNIFICANT CHANGE DETECTED tied to real Brain-run state, and the more elaborate "luminous neural network" treatment described in the latest spec - what exists is a first real pass, not the finished version.
+
+### Explore Domain Navigation (Overview/Customers/Advertising/Social/Local/Search/Website/Creative/Market/Industry/Competitors/Activity/History as separate views)
+**NOT BUILT.** Explore remains one scrollable page with card sections. True tabbed/routed domain navigation has not been implemented.
+
+### Real Security Finding This Session (for the record)
+Bulk provisioning surfaced a genuine cross-tenant membership bug (two real organizations sharing a location name, a partial-failure path granted incorrect cross-org membership before failing). Found, root-caused, fixed at the data level (revoked), fixed at the code level (alias resolved and checked for uniqueness before any user/membership work), and confirmed no other instance of the same pattern exists in the portfolio.
