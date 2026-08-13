@@ -508,6 +508,44 @@ router.post('/locations/:id/create', async (req, res) => {
   }
 });
 
+// Real, undeniable proof of accumulated work - not implied by a nice
+// UI, actually aggregated from real investigation/verdict/memory
+// history. This is the concrete answer to "a new tool starts at
+// zero, this doesn't."
+router.get('/locations/:id/track-record', async (req, res) => {
+  const { id: locationId } = req.params;
+
+  const [
+    { data: allInvestigations },
+    { data: verdicts },
+    { data: memory },
+    { data: earliestSignal },
+  ] = await Promise.all([
+    req.supabase.from('investigations').select('id, question, status, conclusion, confidence, created_at, updated_at').eq('location_id', locationId).eq('client_visible', true).order('created_at', { ascending: false }),
+    req.supabase.from('recommendation_verdicts').select('verdict, reasoning, source, judged_at, recommendation_id, recommendations(recommendation_text)').eq('location_id', locationId).order('judged_at', { ascending: false }),
+    req.supabase.from('business_memory').select('observation, confidence, first_observed_at, supporting_evidence_count').eq('location_id', locationId).order('first_observed_at', { ascending: true }),
+    req.supabase.from('signals').select('detected_at').eq('location_id', locationId).order('detected_at', { ascending: true }).limit(1).maybeSingle(),
+  ]);
+
+  const resolvedCount = (allInvestigations || []).filter((i) => i.status === 'resolved' || i.status === 'inconclusive').length;
+  const validatedCount = (verdicts || []).filter((v) => v.verdict === 'validated').length;
+
+  return res.json({
+    success: true,
+    data: {
+      watchingSince: earliestSignal?.detected_at || null,
+      totalInvestigations: (allInvestigations || []).length,
+      resolvedInvestigations: resolvedCount,
+      totalVerdicts: (verdicts || []).length,
+      validatedVerdicts: validatedCount,
+      confirmedPatterns: (memory || []).filter((m) => m.confidence !== 'emerging').length,
+      investigations: allInvestigations || [],
+      verdicts: verdicts || [],
+      memoryTimeline: memory || [],
+    },
+  });
+});
+
 router.get('/locations/:id/creative', async (req, res) => {
   const { id: locationId } = req.params;
   const { data, error } = await req.supabase.from('creative_jobs').select('*').eq('location_id', locationId).order('created_at', { ascending: false });

@@ -722,6 +722,10 @@
             <h2 style="font-family:'Fraunces',serif; font-weight:500; font-size:1.3rem; margin:0;">Explore My Business</h2>
             <span class="detail-toggle" onclick="showBrainLayer()">← Back to Brain</span>
           </div>
+          <div class="brain-card" style="margin-bottom:1.2rem; border-color:var(--brass);">
+            <h3 style="display:flex; align-items:center; gap:0.5rem;">Orb's Track Record<span style="font-size:0.68rem; font-weight:400; color:var(--muted); text-transform:none;">accumulated over time - not regenerated from scratch</span></h3>
+            <div id="trackRecordContent"><p class="empty-honest">Loading...</p></div>
+          </div>
           ${pulseRow}
           ${commandCenter}
           ${timelineBlock}
@@ -793,7 +797,49 @@
       const firstChannel = [...new Set(window.__metricsData.map(m => m.channel))][0];
       renderChannelChart(firstChannel, 'perfChart');
     }
+    loadTrackRecord();
   }
+
+  async function loadTrackRecord(){
+    const el = document.getElementById('trackRecordContent');
+    if (!el || el.dataset.loaded) return;
+    try {
+      const tr = await apiFetch(`/api/mc/locations/${currentLocationId}/track-record`);
+      el.dataset.loaded = 'true';
+      const since = tr.watchingSince ? new Date(tr.watchingSince).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : 'recently';
+      const statLine = `Orb has been watching this account since ${since} - ${tr.totalInvestigations} investigation${tr.totalInvestigations===1?'':'s'} opened (${tr.resolvedInvestigations} resolved), ${tr.totalVerdicts} recommendation${tr.totalVerdicts===1?'':'s'} judged against real results, ${tr.confirmedPatterns} confirmed pattern${tr.confirmedPatterns===1?'':'s'} on file.`;
+
+      const invHtml = (tr.investigations || []).map(i => `
+        <div class="intel-item">
+          <div class="intel-dot ${i.status==='resolved'?'positive':i.status==='inconclusive'?'':'watch'}"></div>
+          <div style="font-size:0.85rem;">
+            <strong>${escapeHtml(i.question)}</strong>
+            <div style="color:var(--ink-soft); margin-top:0.2rem;">${i.conclusion ? escapeHtml(i.conclusion) : `Status: ${i.status === 'investigating' ? 'Still active' : escapeHtml(i.status)}`}</div>
+            <div style="color:var(--muted); font-size:0.76rem; margin-top:0.15rem;">Opened ${new Date(i.created_at).toLocaleDateString()}</div>
+          </div>
+        </div>`).join('') || '<p class="empty-honest">No investigations opened yet.</p>';
+
+      const verdictHtml = (tr.verdicts || []).map(v => `
+        <div class="intel-item">
+          <div class="intel-dot ${v.verdict==='validated'?'positive':v.verdict==='not_validated'?'':'watch'}"></div>
+          <div style="font-size:0.85rem;">
+            <strong>${escapeHtml(v.recommendations?.recommendation_text || 'Recommendation')}</strong>
+            <div style="color:var(--ink-soft); margin-top:0.2rem;">${escapeHtml(v.reasoning)} <span style="color:var(--muted); font-size:0.76rem;">(${v.source === 'client' ? 'confirmed by you' : "Orb's own judgment"})</span></div>
+          </div>
+        </div>`).join('') || '<p class="empty-honest">No recommendations judged against results yet.</p>';
+
+      el.innerHTML = `
+        <p style="font-size:0.9rem; color:var(--ink-soft); margin-bottom:1rem;">${escapeHtml(statLine)}</p>
+        <h4 style="font-size:0.85rem; margin-bottom:0.6rem;">Investigation History</h4>
+        ${invHtml}
+        <h4 style="font-size:0.85rem; margin:1.2rem 0 0.6rem;">Recommendation Track Record</h4>
+        ${verdictHtml}
+      `;
+    } catch (err) {
+      el.innerHTML = `<p class="empty-honest">Could not load track record: ${escapeHtml(err.message)}</p>`;
+    }
+  }
+
   function showBrainLayer(){
     document.getElementById('exploreLayer').classList.add('hidden');
     window.scrollTo({ top: 0, behavior: 'smooth' });
