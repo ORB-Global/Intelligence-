@@ -126,3 +126,12 @@ Bulk provisioning surfaced a genuine cross-tenant membership bug (two real organ
 7. Real image-generation adapter for Create - `creative_jobs.image_url`/`image_provider` columns exist, unused; text generation via Anthropic is real and proven.
 
 **Decision: proceeding with Tier 1, item 1 now** - highest value, zero dependency, directly serves an explicit North Star requirement ("client simplicity must not come at the expense of internal visibility").
+
+---
+
+## Added this session: KNOW ME layer + feedback loop + sales/engagement pattern-mining
+
+- `business_context_entries` (real, tested end-to-end including the exact "Saturday was dead" scenario) - wired into Ask Orb, investigation evidence-gathering, and a real minimal UI. **PARTIALLY IMPLEMENTED**: mechanism is real and proven; 0 real client submissions exist yet (only tested and cleaned up), so no location's Brain currently benefits from it in practice.
+- `recommendation_verdicts.source` (algorithmic vs client) + real 👍/👎 feedback endpoint - **BUILT AND TESTED**, real security gap (missing authorization check before an RLS-bypassing RPC) found and fixed before deploying, not after.
+- `find_sales_engagement_pattern()` + `check_sales_engagement_memory()` - **BUILT, CORRECTLY REPORTS INSUFFICIENT DATA**. Requires 3+ weeks of real self-reported sales/traffic data before it will claim anything, tested to confirm it does so honestly. Zero real qualifying data exists yet anywhere in the portfolio - this is real, tested, waiting on real usage, not populated data.
+- Orchestrator now 9 real steps; re-verified clean on 2 locations after every addition tonight, not just the newest one.
