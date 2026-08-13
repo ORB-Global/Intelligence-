@@ -130,6 +130,7 @@ router.get('/locations/:id', async (req, res) => {
     { data: marketProfile },
     { data: competitors },
     { data: openQuestions },
+    { data: brainState },
   ] = await Promise.all([
     req.supabase.from('locations').select('*, organizations(name)').eq('id', id).maybeSingle(),
     req.supabase.from('connection_health').select('*').eq('location_id', id).order('channel'),
@@ -142,6 +143,7 @@ router.get('/locations/:id', async (req, res) => {
     req.supabase.from('market_profiles').select('*').eq('location_id', id).maybeSingle(),
     req.supabase.from('competitors').select('*').eq('location_id', id).eq('status', 'auto_discovered'),
     req.supabase.from('open_questions').select('*').eq('location_id', id).eq('status', 'open'),
+    req.supabase.from('location_brain_state').select('*').eq('location_id', id).maybeSingle(),
   ]);
 
   if (locError) return res.status(500).json({ success: false, error: { message: locError.message } });
@@ -161,6 +163,7 @@ router.get('/locations/:id', async (req, res) => {
       metrics: metrics || [], feed: feed || [], health: health || null,
       socialMetrics: socialMetrics || [], localMetrics: localMetrics || [],
       marketProfile: marketProfile || null, competitors: competitors || [], openQuestions: openQuestions || [],
+      brainState: brainState || null,
       briefing,
     },
   });

@@ -303,7 +303,7 @@
     currentLocationId = locId;
     document.getElementById('exploreBtn').classList.remove('hidden');
     try {
-      const { location, connections, metrics, feed, health, socialMetrics, localMetrics, briefing, marketProfile, competitors, openQuestions } = await apiFetch(`/api/mc/locations/${locId}`);
+      const { location, connections, metrics, feed, health, socialMetrics, localMetrics, briefing, marketProfile, competitors, openQuestions, brainState } = await apiFetch(`/api/mc/locations/${locId}`);
       setBreadcrumbs([
         { label: 'Mission Control', action: 'viewOrganizations()' },
         { label: location.organizations?.name || 'Organization', action: `viewOrganization('${location.organization_id}')` },
@@ -334,7 +334,7 @@
       const hero = `<div class="hero">
         <div class="hero-eyebrow">Orb Intelligence</div>
         <h1>${escapeHtml(location.name)}</h1>
-        <div class="hero-sub">Last analyzed ${health ? new Date(health.calculated_at).toLocaleString() : hasRealAnalysis ? 'just now' : 'Not yet analyzed'}</div>
+        <div class="hero-sub">Last analyzed ${brainState?.last_run_at ? new Date(brainState.last_run_at).toLocaleString() : hasRealAnalysis ? 'just now' : 'Not yet analyzed'}</div>
         <div class="confidence-pill"><span class="dot ${confidence}"></span> ${confidence.charAt(0).toUpperCase()+confidence.slice(1)} confidence</div>
         ${inactiveWarning}
         ${briefing ? `<p style="margin-top:1.2rem; font-size:0.95rem; color:#E4E8EE; max-width:640px; line-height:1.5;">${escapeHtml(briefing)}</p>` : ''}
