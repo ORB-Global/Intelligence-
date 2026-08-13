@@ -9,6 +9,7 @@
 const express = require('express');
 const requireSupabaseAuth = require('../middleware/requireSupabaseAuth');
 const chatService = require('../services/chatService');
+const { generateCreative } = require('../services/creativeService');
 const { buildChannelComparison } = require('../utils/metrics');
 // Deliberate, single exception to the "never use service role here"
 // rule: platform_roles has no self-select RLS policy at all (by
@@ -375,6 +376,87 @@ router.get('/locations/:id/conversations/latest', async (req, res) => {
 // Fast Orb Activity entry - deliberately minimal fields so staff can
 // log real work in seconds, not write a report. RLS (admin-only insert)
 // is the actual authorization boundary; this route doesn't re-check it.
+// CREATE: turns a recommendation/investigation into a real generated
+// creative concept, grounded in the exact intelligence that prompted
+// it. Real job lifecycle (pending -> generating -> complete/failed),
+// not a one-shot fire-and-forget call.
+router.post('/locations/:id/create', async (req, res) => {
+  const { id: locationId } = req.params;
+  const { sourceType, sourceRecommendationId, sourceInvestigationId, requestType, prompt } = req.body || {};
+
+  const validRequestTypes = ['ad_copy', 'campaign_concept', 'social_post', 'creative_brief'];
+  if (!validRequestTypes.includes(requestType)) {
+    return res.status(400).json({ success: false, error: { message: `requestType must be one of: ${validRequestTypes.join(', ')}` } });
+  }
+
+  const { data: location, error: locError } = await req.supabase.from('locations').select('id, organization_id').eq('id', locationId).maybeSingle();
+  if (locError) return res.status(500).json({ success: false, error: { message: locError.message } });
+  if (!location) return res.status(404).json({ success: false, error: { message: 'Location not found or not accessible.' } });
+
+  // Pull the real intelligence that prompted this - never a blank slate
+  let contextSnapshot = {};
+  if (sourceRecommendationId) {
+    const { data: rec } = await req.supabase.from('recommendations').select('recommendation_text, why, evidence, priority').eq('id', sourceRecommendationId).maybeSingle();
+    if (rec) contextSnapshot = { type: 'recommendation', ...rec };
+  } else if (sourceInvestigationId) {
+    const { data: inv } = await req.supabase.from('investigations').select('question, evidence_collected, possible_explanations, confidence').eq('id', sourceInvestigationId).maybeSingle();
+    if (inv) contextSnapshot = { type: 'investigation', ...inv };
+  }
+
+  const { data: job, error: insertError } = await req.supabase.from('creative_jobs').insert({
+    organization_id: location.organization_id,
+    location_id: locationId,
+    requested_by: req.user.id,
+    source_type: sourceType || 'manual',
+    source_recommendation_id: sourceRecommendationId || null,
+    source_signal_id: null,
+    request_type: requestType,
+    status: 'generating',
+  }).select().single();
+  if (insertError) return res.status(500).json({ success: false, error: { message: insertError.message } });
+
+  try {
+    const context = await buildTenantChatContext(req.supabase, locationId);
+    const result = await generateCreative({ ...job, prompt, context_snapshot: contextSnapshot }, context);
+
+    const { data: updated, error: updateError } = await req.supabase.from('creative_jobs').update({
+      status: 'complete',
+      headline: result.headline,
+      body_copy: result.body_copy,
+      format_suggestion: result.format_suggestion,
+      cta: result.cta,
+      target_audience: result.target_audience,
+      rationale: result.rationale,
+      completed_at: new Date().toISOString(),
+    }).eq('id', job.id).select().single();
+    if (updateError) return res.status(500).json({ success: false, error: { message: updateError.message } });
+
+    // Records the creative action into Orb Activity - closes the loop:
+    // this generated concept is now part of the real activity/outcome
+    // chain, not a disconnected one-off.
+    await req.supabase.from('orb_activity').insert({
+      organization_id: location.organization_id,
+      location_id: locationId,
+      activity_type: 'creative_change',
+      description: `Generated a ${requestType.replace('_', ' ')} concept: "${result.headline}"`,
+      performed_by: req.user.id,
+      client_visible: true,
+    });
+
+    return res.json({ success: true, data: updated });
+  } catch (genError) {
+    await req.supabase.from('creative_jobs').update({ status: 'failed', error_message: genError.message }).eq('id', job.id);
+    return res.status(502).json({ success: false, error: { message: `Creative generation failed: ${genError.message}` } });
+  }
+});
+
+router.get('/locations/:id/creative', async (req, res) => {
+  const { id: locationId } = req.params;
+  const { data, error } = await req.supabase.from('creative_jobs').select('*').eq('location_id', locationId).order('created_at', { ascending: false });
+  if (error) return res.status(500).json({ success: false, error: { message: error.message } });
+  return res.json({ success: true, data: data || [] });
+});
+
 router.post('/locations/:id/activity', async (req, res) => {
   const { id: locationId } = req.params;
   const { activityType, description, clientVisible, reviewType } = req.body || {};
