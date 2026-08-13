@@ -371,7 +371,7 @@
     currentLocationId = locId;
     document.getElementById('exploreBtn').classList.remove('hidden');
     try {
-      const { location, connections, metrics, feed, health, socialMetrics, localMetrics, briefing, marketProfile, competitors, openQuestions, brainState, recentActivity, memory, investigations } = await apiFetch(`/api/mc/locations/${locId}`);
+      const { location, connections, metrics, feed, health, socialMetrics, localMetrics, briefing, marketProfile, competitors, openQuestions, brainState, recentActivity, memory, investigations, performance, activitySummary } = await apiFetch(`/api/mc/locations/${locId}`);
       setBreadcrumbs([
         { label: 'Mission Control', action: 'viewOrganizations()' },
         { label: location.organizations?.name || 'Organization', action: `viewOrganization('${location.organization_id}')` },
@@ -462,7 +462,7 @@
         <div class="brain-hero-top">
           <div class="brain-hero-text">
             <div class="brain-greeting">${timeGreeting}, ${escapeHtml(location.name)}.</div>
-            <div class="brain-subline">Orb has been monitoring your business · ${confidence} confidence</div>
+            <div class="brain-subline">${performance?.momentum ? escapeHtml(performance.momentum) + ' · ' : ''}Orb has been monitoring your business</div>
             <div class="brain-briefing">${briefing ? escapeHtml(briefing) : "Orb is still gathering enough history to brief you - check back soon."}</div>
             <p style="font-size:0.95rem; line-height:1.6; color:#D6DAE3; max-width:600px; margin:0 0 1.4rem;">${escapeHtml(findingsProse)}</p>
             <div style="display:flex; gap:0.7rem; flex-wrap:wrap;">
@@ -555,9 +555,9 @@
         ${(openQuestions && openQuestions.length) ? openQuestions.slice(0,4).map(q => `<div class="intel-item"><div class="intel-dot watch"></div><div style="font-size:0.85rem;">${escapeHtml(q.question)}</div></div>`).join('') : '<p class="empty-honest">Nothing needed from you right now.</p>'}
       </div>`;
 
-      const activityTypeLabels = { review:'Analyzed', optimization:'Optimized', launch:'Launched', test:'Tested', creative_change:'Adjusted', budget_change:'Adjusted', targeting_change:'Adjusted', landing_page_update:'Adjusted', connection_repair:'Reviewed', client_conversation:'Reviewed', other:'Reviewed' };
       const activityCard = `<div class="brain-card"><h3>What Orb Has Been Doing</h3>
-        ${(recentActivity && recentActivity.length) ? recentActivity.slice(0,4).map(a => `<div class="activity-item"><span class="activity-badge">${escapeHtml(activityTypeLabels[a.activity_type]||'Reviewed')}</span><span>${escapeHtml(a.description)}</span></div>`).join('') : '<p class="empty-honest">No recorded activity yet this period.</p>'}
+        <div style="font-size:0.85rem; font-weight:600; margin-bottom:0.7rem;">${escapeHtml(activitySummary?.headline || 'No recorded activity yet this period.')}</div>
+        ${(activitySummary?.items && activitySummary.items.length) ? activitySummary.items.slice(0,4).map(a => `<div class="activity-item"><span class="activity-badge">${escapeHtml(a.verb)}</span><span>${escapeHtml(a.description)}</span></div>`).join('') : ''}
       </div>`;
 
       const socialCard = `<div class="brain-card"><h3>Social &amp; Community</h3>

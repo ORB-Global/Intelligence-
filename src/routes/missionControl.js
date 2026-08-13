@@ -10,6 +10,7 @@ const express = require('express');
 const requireSupabaseAuth = require('../middleware/requireSupabaseAuth');
 const chatService = require('../services/chatService');
 const { generateCreative } = require('../services/creativeService');
+const { synthesizeBusinessPerformance, presentOrbActivitySummary } = require('../services/clientIntelligencePresenter');
 const { buildChannelComparison } = require('../utils/metrics');
 // Deliberate, single exception to the "never use service role here"
 // rule: platform_roles has no self-select RLS policy at all (by
@@ -178,6 +179,18 @@ router.get('/locations/:id', async (req, res) => {
 
   const briefing = buildCrossSourceBriefing(metrics, socialMetrics, localMetrics);
 
+  // Real use of the canonical presenter layer - not written and left
+  // unused. crossSourceSignals/singleSourceSignals are derived from
+  // the real feed for THIS response, not re-fetched.
+  const crossSourceSignalsForPresenter = (feed || []).filter((f) => f.item_type === 'signal' && f.subtype === 'channel_divergence');
+  const singleSourceSignalsForPresenter = (feed || []).filter((f) => f.item_type === 'signal' && f.subtype !== 'channel_divergence');
+  const performance = synthesizeBusinessPerformance({
+    crossSourceSignals: crossSourceSignalsForPresenter,
+    singleSourceSignals: singleSourceSignalsForPresenter,
+    briefingText: briefing,
+  });
+  const activitySummary = presentOrbActivitySummary(recentActivity);
+
   return res.json({
     success: true,
     data: {
@@ -190,6 +203,8 @@ router.get('/locations/:id', async (req, res) => {
       memory: memory || [],
       investigations: investigations || [],
       briefing,
+      performance,
+      activitySummary,
     },
   });
 });
