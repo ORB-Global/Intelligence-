@@ -128,6 +128,8 @@
   .brain-finding{ display:flex; gap:0.6rem; align-items:flex-start; font-size:0.87rem; color:#D6DAE3; }
   .brain-finding .dot{ width:6px; height:6px; border-radius:50%; margin-top:0.5rem; flex-shrink:0; background:var(--brass); }
   .brain-ask-cta{ background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.15); border-radius:12px; padding:0.9rem 1.2rem; display:flex; justify-content:space-between; align-items:center; cursor:pointer; max-width:520px; }
+  .command-option{ font-family:inherit; font-size:0.82rem; padding:0.5rem 0.9rem; border-radius:999px; border:1px solid rgba(255,255,255,0.18); background:rgba(255,255,255,0.05); color:#E4E8EE; cursor:pointer; }
+  .command-option:hover{ background:rgba(255,255,255,0.12); }
   .brain-ask-cta:hover{ background:rgba(255,255,255,0.13); }
   .brain-ask-cta span.label{ font-weight:600; font-size:0.88rem; }
   .brain-ask-cta span.sub{ font-size:0.76rem; color:#9CA4B5; display:block; margin-top:0.15rem; }
@@ -404,28 +406,39 @@
 
       // Top 3-5 findings for the hero, prioritized: signals first, then recommendations
       const topFindings = [...signalsRecent, ...recommendations].slice(0, 4);
-
-      // ---------- Evidence-domain state for the brain visualization ----------
-      const domains = [
-        { key: 'paid', active: metrics.length > 0 },
-        { key: 'social', active: socialMetrics && socialMetrics.length > 0 },
-        { key: 'local', active: localMetrics && localMetrics.length > 0 },
-        { key: 'market', active: Boolean(marketProfile) },
-        { key: 'competitive', active: competitors && competitors.length > 0 },
-        { key: 'creative', active: false },
-      ];
-      const nodePositions = [[90,20],[152,58],[152,122],[90,160],[28,122],[28,58]];
       const activeInvestigations = (investigations || []).filter(i => i.status === 'investigating' || i.status === 'open');
       const hasActiveInvestigation = activeInvestigations.length > 0;
+
+      // ---------- Brain nodes represent ACTIVE REASONING, not
+      // integration/data status. A node lights up only when a real
+      // current signal or investigation actually involves that
+      // domain - never because "this channel has data connected."
+      // Domains with nothing to show simply stay quiet - no "not
+      // connected" label anywhere.
+      const evidenceHasKey = (substr) => signalsRecent.some(s => s.evidence && Object.keys(s.evidence).some(k => k.toLowerCase().includes(substr)));
+      const recentActivityWindow = recentActivity && recentActivity.some(a => (Date.now() - new Date(a.occurred_at).getTime()) < 14*86400000);
+      const memoryQualifies = memory && memory.some(m => m.confidence !== 'emerging');
+      const domains = [
+        { key: 'customer_attention', label: 'Customer Attention', active: crossSourceSignals.length > 0 },
+        { key: 'advertising', label: 'Advertising', active: evidenceHasKey('paid') || evidenceHasKey('clicks') },
+        { key: 'social', label: 'Social', active: evidenceHasKey('social') },
+        { key: 'local', label: 'Local Discovery', active: evidenceHasKey('local') },
+        { key: 'search', label: 'Search Demand', active: false }, // honestly never active yet - not built
+        { key: 'market', label: 'Market', active: false }, // honestly never active yet - not signal-driven
+        { key: 'competition', label: 'Competition', active: signalsRecent.some(s => s.subtype === 'competitor_change') },
+        { key: 'orb_activity', label: 'Orb Activity', active: Boolean(recentActivityWindow) },
+        { key: 'memory', label: 'Business Memory', active: Boolean(memoryQualifies) },
+      ];
+      const nodePositions = [[90,10],[142,32],[170,90],[142,148],[90,170],[38,148],[10,90],[38,32],[90,90]];
       const brainSvg = `<div class="brain-viz-wrap">
         <div class="brain-viz-glow"></div>
         <svg viewBox="0 0 180 180" xmlns="http://www.w3.org/2000/svg" style="width:100%; height:100%; position:relative;">
-          ${domains.map((d,i) => domains.map((d2,j) => i<j ? `<line class="brain-edge" x1="${nodePositions[i][0]}" y1="${nodePositions[i][1]}" x2="${nodePositions[j][0]}" y2="${nodePositions[j][1]}" stroke="${d.active&&d2.active?'#AD8A4E':'#3A4256'}" stroke-width="1"/>` : '').join('')).join('')}
-          <circle cx="90" cy="90" r="22" fill="none" stroke="#AD8A4E" stroke-width="1.5" opacity="0.5"/>
+          ${domains.map((d,i) => domains.map((d2,j) => i<j ? `<line class="brain-edge" x1="${nodePositions[i][0]}" y1="${nodePositions[i][1]}" x2="${nodePositions[j][0]}" y2="${nodePositions[j][1]}" stroke="${d.active&&d2.active?'#AD8A4E':'#2A3040'}" stroke-width="1" opacity="${d.active&&d2.active?'0.7':'0.15'}"/>` : '').join('')).join('')}
           <circle cx="90" cy="90" r="9" fill="#AD8A4E" opacity="${hasActiveInvestigation ? '0.9' : '0.55'}" style="animation: nodepulse ${hasActiveInvestigation ? '1.8s' : '3.4s'} ease-in-out infinite;"/>
-          ${domains.map((d,i) => `<circle class="brain-node ${d.active?'':'inactive'}" cx="${nodePositions[i][0]}" cy="${nodePositions[i][1]}" r="4.5" fill="${d.active?'#E8C481':'#5A6272'}"/>`).join('')}
+          ${domains.map((d,i) => `<circle class="brain-node ${d.active?'':'inactive'}" cx="${nodePositions[i][0]}" cy="${nodePositions[i][1]}" r="4.5" fill="${d.active?'#E8C481':'#454C5C'}"/>`).join('')}
         </svg>
       </div>`;
+      const activeDomainLabels = domains.filter(d => d.active).map(d => d.label);
 
       // ---------- Layer 1: Brain landing - minimal, ~10-second read ----------
       // Real backend-computed pulse (checks actual competitor_change
@@ -444,36 +457,50 @@
           ? `Orb is currently working to resolve ${openQuestions.length} open question${openQuestions.length===1?'':'s'} about this account.`
           : 'Nothing currently under active investigation.');
 
-      // Real fix: this used to be labeled bullets ("Most important
-      // development: X. Opportunity or risk: Y.") - a report template,
-      // not an analyst talking. Now flowing prose with natural
-      // transitions, same underlying real content.
-      const findingsProse = [
-        mostImportant,
-        opportunityOrRisk !== mostImportant ? `Worth acting on: ${opportunityOrRisk[0].toLowerCase()}${opportunityOrRisk.slice(1)}` : null,
-        watching !== 'Nothing currently under active investigation.' ? watching : null,
-        competitivePulse.includes('No significant') ? null : competitivePulse,
-        null, // market pulse omitted from prose by default - it's ambient context, not usually a headline
-      ].filter(Boolean).join(' ');
+      // ---------- Business Thesis: restructured per spec -
+      // Momentum -> why -> 4 labeled sections, point-of-view language
+      // instead of "still working out why" ----------
+      const drivingView = crossSourceSignals.length
+        ? crossSourceSignals[0].description
+        : (signalsRecent[0]?.description || 'No significant single development is driving the current view.');
+      const mattersMost = opportunityOrRisk;
+      const watchingNext = activeInvestigations.length
+        ? `Orb believes this deserves attention because the movement appeared in more than one place at once. Orb is now checking whether the pattern continues and what may have contributed to it.`
+        : watching;
+      const doneText = activitySummary?.headline || 'No recorded activity yet this period.';
+
+      // Business Memory only appears when genuinely evidence-supported
+      // - a single freshly-created 'emerging' row is not enough to
+      // manufacture a client-facing pattern.
+      const qualifyingMemory = (memory || []).filter(m => m.confidence !== 'emerging');
 
       const brainHero = `<div class="brain-hero">
         <div class="brain-hero-top">
           <div class="brain-hero-text">
             <div class="brain-greeting">${timeGreeting}, ${escapeHtml(location.name)}.</div>
-            <div class="brain-subline">${performance?.momentum ? escapeHtml(performance.momentum) + ' · ' : ''}Orb has been monitoring your business</div>
+            <div class="brain-subline">${performance?.momentum ? escapeHtml(performance.momentum) : 'Orb has been monitoring your business'}</div>
             <div class="brain-briefing">${briefing ? escapeHtml(briefing) : "Orb is still gathering enough history to brief you - check back soon."}</div>
-            <p style="font-size:0.95rem; line-height:1.6; color:#D6DAE3; max-width:600px; margin:0 0 1.4rem;">${escapeHtml(findingsProse)}</p>
-            <div style="display:flex; gap:0.7rem; flex-wrap:wrap;">
-              <div class="brain-ask-cta" onclick="openExplore()" style="flex:1; min-width:200px;">
-                <div><span class="label">Ask Orb</span><span class="sub">Ask anything about your business</span></div><span>→</span>
-              </div>
-              <div class="brain-ask-cta" onclick="toggleWhyPanel()" style="flex:1; min-width:200px;">
-                <div><span class="label">Show Me Why</span><span class="sub">See the evidence behind this briefing</span></div><span>→</span>
-              </div>
-              <div class="brain-ask-cta" onclick="showExploreLayer()" style="flex:1; min-width:200px;">
-                <div><span class="label">Explore My Business</span><span class="sub">Full detail, charts, and history</span></div><span>→</span>
+
+            <div style="margin:1.1rem 0; display:flex; flex-direction:column; gap:0.7rem; max-width:600px;">
+              <div><div style="font-size:0.68rem; text-transform:uppercase; letter-spacing:0.06em; color:#8F98AC; margin-bottom:0.2rem;">What's driving the current view</div><div style="font-size:0.9rem; color:#D6DAE3; line-height:1.5;">${escapeHtml(drivingView)}</div></div>
+              <div><div style="font-size:0.68rem; text-transform:uppercase; letter-spacing:0.06em; color:#8F98AC; margin-bottom:0.2rem;">What Orb believes matters most</div><div style="font-size:0.9rem; color:#D6DAE3; line-height:1.5;">${escapeHtml(mattersMost)}</div></div>
+              <div><div style="font-size:0.68rem; text-transform:uppercase; letter-spacing:0.06em; color:#8F98AC; margin-bottom:0.2rem;">What Orb is watching next</div><div style="font-size:0.9rem; color:#D6DAE3; line-height:1.5;">${escapeHtml(watchingNext)}</div></div>
+              <div><div style="font-size:0.68rem; text-transform:uppercase; letter-spacing:0.06em; color:#8F98AC; margin-bottom:0.2rem;">What Orb has done</div><div style="font-size:0.9rem; color:#D6DAE3; line-height:1.5;">${escapeHtml(doneText)}</div></div>
+              ${qualifyingMemory.length ? `<div><div style="font-size:0.68rem; text-transform:uppercase; letter-spacing:0.06em; color:#8F98AC; margin-bottom:0.2rem;">Already on our radar</div>${qualifyingMemory.map(m => `<div style="font-size:0.9rem; color:#D6DAE3; line-height:1.5;">${escapeHtml(m.observation)}</div>`).join('')}</div>` : ''}
+            </div>
+
+            <div class="command-surface" style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); border-radius:12px; padding:1.1rem 1.2rem; margin-bottom:1rem;">
+              <div style="font-size:0.8rem; color:#9CA4B5; margin-bottom:0.7rem;">What do you want to do?</div>
+              <div style="display:flex; flex-wrap:wrap; gap:0.5rem;">
+                <button class="command-option" onclick="toggleWhyPanel()">Understand my business</button>
+                <button class="command-option" onclick="askSuggested('What are my competitors doing?')">See what competitors are doing</button>
+                <button class="command-option" onclick="askSuggested('Where are my biggest opportunities right now?')">Find opportunities</button>
+                <button class="command-option" onclick="startCreateFlow()">Create something</button>
+                <button class="command-option" onclick="openExplore()">Ask Orb anything</button>
               </div>
             </div>
+            <span class="detail-toggle" onclick="showExploreLayer()">Explore the full picture →</span>
+
             <div id="whyPanel" class="hidden" style="margin-top:1.2rem; background:rgba(255,255,255,0.06); border-radius:10px; padding:1.1rem 1.3rem; font-size:0.85rem; color:#C9CFDA;">
               ${topFindings.length ? (() => {
                 const top = topFindings[0];
@@ -494,8 +521,12 @@
                 </div>`;
               })() : '<p>No findings with evidence yet.</p>'}
             </div>
+            <div id="createPanel" class="hidden" style="margin-top:1.2rem; background:rgba(255,255,255,0.06); border-radius:10px; padding:1.1rem 1.3rem; font-size:0.85rem; color:#C9CFDA;"></div>
           </div>
-          ${brainSvg}
+          <div>
+            ${brainSvg}
+            ${activeDomainLabels.length ? `<div style="text-align:center; font-size:0.72rem; color:#8F98AC; margin-top:0.6rem; max-width:220px;">Currently active: ${activeDomainLabels.join(' · ')}</div>` : ''}
+          </div>
         </div>
         ${inactiveWarning}
       </div>`;
@@ -710,6 +741,31 @@
   }
   function toggleWhyPanel(){
     document.getElementById('whyPanel').classList.toggle('hidden');
+  }
+
+  // Real end-to-end Create flow from the primary command surface -
+  // calls the actual POST /create endpoint, sourced from whatever the
+  // top real recommendation is for this location. Not a mockup.
+  async function startCreateFlow(){
+    const panel = document.getElementById('createPanel');
+    panel.classList.remove('hidden');
+    panel.innerHTML = '<p>Generating a creative concept from your most relevant opportunity…</p>';
+    try {
+      const locationData = await apiFetch(`/api/mc/locations/${currentLocationId}`);
+      const topRec = (locationData.feed || []).find(f => f.item_type === 'recommendation');
+      const body = topRec
+        ? { sourceType: 'recommendation', sourceRecommendationId: topRec.id, requestType: 'social_post' }
+        : { sourceType: 'manual', requestType: 'social_post', prompt: 'A general post introducing the business' };
+      const job = await apiFetch(`/api/mc/locations/${currentLocationId}/create`, { method: 'POST', body: JSON.stringify(body) });
+      panel.innerHTML = `
+        <div style="font-weight:600; font-size:0.92rem; margin-bottom:0.5rem; color:#F0F2F5;">${escapeHtml(job.headline || '')}</div>
+        <div style="margin-bottom:0.6rem;">${escapeHtml(job.body_copy || '')}</div>
+        <div style="color:#9CA4B5; font-size:0.8rem;">${escapeHtml(job.format_suggestion || '')} · ${escapeHtml(job.cta || '')}</div>
+        <div style="margin-top:0.6rem; color:#9CA4B5; font-size:0.8rem; font-style:italic;">${escapeHtml(job.rationale || '')}</div>
+      `;
+    } catch (err) {
+      panel.innerHTML = `<p>Could not generate a concept right now: ${escapeHtml(err.message)}</p>`;
+    }
   }
 
   // ---------- Explore with Orb Intelligence ----------
