@@ -303,7 +303,7 @@
     currentLocationId = locId;
     document.getElementById('exploreBtn').classList.remove('hidden');
     try {
-      const { location, connections, metrics, feed, health } = await apiFetch(`/api/mc/locations/${locId}`);
+      const { location, connections, metrics, feed, health, socialMetrics, localMetrics, briefing } = await apiFetch(`/api/mc/locations/${locId}`);
       setBreadcrumbs([
         { label: 'Mission Control', action: 'viewOrganizations()' },
         { label: location.organizations?.name || 'Organization', action: `viewOrganization('${location.organization_id}')` },
@@ -333,6 +333,7 @@
         <div class="hero-sub">Last analyzed ${health ? new Date(health.calculated_at).toLocaleString() : 'Not yet analyzed'}</div>
         <div class="confidence-pill"><span class="dot ${confidence}"></span> ${confidence.charAt(0).toUpperCase()+confidence.slice(1)} confidence</div>
         ${inactiveWarning}
+        ${briefing ? `<p style="margin-top:1.2rem; font-size:0.95rem; color:#E4E8EE; max-width:640px; line-height:1.5;">${escapeHtml(briefing)}</p>` : ''}
         <div class="hero-stats">
           <div class="hero-stat ${scoreClass}"><div class="num">${health ? health.overall_score : '—'}</div><div class="stat-label">Marketing Health · ${scoreLabel}</div></div>
           <div class="hero-stat"><div class="num">${health ? health.data_coverage_percent + '%' : '—'}</div><div class="stat-label">Data Coverage</div></div>
@@ -340,6 +341,16 @@
           <div class="hero-stat"><div class="num">${recommendations.length}</div><div class="stat-label">Recommended Actions</div></div>
         </div>
       </div>`;
+
+      const socialLocalBlock = (socialMetrics && socialMetrics.length) || (localMetrics && localMetrics.length) ? `<div class="compact-row">
+        <div>
+          <div class="compact-label">Social &amp; Local Presence</div>
+          <div class="compact-detail">
+            ${socialMetrics && socialMetrics.length ? `Facebook: ${socialMetrics[0].follower_growth ?? '—'} new followers, ${(socialMetrics[0].post_engagements ?? 0).toLocaleString()} engagements this month` : ''}
+            ${localMetrics && localMetrics.length ? ` · Google Business: ${(localMetrics[0].maps_impressions ?? 0).toLocaleString()} map views` : ''}
+          </div>
+        </div>
+      </div>` : '';
 
       // ---------- Executive Intelligence: visually dominant, not equal-weight ----------
       const executiveBlock = `<div class="executive-section"><h2>Executive Intelligence</h2>
@@ -429,6 +440,7 @@
         ${hero}
         ${executiveBlock}
         ${performanceBlock}
+        ${socialLocalBlock}
         ${capabilityBlock}
         ${timelineBlock}
         ${dataConnectionsBlock}

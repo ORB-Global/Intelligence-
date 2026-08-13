@@ -39,12 +39,16 @@ async function buildTenantChatContext(supabase, locationId) {
     { data: health },
     { data: feedRaw },
     { data: servicesManaged },
+    { data: socialMetrics },
+    { data: localMetrics },
   ] = await Promise.all([
     supabase.from('locations').select('id, name, organizations(name)').eq('id', locationId).maybeSingle(),
     supabase.from('historical_metrics').select('*').eq('location_id', locationId).order('period_start', { ascending: false }).limit(4),
     supabase.from('health_scores').select('*').eq('location_id', locationId).order('calculated_at', { ascending: false }).limit(1).maybeSingle(),
     supabase.from('intelligence_feed').select('*').eq('location_id', locationId).order('occurred_at', { ascending: false }).limit(15),
     supabase.from('services_managed').select('service, status').eq('location_id', locationId),
+    supabase.from('social_content_metrics').select('*').eq('location_id', locationId).order('period_start', { ascending: false }).limit(4),
+    supabase.from('local_visibility_metrics').select('*').eq('location_id', locationId).order('period_start', { ascending: false }).limit(4),
   ]);
 
   let healthWithFactors = null;
@@ -68,6 +72,8 @@ async function buildTenantChatContext(supabase, locationId) {
     healthScore: healthWithFactors,
     servicesManaged: servicesManaged || [],
     intelligenceFeed: feed,
+    socialContentMetrics: socialMetrics || [],
+    localVisibilityMetrics: localMetrics || [],
     accountNotes: [],
     insights: [],
   };
@@ -109,12 +115,18 @@ router.get('/locations/:id', async (req, res) => {
     { data: mapping, error: mapError },
     { data: metrics, error: metricsError },
     { data: feed, error: feedError },
+    { data: health, error: healthError },
+    { data: socialMetrics },
+    { data: localMetrics },
   ] = await Promise.all([
     req.supabase.from('locations').select('*, organizations(name)').eq('id', id).maybeSingle(),
     req.supabase.from('connection_health').select('*').eq('location_id', id).order('channel'),
     req.supabase.from('dashboard_mappings').select('*').eq('location_id', id).maybeSingle(),
     req.supabase.from('historical_metrics').select('*').eq('location_id', id).order('period_start', { ascending: false }),
     req.supabase.from('intelligence_feed').select('*').eq('location_id', id).order('occurred_at', { ascending: false }),
+    req.supabase.from('health_scores').select('*').eq('location_id', id).order('calculated_at', { ascending: false }).limit(1).maybeSingle(),
+    req.supabase.from('social_content_metrics').select('*').eq('location_id', id).order('period_start', { ascending: false }),
+    req.supabase.from('local_visibility_metrics').select('*').eq('location_id', id).order('period_start', { ascending: false }),
   ]);
 
   if (locError) return res.status(500).json({ success: false, error: { message: locError.message } });
@@ -123,12 +135,73 @@ router.get('/locations/:id', async (req, res) => {
   if (mapError) return res.status(500).json({ success: false, error: { message: mapError.message } });
   if (metricsError) return res.status(500).json({ success: false, error: { message: metricsError.message } });
   if (feedError) return res.status(500).json({ success: false, error: { message: feedError.message } });
+  if (healthError) return res.status(500).json({ success: false, error: { message: healthError.message } });
+
+  const briefing = buildCrossSourceBriefing(metrics, socialMetrics, localMetrics);
 
   return res.json({
     success: true,
-    data: { location, connections: connections || [], mapping: mapping || null, metrics: metrics || [], feed: feed || [] },
+    data: {
+      location, connections: connections || [], mapping: mapping || null,
+      metrics: metrics || [], feed: feed || [], health: health || null,
+      socialMetrics: socialMetrics || [], localMetrics: localMetrics || [],
+      briefing,
+    },
   });
 });
+
+/**
+ * Deterministic cross-source synthesis - NOT AI-generated. Every
+ * sentence is grounded directly in a specific verified number from a
+ * specific real table, computed here in code, never invented.
+ */
+function buildCrossSourceBriefing(metrics, socialMetrics, localMetrics) {
+  const parts = [];
+
+  const periods = [...new Set((metrics || []).map((m) => `${m.period_start}_${m.period_end}`))].sort().reverse();
+  if (periods.length >= 2) {
+    const [curKey, prevKey] = periods;
+    const curRows = metrics.filter((m) => `${m.period_start}_${m.period_end}` === curKey);
+    const prevRows = metrics.filter((m) => `${m.period_start}_${m.period_end}` === prevKey);
+    const curSpend = curRows.reduce((s, r) => s + Number(r.ad_spend || 0), 0);
+    const curClicks = curRows.reduce((s, r) => s + Number(r.clicks || 0), 0);
+    const curCpc = curClicks > 0 ? curSpend / curClicks : null;
+    if (curCpc && prevRows.length) {
+      const prevSpend = prevRows.reduce((s, r) => s + Number(r.ad_spend || 0), 0);
+      const prevClicks = prevRows.reduce((s, r) => s + Number(r.clicks || 0), 0);
+      const prevCpc = prevClicks > 0 ? prevSpend / prevClicks : null;
+      if (prevCpc) {
+        const pctChange = ((curCpc - prevCpc) / prevCpc) * 100;
+        parts.push(`Paid advertising cost-per-click ${pctChange < -5 ? 'improved' : pctChange > 5 ? 'rose' : 'held steady'} period-over-period.`);
+      }
+    }
+  }
+
+  const socialSorted = (socialMetrics || []).filter((s) => s.channel === 'fb-pg').sort((a, b) => b.period_start.localeCompare(a.period_start));
+  if (socialSorted.length >= 2) {
+    const [cur, prev] = socialSorted;
+    if (cur.post_engagements && prev.post_engagements) {
+      const pct = ((cur.post_engagements - prev.post_engagements) / prev.post_engagements) * 100;
+      if (Math.abs(pct) > 10) {
+        parts.push(`Facebook engagement ${pct > 0 ? 'increased' : 'declined'} ${Math.abs(Math.round(pct))}% from the prior month.`);
+      }
+    }
+  }
+
+  const localSorted = (localMetrics || []).sort((a, b) => b.period_start.localeCompare(a.period_start));
+  if (localSorted.length >= 2) {
+    const [cur, prev] = localSorted;
+    if (cur.maps_impressions && prev.maps_impressions) {
+      const pct = ((cur.maps_impressions - prev.maps_impressions) / prev.maps_impressions) * 100;
+      if (Math.abs(pct) > 25) {
+        parts.push(`Local Google Maps visibility ${pct > 0 ? 'jumped' : 'dropped'} ${Math.abs(Math.round(pct))}% from the prior month.`);
+      }
+    }
+  }
+
+  if (!parts.length) return 'Not enough historical data yet to generate a cross-source summary.';
+  return "Here's what we're seeing: " + parts.join(' ');
+}
 
 // POST /api/mc/locations/:id/ask - "Explore with Orb Intelligence."
 // Uses the SAME chatService/chatPrompt as the internal admin chat -

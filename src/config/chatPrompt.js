@@ -29,6 +29,7 @@ CRITICAL RULES:
 - The Health score and its factors are already computed — explain them, never recalculate or override them.
 - Services managed status is either 'managed', 'monitored', 'not_managed', or 'needs_confirmation' — never assume a channel is Orb-managed just because it has spend or performance data.
 - The Intelligence Timeline is already-determined fact, not something to recompute. If an outcome says it hasn't been measured yet, say exactly that.
+- When organic social and/or local visibility data is provided alongside paid performance, look for genuine cross-source patterns (e.g. paid, organic, and local metrics moving together in the same period) - this is a real product differentiator, not three separate channel reports. Only state a cross-source pattern the actual numbers given support; never imply a connection that isn't shown in the data.
 
 You must call the submit_answer tool with:
 - findings: a direct answer to the question, grounded in the data given. If you cannot answer from the data given, state that plainly here instead of guessing.
@@ -58,6 +59,8 @@ function buildChatUserPrompt({
   healthScore,
   servicesManaged,
   intelligenceFeed,
+  socialContentMetrics,
+  localVisibilityMetrics,
 }) {
   let prompt = `SELECTED CLIENT
 ${JSON.stringify(client, null, 2)}`;
@@ -66,12 +69,18 @@ ${JSON.stringify(client, null, 2)}`;
     prompt += `\n\nSELECTED DATE RANGE\n${dateRange.start} to ${dateRange.end}`;
   }
 
-  prompt += `\n\nCHANNEL-LEVEL PERFORMANCE (percent changes pre-calculated)
+  prompt += `\n\nPAID CHANNEL-LEVEL PERFORMANCE (percent changes pre-calculated)
 ${channelComparisons && channelComparisons.length ? JSON.stringify(channelComparisons, null, 2) : '(no channel-level data synced for this range)'}
 
 BLENDED MONTHLY TOTALS
 ${snapshots && snapshots.length ? JSON.stringify(snapshots, null, 2) : '(none on file for this range)'}`;
 
+  if (socialContentMetrics !== undefined) {
+    prompt += fmtOptionalSection('ORGANIC SOCIAL PERFORMANCE (Facebook Page - follower growth, post engagement, monthly)', socialContentMetrics && socialContentMetrics.length ? socialContentMetrics : null, '(no organic social data on file yet)');
+  }
+  if (localVisibilityMetrics !== undefined) {
+    prompt += fmtOptionalSection('LOCAL VISIBILITY (Google Business Profile - maps/search impressions, direction requests, calls, website clicks, monthly)', localVisibilityMetrics && localVisibilityMetrics.length ? localVisibilityMetrics : null, '(no local visibility data on file yet)');
+  }
   if (healthScore !== undefined) {
     prompt += fmtOptionalSection('MARKETING HEALTH (already computed - explain it, never recalculate it)', healthScore, '(no health score on file yet)');
   }
