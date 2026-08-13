@@ -340,6 +340,24 @@
   };
   function channelLabel(c){ return CHANNEL_LABELS[c] || c; }
 
+  // Humanizes structured evidence into plain-language lines - the
+  // client must never see raw evidence JSON. Handles the known real
+  // evidence shapes; falls back to omitting anything it doesn't
+  // recognize rather than dumping raw keys.
+  function humanizeEvidence(evidence){
+    if (!evidence || typeof evidence !== 'object') return [];
+    const lines = [];
+    const pct = (v) => (v > 0 ? '+' : '') + Math.round(v) + '%';
+    if (evidence.social_engagement_pct_change !== undefined) lines.push(`Facebook engagement ${pct(evidence.social_engagement_pct_change)}`);
+    if (evidence.local_visibility_pct_change !== undefined) lines.push(`Local visibility ${pct(evidence.local_visibility_pct_change)}`);
+    if (evidence.paid_clicks_pct_change !== undefined) lines.push(`Paid advertising clicks ${pct(evidence.paid_clicks_pct_change)}`);
+    if (evidence.pct_change !== undefined && evidence.metric) {
+      const label = String(evidence.metric).replace(/_/g,' ').replace('social engagement','Facebook engagement').replace('local calls','Local search calls');
+      lines.push(`${label.charAt(0).toUpperCase()+label.slice(1)} ${pct(evidence.pct_change)}`);
+    }
+    return lines;
+  }
+
   let currentLocationId = null;
   let currentConversationId = null;
 
@@ -445,7 +463,14 @@
               </div>
             </div>
             <div id="whyPanel" class="hidden" style="margin-top:1.2rem; background:rgba(255,255,255,0.06); border-radius:10px; padding:1rem 1.2rem; font-size:0.85rem; color:#C9CFDA;">
-              ${topFindings.length ? topFindings.map(f => `<div style="margin-bottom:0.6rem;"><strong>${escapeHtml(f.description)}</strong><br/><span style="color:#9CA4B5;">${f.evidence ? escapeHtml(JSON.stringify(f.evidence)) : 'No structured evidence attached.'}</span></div>`).join('') : '<p>No findings with evidence yet.</p>'}
+              ${topFindings.length ? topFindings.map(f => {
+                const evidenceLines = humanizeEvidence(f.evidence);
+                return `<div style="margin-bottom:1rem;">
+                  <strong>${escapeHtml(f.description)}</strong>
+                  ${evidenceLines.length ? `<div style="margin-top:0.4rem;">${evidenceLines.map(l => `<div>${escapeHtml(l)}</div>`).join('')}</div>` : ''}
+                  ${f.confidence ? `<div style="margin-top:0.4rem; color:#9CA4B5;">Confidence: ${escapeHtml(f.confidence.charAt(0).toUpperCase()+f.confidence.slice(1))}</div>` : ''}
+                </div>`;
+              }).join('') : '<p>No findings with evidence yet.</p>'}
             </div>
           </div>
           ${brainSvg}
@@ -492,7 +517,14 @@
 
       // ---------- Layer 2: Explore My Business - all detail lives here ----------
       const whatChangedCard = `<div class="brain-card"><h3>Orb Is Investigating</h3>
-        ${signalsRecent.length ? signalsRecent.slice(0,4).map(s => `<div class="intel-item"><div class="intel-dot watch"></div><div style="font-size:0.85rem;">${escapeHtml(s.description)}</div></div>`).join('') : '<p class="empty-honest">Nothing notable detected this period.</p>'}
+        ${activeInvestigations.length ? activeInvestigations.slice(0,3).map(inv => {
+          const evidenceLines = (inv.evidence_collected || []).map(e => e.summary).filter(Boolean);
+          return `<div style="margin-bottom:1rem; padding-bottom:1rem; border-bottom:1px solid var(--line);">
+            <div style="font-weight:600; font-size:0.88rem; margin-bottom:0.4rem;">${escapeHtml(inv.question)}</div>
+            ${evidenceLines.length ? `<div style="font-size:0.82rem; color:var(--ink-soft); margin-bottom:0.3rem;">Orb has found: ${evidenceLines.map(escapeHtml).join(' · ')}</div>` : ''}
+            <div style="font-size:0.78rem; color:var(--muted);">Confidence: ${escapeHtml(inv.confidence)} · Status: ${inv.status === 'investigating' ? 'Active' : escapeHtml(inv.status)}</div>
+          </div>`;
+        }).join('') : '<p class="empty-honest">Nothing under active investigation right now.</p>'}
       </div>`;
 
       const attentionCard = `<div class="brain-card"><h3>Orb Needs Your Input</h3>
@@ -524,7 +556,11 @@
         ${(competitors && competitors.length) ? competitors.map(c => `<div class="intel-item"><div class="intel-dot watch"></div><div style="font-size:0.85rem;"><strong>${escapeHtml(c.name)}</strong> — ${escapeHtml(c.category||'')}</div></div>`).join('') : '<p class="empty-honest">No competitors identified yet.</p>'}
       </div>`;
 
-      const creativeCard = `<div class="brain-card"><h3>Creative</h3><p class="empty-honest">No creative-level data available yet for this account.</p></div>`;
+      // Per instruction: omit the Creative module entirely when no
+      // real creative intelligence exists, rather than show any
+      // 'no data' empty state - that makes the product look
+      // unfinished. Once real creative data exists, this becomes real.
+      const creativeCard = '';
 
       const learningCard = `<div class="brain-card"><h3>What Orb Is Learning</h3>
         ${(memory && memory.length) ? memory.map(m => `<div class="intel-item"><div class="intel-dot positive"></div><div style="font-size:0.85rem;">${escapeHtml(m.observation)} <span style="color:var(--muted); font-size:0.76rem;">(${m.confidence} confidence)</span></div></div>`).join('') : '<p class="empty-honest">No confirmed patterns yet - this builds over time as evidence repeats.</p>'}
