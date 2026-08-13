@@ -464,6 +464,7 @@
         ? crossSourceSignals[0].description
         : (signalsRecent[0]?.description || 'No significant single development is driving the current view.');
       const mattersMost = opportunityOrRisk;
+      const mattersMostRecId = recommendations[0]?.id || null;
       const watchingNext = activeInvestigations.length
         ? `Orb believes this deserves attention because the movement appeared in more than one place at once. Orb is now checking whether the pattern continues and what may have contributed to it.`
         : watching;
@@ -483,7 +484,9 @@
 
             <div style="margin:1.1rem 0; display:flex; flex-direction:column; gap:0.7rem; max-width:600px;">
               <div><div style="font-size:0.68rem; text-transform:uppercase; letter-spacing:0.06em; color:#8F98AC; margin-bottom:0.2rem;">What's driving the current view</div><div style="font-size:0.9rem; color:#D6DAE3; line-height:1.5;">${escapeHtml(drivingView)}</div></div>
-              <div><div style="font-size:0.68rem; text-transform:uppercase; letter-spacing:0.06em; color:#8F98AC; margin-bottom:0.2rem;">What Orb believes matters most</div><div style="font-size:0.9rem; color:#D6DAE3; line-height:1.5;">${escapeHtml(mattersMost)}</div></div>
+              <div><div style="font-size:0.68rem; text-transform:uppercase; letter-spacing:0.06em; color:#8F98AC; margin-bottom:0.2rem;">What Orb believes matters most</div><div style="font-size:0.9rem; color:#D6DAE3; line-height:1.5;">${escapeHtml(mattersMost)}</div>
+                ${mattersMostRecId ? `<div style="margin-top:0.4rem; display:flex; align-items:center; gap:0.5rem;"><span style="font-size:0.74rem; color:#8F98AC;">Was Orb right about this?</span><button class="command-option" style="padding:0.2rem 0.6rem; font-size:0.78rem;" onclick="submitRecFeedback('${mattersMostRecId}', true, this)">👍</button><button class="command-option" style="padding:0.2rem 0.6rem; font-size:0.78rem;" onclick="submitRecFeedback('${mattersMostRecId}', false, this)">👎</button></div>` : ''}
+              </div>
               <div><div style="font-size:0.68rem; text-transform:uppercase; letter-spacing:0.06em; color:#8F98AC; margin-bottom:0.2rem;">What Orb is watching next</div><div style="font-size:0.9rem; color:#D6DAE3; line-height:1.5;">${escapeHtml(watchingNext)}</div></div>
               <div><div style="font-size:0.68rem; text-transform:uppercase; letter-spacing:0.06em; color:#8F98AC; margin-bottom:0.2rem;">What Orb has done</div><div style="font-size:0.9rem; color:#D6DAE3; line-height:1.5;">${escapeHtml(doneText)}</div></div>
               ${qualifyingMemory.length ? `<div><div style="font-size:0.68rem; text-transform:uppercase; letter-spacing:0.06em; color:#8F98AC; margin-bottom:0.2rem;">Already on our radar</div>${qualifyingMemory.map(m => `<div style="font-size:0.9rem; color:#D6DAE3; line-height:1.5;">${escapeHtml(m.observation)}</div>`).join('')}</div>` : ''}
@@ -760,6 +763,16 @@
   // Real end-to-end Create flow from the primary command surface -
   // calls the actual POST /create endpoint, sourced from whatever the
   // top real recommendation is for this location. Not a mockup.
+  async function submitRecFeedback(recId, helped, btnEl){
+    const wrapper = btnEl.parentElement;
+    try {
+      await apiFetch(`/api/mc/recommendations/${recId}/feedback`, { method: 'POST', body: JSON.stringify({ helped }) });
+      wrapper.innerHTML = `<span style="font-size:0.74rem; color:#8F98AC;">Thanks — noted.</span>`;
+    } catch (err) {
+      wrapper.innerHTML = `<span style="font-size:0.74rem; color:#8F98AC;">Could not save feedback.</span>`;
+    }
+  }
+
   async function submitCheckin(){
     const noteText = document.getElementById('checkinNote').value.trim();
     const trafficLevel = document.getElementById('checkinTraffic').value;

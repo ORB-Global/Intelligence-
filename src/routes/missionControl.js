@@ -687,6 +687,29 @@ router.get('/admin/portfolio-summary', async (req, res) => {
   });
 });
 
+// "Was Orb right?" - direct client feedback, distinct from and at
+// least as authoritative as the algorithmic verdict.
+router.post('/recommendations/:id/feedback', async (req, res) => {
+  const { id: recommendationId } = req.params;
+  const { helped, feedbackText } = req.body || {};
+  if (typeof helped !== 'boolean') {
+    return res.status(400).json({ success: false, error: { message: '"helped" must be true or false.' } });
+  }
+
+  // Real authorization check BEFORE calling the RLS-bypassing RPC -
+  // req.supabase is the user's own RLS-scoped client, so this only
+  // succeeds if the recommendation's location is one they can access.
+  const { data: rec, error: recError } = await req.supabase.from('recommendations').select('id').eq('id', recommendationId).maybeSingle();
+  if (recError) return res.status(500).json({ success: false, error: { message: recError.message } });
+  if (!rec) return res.status(404).json({ success: false, error: { message: 'Recommendation not found or not accessible.' } });
+
+  const { data: verdictId, error } = await req.supabase.rpc('record_client_feedback', {
+    p_recommendation_id: recommendationId, p_helped: helped, p_feedback_text: feedbackText || null,
+  });
+  if (error) return res.status(500).json({ success: false, error: { message: error.message } });
+  return res.json({ success: true, data: { verdictId } });
+});
+
 router.post('/recommendations/:id/status', async (req, res) => {
   const { id } = req.params;
   const { status, actionTitle, actionDescription, outcomeDescription, measuredImpact } = req.body || {};
