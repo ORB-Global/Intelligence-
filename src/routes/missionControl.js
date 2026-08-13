@@ -148,6 +148,7 @@ router.get('/locations/:id', async (req, res) => {
     { data: brainState },
     { data: recentActivity },
     { data: memory },
+    { data: investigations },
   ] = await Promise.all([
     req.supabase.from('locations').select('*, organizations(name)').eq('id', id).maybeSingle(),
     req.supabase.from('connection_health').select('*').eq('location_id', id).order('channel'),
@@ -159,10 +160,11 @@ router.get('/locations/:id', async (req, res) => {
     req.supabase.from('local_visibility_metrics').select('*').eq('location_id', id).order('period_start', { ascending: false }),
     req.supabase.from('market_profiles').select('*').eq('location_id', id).maybeSingle(),
     req.supabase.from('competitors').select('*').eq('location_id', id).eq('status', 'auto_discovered'),
-    req.supabase.from('open_questions').select('*').eq('location_id', id).eq('status', 'open'),
+    req.supabase.from('open_questions').select('*').eq('location_id', id).eq('status', 'open').eq('client_visible', true),
     req.supabase.from('location_brain_state').select('*').eq('location_id', id).maybeSingle(),
     req.supabase.from('orb_activity').select('*').eq('location_id', id).eq('client_visible', true).order('occurred_at', { ascending: false }).limit(10),
     req.supabase.from('business_memory').select('*').eq('location_id', id).order('last_confirmed_at', { ascending: false }),
+    req.supabase.from('investigations').select('*').eq('location_id', id).eq('client_visible', true).order('created_at', { ascending: false }),
   ]);
 
   if (locError) return res.status(500).json({ success: false, error: { message: locError.message } });
@@ -185,6 +187,7 @@ router.get('/locations/:id', async (req, res) => {
       brainState: brainState || null,
       recentActivity: recentActivity || [],
       memory: memory || [],
+      investigations: investigations || [],
       briefing,
     },
   });

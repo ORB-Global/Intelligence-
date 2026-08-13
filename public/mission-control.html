@@ -350,7 +350,7 @@
     currentLocationId = locId;
     document.getElementById('exploreBtn').classList.remove('hidden');
     try {
-      const { location, connections, metrics, feed, health, socialMetrics, localMetrics, briefing, marketProfile, competitors, openQuestions, brainState, recentActivity, memory } = await apiFetch(`/api/mc/locations/${locId}`);
+      const { location, connections, metrics, feed, health, socialMetrics, localMetrics, briefing, marketProfile, competitors, openQuestions, brainState, recentActivity, memory, investigations } = await apiFetch(`/api/mc/locations/${locId}`);
       setBreadcrumbs([
         { label: 'Mission Control', action: 'viewOrganizations()' },
         { label: location.organizations?.name || 'Organization', action: `viewOrganization('${location.organization_id}')` },
@@ -413,9 +413,12 @@
 
       const mostImportant = topFindings[0]?.description || 'Nothing significant to report yet - Orb is still building history on this account.';
       const opportunityOrRisk = recommendations[0]?.description || crossSourceSignals[0]?.description || 'No specific opportunity or risk identified yet this period.';
-      const watching = openQuestions && openQuestions.length
-        ? `Orb is currently working to resolve ${openQuestions.length} open question${openQuestions.length===1?'':'s'} about this account.`
-        : 'Nothing currently under investigation.';
+      const activeInvestigations = (investigations || []).filter(i => i.status === 'investigating' || i.status === 'open');
+      const watching = activeInvestigations.length
+        ? `Orb is continuing to evaluate ${activeInvestigations.length} developing pattern${activeInvestigations.length===1?'':'s'} on this account.`
+        : (openQuestions && openQuestions.length
+          ? `Orb is currently working to resolve ${openQuestions.length} open question${openQuestions.length===1?'':'s'} about this account.`
+          : 'Nothing currently under active investigation.');
 
       const brainHero = `<div class="brain-hero">
         <div class="brain-hero-top">
