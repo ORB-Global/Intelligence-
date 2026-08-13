@@ -21,3 +21,11 @@ BRAIN (primary, alive, selective - not a KPI wall) / EXPLORE (the dashboard, evi
 
 ## Stop-and-ask conditions (the only ones)
 A credential/provider/account action only the user can perform; an irreversible/high-risk production decision; two genuinely mutually-exclusive product choices unresolvable from this document; a real production failure. Otherwise: decide, document, test, preserve production, continue.
+
+## Usability addendum (added this session)
+
+- Client-facing Brain language must be plain English, understandable without marketing knowledge. Technical terms ("cross-source signal", "sustained trend", "confidence weighting", "provider coverage") stay behind Show Me Why / Explore, never on the primary Brain surface.
+- The Brain synthesizes into plain concepts: customer attention increasing/decreasing, audience growing, messages getting more/less expensive, local visibility strengthening/weakening, paid efficiency improving/declining, competitive pressure changing, creative may need refreshing.
+- Orb should read as already ahead of the account ("Orb reviewed this during the weekly review", "Orb made an adjustment and is monitoring") - only when backed by real Orb Activity, never invented.
+- Create must support both intelligence-driven ("Create from this opportunity") and simple everyday requests ("make me a Facebook post about X"), auto-carrying business identity/context either way.
+- The 30-second test: a business owner with no marketing background should understand momentum, customer attention, ad performance direction, audience growth, local discovery, what Orb has done, and what's next - then be able to say "make me a post for that."

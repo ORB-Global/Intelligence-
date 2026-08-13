@@ -216,7 +216,11 @@ function buildCrossSourceBriefing(metrics, socialMetrics, localMetrics) {
       const prevCpc = prevClicks > 0 ? prevSpend / prevClicks : null;
       if (prevCpc) {
         const pctChange = ((curCpc - prevCpc) / prevCpc) * 100;
-        parts.push(`Paid advertising cost-per-click ${pctChange < -5 ? 'improved' : pctChange > 5 ? 'rose' : 'held steady'} period-over-period.`);
+        // Plain language, matching the required tone directly at the
+        // source: "your ads are bringing in more people for less
+        // money" instead of "cost-per-click improved period-over-period"
+        if (pctChange < -5) parts.push('Your ads are bringing in more people for less money than last period.');
+        else if (pctChange > 5) parts.push('Your ads are costing more to bring in the same amount of people right now.');
       }
     }
   }
@@ -227,7 +231,7 @@ function buildCrossSourceBriefing(metrics, socialMetrics, localMetrics) {
     if (cur.post_engagements && prev.post_engagements) {
       const pct = ((cur.post_engagements - prev.post_engagements) / prev.post_engagements) * 100;
       if (Math.abs(pct) > 10) {
-        parts.push(`Facebook engagement ${pct > 0 ? 'increased' : 'declined'} ${Math.abs(Math.round(pct))}% from the prior month.`);
+        parts.push(pct > 0 ? 'More people are interacting with your Facebook posts than last month.' : 'Fewer people are interacting with your Facebook posts than last month.');
       }
     }
   }
@@ -238,12 +242,12 @@ function buildCrossSourceBriefing(metrics, socialMetrics, localMetrics) {
     if (cur.maps_impressions && prev.maps_impressions) {
       const pct = ((cur.maps_impressions - prev.maps_impressions) / prev.maps_impressions) * 100;
       if (Math.abs(pct) > 25) {
-        parts.push(`Local Google Maps visibility ${pct > 0 ? 'jumped' : 'dropped'} ${Math.abs(Math.round(pct))}% from the prior month.`);
+        parts.push(pct > 0 ? 'A lot more people are finding your business on Google Maps than usual.' : 'Fewer people are finding your business on Google Maps than usual.');
       }
     }
   }
 
-  if (!parts.length) return 'Not enough historical data yet to generate a cross-source summary.';
+  if (!parts.length) return "Orb doesn't have enough history yet to give you a full picture - check back soon.";
   return "Here's what we're seeing: " + parts.join(' ');
 }
 
