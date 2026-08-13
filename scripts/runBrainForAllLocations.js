@@ -67,6 +67,17 @@ async function main() {
     console.log(`\nInvestigation recheck step failed: ${e.message}`);
   }
 
+  // Cross-portfolio pattern learning - the genuinely unique step:
+  // aggregates what's actually working across all 64 managed
+  // businesses, not one at a time.
+  try {
+    const { data: categoriesRefreshed, error: patternError } = await supabase.rpc('refresh_portfolio_patterns');
+    if (patternError) throw patternError;
+    console.log(`Portfolio pattern categories refreshed: ${categoriesRefreshed}`);
+  } catch (e) {
+    console.log(`Portfolio pattern refresh failed: ${e.message}`);
+  }
+
   console.log(`\n=== DONE: ${succeeded} succeeded, ${failed} failed ===`);
   process.exit(failed > 0 && succeeded === 0 ? 1 : 0);
 }

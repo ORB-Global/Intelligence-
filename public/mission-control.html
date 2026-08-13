@@ -396,7 +396,7 @@
     currentLocationId = locId;
     document.getElementById('exploreBtn').classList.remove('hidden');
     try {
-      const { location, connections, metrics, feed, health, socialMetrics, localMetrics, briefing, marketProfile, competitors, openQuestions, brainState, recentActivity, memory, investigations, performance, activitySummary, competitivePulse: competitivePulseData, thesis, nextAction } = await apiFetch(`/api/mc/locations/${locId}`);
+      const { location, connections, metrics, feed, health, socialMetrics, localMetrics, briefing, marketProfile, competitors, openQuestions, brainState, recentActivity, memory, investigations, performance, activitySummary, competitivePulse: competitivePulseData, thesis, nextAction, portfolioContext } = await apiFetch(`/api/mc/locations/${locId}`);
       setBreadcrumbs([
         { label: 'Mission Control', action: 'viewOrganizations()' },
         { label: location.organizations?.name || 'Organization', action: `viewOrganization('${location.organization_id}')` },
@@ -518,7 +518,7 @@
         });
       }
       threadMessages.push({ weight: 'minor', label: "What's driving this", text: drivingView });
-      threadMessages.push({ weight: 'normal', label: 'What I believe matters most', text: mattersMost, recId: mattersMostRecId });
+      threadMessages.push({ weight: 'normal', label: 'What I believe matters most', text: mattersMost, recId: mattersMostRecId, subtext: portfolioContext });
       threadMessages.push({ weight: 'minor', label: "What I'm watching next", text: watchingNext });
       threadMessages.push({ weight: 'minor', label: "What I've done", text: doneText });
       if (qualifyingMemory.length) {
@@ -536,6 +536,7 @@
               ${threadMessages.map((m, i) => `<div class="orb-msg ${m.weight === 'minor' ? 'minor' : ''} ${m.weight === 'dominant' ? 'dominant' : ''} ${m.tier ? 'tier-'+m.tier : ''}" style="animation-delay:${i*0.06}s;">
                 ${m.label ? `<div class="orb-msg-label">${escapeHtml(m.label)}</div>` : ''}
                 <div class="orb-msg-text">${escapeHtml(m.text)}</div>
+                ${m.subtext ? `<div style="margin-top:0.4rem; font-size:0.78rem; color:#C9A96A; font-style:italic;">${escapeHtml(m.subtext)}</div>` : ''}
                 ${m.recId ? `<div style="margin-top:0.5rem; display:flex; align-items:center; gap:0.5rem;"><span style="font-size:0.72rem; color:#8F98AC;">Was Orb right about this?</span><button class="command-option" style="padding:0.15rem 0.55rem; font-size:0.76rem;" onclick="submitRecFeedback('${m.recId}', true, this)">👍</button><button class="command-option" style="padding:0.15rem 0.55rem; font-size:0.76rem;" onclick="submitRecFeedback('${m.recId}', false, this)">👎</button></div>` : ''}
               </div>`).join('')}
             </div>

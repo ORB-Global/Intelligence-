@@ -212,6 +212,18 @@ router.get('/locations/:id', async (req, res) => {
     nextAction = actionData;
   } catch (e) { /* non-fatal */ }
 
+  // Real cross-portfolio context for the top recommendation - the
+  // genuinely unique capability, correctly silent when there isn't
+  // enough real sample size yet across the portfolio.
+  let portfolioContext = null;
+  const topRecId = (feed || []).find((f) => f.item_type === 'recommendation')?.id;
+  if (topRecId) {
+    try {
+      const { data: ctx } = await supabaseService.rpc('get_portfolio_context_for_recommendation', { p_recommendation_id: topRecId });
+      portfolioContext = ctx || null;
+    } catch (e) { /* non-fatal */ }
+  }
+
   return res.json({
     success: true,
     data: {
@@ -229,7 +241,9 @@ router.get('/locations/:id', async (req, res) => {
       activitySummary,
       competitivePulse,
       nextAction,
+      portfolioContext,
     },
+
   });
 });
 
