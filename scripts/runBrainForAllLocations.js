@@ -57,6 +57,16 @@ async function main() {
     }
   }
 
+  // MONITOR OUTCOME -> LEARN step: re-checks any investigation whose
+  // next_check_at has arrived, across the whole portfolio in one call.
+  try {
+    const { data: rechecked, error: recheckError } = await supabase.rpc('recheck_due_investigations');
+    if (recheckError) throw recheckError;
+    console.log(`\nInvestigations re-checked: ${rechecked}`);
+  } catch (e) {
+    console.log(`\nInvestigation recheck step failed: ${e.message}`);
+  }
+
   console.log(`\n=== DONE: ${succeeded} succeeded, ${failed} failed ===`);
   process.exit(failed > 0 && succeeded === 0 ? 1 : 0);
 }

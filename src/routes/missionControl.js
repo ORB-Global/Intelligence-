@@ -50,6 +50,9 @@ async function buildTenantChatContext(supabase, locationId) {
     { data: marketProfile },
     { data: competitors },
     { data: openQuestions },
+    { data: activity },
+    { data: investigations },
+    { data: memory },
   ] = await Promise.all([
     supabase.from('locations').select('id, name, organizations(name)').eq('id', locationId).maybeSingle(),
     supabase.from('historical_metrics').select('*').eq('location_id', locationId).order('period_start', { ascending: false }).limit(4),
@@ -61,6 +64,9 @@ async function buildTenantChatContext(supabase, locationId) {
     supabase.from('market_profiles').select('*').eq('location_id', locationId).maybeSingle(),
     supabase.from('competitors').select('name, address, category, status, confidence').eq('location_id', locationId),
     supabase.from('open_questions').select('question, category').eq('location_id', locationId).eq('status', 'open'),
+    supabase.from('orb_activity').select('activity_type, description, occurred_at').eq('location_id', locationId).eq('client_visible', true).order('occurred_at', { ascending: false }).limit(10),
+    supabase.from('investigations').select('question, evidence_collected, possible_explanations, confidence, status, conclusion').eq('location_id', locationId).eq('client_visible', true),
+    supabase.from('business_memory').select('observation, confidence, supporting_evidence_count').eq('location_id', locationId),
   ]);
 
   let healthWithFactors = null;
@@ -89,6 +95,9 @@ async function buildTenantChatContext(supabase, locationId) {
     marketProfile: marketProfile || null,
     competitors: competitors || [],
     openQuestions: openQuestions || [],
+    orbActivity: activity || [],
+    investigations: investigations || [],
+    businessMemory: memory || [],
     accountNotes: [],
     insights: [],
   };

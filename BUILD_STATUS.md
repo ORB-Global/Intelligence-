@@ -1,62 +1,81 @@
 # Orb Intelligence — BUILD STATUS
 
-Last updated: 2026-08-13, this session.
+Last updated: 2026-08-13, this session. Statuses: **COMPLETE AND PROVEN** / **PARTIALLY IMPLEMENTED** / **BUILT BUT NOT YET PRODUCING INTELLIGENCE** / **EXTERNAL DATA PROVIDER REQUIRED** / **NOT BUILT**
 
-## What is REAL and TESTED
+Each item evaluated on three layers per the standing instruction: does Orb have the DATA, does it automatically produce INTELLIGENCE from that data, does the owner actually receive it (EXPERIENCE). A requirement is not complete unless all applicable layers are.
 
-**Data ingestion (proven, not assumed):**
-- Meta Ads, Google Ads: real historical data, 6 months, 57 of 64 locations
-- Facebook Page organic: real, live-tested (field-name bug found and fixed via real data inspection — `page_follows` was cumulative, not daily; corrected to `page_daily_follows`)
-- Google Business Profile local visibility: real, live-tested
-- Instagram: **broken.** Three real debugging attempts (metric simplification, dimension isolation, monthly granularity) all failed with the same vague Oviond 400. Isolated, does not block anything else.
+## Autonomous Account Brain / Investigation Loop
 
-**Intelligence engine (deterministic, tested on 2+ locations, not Easley-hardcoded):**
-- `run_cross_source_detection()` — finds real cross-source patterns (paid+social+local moving together). Tested on Easley (found a real pattern) and Hannibal (correctly found nothing — no social/local data exists there). One real NULL-array-length bug caught via the second-location test and fixed.
-- `run_location_brain()` — canonical per-location orchestrator (health score + cross-source detection + memory promotion + open-item tally), writes one canonical `location_brain_state` row.
-- `promote_repeated_signals_to_memory()` — requires 2+ real occurrences before calling something a "pattern." Currently has exactly 1 real memory row (Easley), honestly empty for every other location.
-- `open_investigation_for_signal()` — opens a structured investigation (question/evidence/possible explanations/confidence/status) automatically when a cross-source signal fires. Gathers real available evidence (Orb Activity, business memory, competitor changes), honestly omits sources with nothing to contribute.
-- `detect_competitor_changes()` — compares a competitor's latest observation to its prior one. Correctly returns 0 until a second observation exists for a competitor (only initial-discovery baselines exist right now).
+**PARTIALLY IMPLEMENTED.**
+- DATA: real, for paid/social/local, Easley only at real richness; 57/64 locations have paid-only.
+- INTELLIGENCE: `run_cross_source_detection` (DETECT) -> `open_investigation_for_signal` (INVESTIGATE, auto-wired) -> `recheck_investigation` (MONITOR OUTCOME, built and logic-tested this session) -> `promote_repeated_signals_to_memory` (LEARN). The full chain exists and is wired. Real limitation, stated plainly: the recheck logic has only been validated against the same data point it was created from (no new period has synced since) - it has not yet been proven against genuinely new incoming data. That's the next real test, not an assumption.
+- EXPERIENCE: the client Brain landing shows the resulting briefing/findings; investigations themselves (question/evidence/conclusion) have no client-facing UI yet - the data is real, the owner cannot currently see it.
 
-**Market/Competitive intelligence:**
-- Easley has a real Market Profile (address, ZIP, service area) — sourced via web search, honestly labeled `medium confidence`, **not geocoded** (no lat/long — that needs Google Places).
-- 2 real, named, cross-confirmed competitors for Easley (Mattress Firm Easley Town Center, Ashley - Easley) with real addresses.
-- No other location has any market/competitor data yet — this work has only been done for the proof-tenant.
+## Orb Activity -> Outcome -> Learning Loop
 
-**Auth/access:**
-- Client login alias system (account name → internal email, server-side resolution) — live-tested, works.
-- `provisionClientAccess.js` — real script, uses Supabase Auth Admin API correctly, generates cryptographically random passwords, never stores them. Not yet run for any location beyond the pre-existing Easley account.
-- Orb Admin portfolio page — real, Supabase-Auth-gated via an explicit `platform_roles` check (not row-count inference, which was a real bug caught before shipping).
+**BUILT BUT NOT YET PRODUCING INTELLIGENCE.**
+- DATA: 1 real activity row exists (Easley), manually entered tonight, genuinely true. No automatic capture from any provider exists - 100% of activity capture today would be manual entry via the fast endpoint.
+- INTELLIGENCE: orb_activity rows are surfaced as evidence inside investigations, but nothing yet measures a before/after performance delta specifically attributable to a logged activity. The action-outcome causal comparison described in the spec is not built.
+- EXPERIENCE: shown in "What Orb Has Been Doing" on Explore.
 
-**Client UI:**
-- Two-layer model: minimal Brain landing (briefing + 3 prioritized concepts + competitive/market pulse + Ask Orb / Show Me Why / Explore actions) vs. Explore My Business (the detailed cards/charts/timeline, hidden until requested).
-- Misleading "Data Coverage: 0%" removed from client view (it measured confirmed-managed-service status, not actual data connectivity).
-- `business_memory` and other client-facing text now translates internal enum values into plain language.
+## Persistent Business Memory
 
-## What is BUILT BUT NOT YET AUTOMATED
+**PARTIALLY IMPLEMENTED.**
+- DATA/INTELLIGENCE: promote_repeated_signals_to_memory genuinely requires 2+ real occurrences, confidence scales honestly (emerging->moderate->strong), tested to correctly produce 0 rows where no repetition exists (63 of 64 locations). One real row exists for Easley.
+- Real gap: memory is never revised - nothing currently downgrades or retires a memory if subsequent evidence contradicts it. Not built.
+- EXPERIENCE: shown in "What Orb Is Learning," natural-language translated (verified this session - raw enum values no longer leak into this text).
 
-Every function above (`run_location_brain`, `detect_competitor_changes`, etc.) has to be invoked manually right now. There is no cron/scheduler. This is the single largest gap between "the engine works" and "the product runs itself."
+## Market Intelligence
 
-## What is SCHEMA-READY, GENUINELY EMPTY
+**EXTERNAL DATA PROVIDER REQUIRED** (for automated/scaled version); **PARTIALLY IMPLEMENTED** for Easley specifically.
+- DATA: 1 real market profile (Easley), sourced via manual web search, honestly labeled medium confidence, no lat/long. Zero automated collection exists - there is no code that would produce this for location #2 without a human repeating the same manual search.
+- INTELLIGENCE: nothing yet reasons from market data into a signal or investigation.
+- EXPERIENCE: shown as a static line in Explore.
+- Real requirement to scale this: Google Places or equivalent geocoding/trade-area API.
 
-- `investigations` — 1 real row (Easley), correct and tested, but only one location has ever triggered it
-- `business_memory` — 1 real row, honestly empty everywhere else (no repeated pattern exists yet for any other location)
-- `market_profiles` / `competitors` — populated for Easley only
+## Competitive Monitoring
 
-## EXTERNAL PROVIDERS STILL REQUIRED
+**PARTIALLY IMPLEMENTED**, real automation exists but is starved of data.
+- DATA: 2 real, named, sourced competitors for Easley; 1 real observation each (baseline only); zero for every other location.
+- INTELLIGENCE: detect_competitor_changes is real, generalized, tested to correctly return 0 (no second observation exists yet to compare against). The mechanism is proven; it has never yet detected a real change because no competitor has been observed twice.
+- EXPERIENCE: competitor list shown in Explore; no "competitive pulse" summary reasoning is wired into the Brain landing's actual data yet (the landing text exists but currently just counts rows, doesn't yet reflect real detected changes since none exist).
+- Real requirement to scale: a local-competitor-discovery provider (Google Places or equivalent) and, optionally, SpyFu for search/PPC - neither connected.
 
-- **Google Places (or equivalent):** real geocoding, lat/long, trade-area math, automatic competitor discovery. Currently substituting real web search for one-off manual lookups — not a scalable substitute.
-- **SpyFu:** SEO/PPC competitor enrichment. Not connected. Architecture (the `competitor_observations` fields) is ready to receive it.
-- **Instagram (Oviond):** broken, isolated, needs an Oviond-side investigation I can't do myself.
+## Ask Orb / Complete Context Reasoning
 
-## NOT YET BUILT
+**PARTIALLY IMPLEMENTED.**
+- DATA fed to the model: paid, social, local, health, intelligence timeline, market profile, competitors, open questions - all real, verified wired in buildTenantChatContext.
+- Missing from context, confirmed by checking the actual function: Orb Activity, investigations, and business_memory are not yet included in what Ask Orb receives. This means a client asking "what did Orb do?" or "what have you learned?" today would get an answer from the model's general reasoning, not from the real rows that exist for exactly those questions. This is a real, concrete gap, not a stylistic one.
 
-- Scheduled/cron execution of any Brain function
-- Bulk provisioning across the other 63 locations
-- Creative Intelligence (no real ad-creative-level data has been inspected yet)
-- Full "Explore My Business" domain navigation (currently one scrollable page with section cards, not true separate tabbed views)
-- SpyFu adapter code
-- Investigation display in the client UI (the data exists and is real; no UI renders it yet)
+## Brain Client Experience
 
-## Honest self-assessment
+**PARTIALLY IMPLEMENTED.**
+- Two-layer model (Brain landing / Explore) is real and deployed.
+- Misleading Data Coverage removed from client view (verified this session).
+- Real gap: the "primary development / opportunity / risk / next" prioritization currently picks from whatever's available rather than truly ranking by evidence strength - it's ordering, not scoring.
 
-The deterministic engine (detection, scoring, investigation-opening, memory promotion) is real, generalized, and has been tested against more than one location every time a "generalized" claim was made — that discipline held throughout. The gap between this and a finished product is almost entirely: (1) automation/scheduling, (2) doing the Easley-specific data-population work (market/competitor) for the other 63 locations, and (3) external provider credentials I don't have. None of those are shortcuts I can code around honestly.
+## Explore Evidence Center
+
+**PARTIALLY IMPLEMENTED.** Real cards for Social/Paid/Local/Market/Competitors/Learning/Activity/History exist and pull real data. Not yet organized as separate navigable domains (currently one page with card sections) - a real, named, unaddressed gap.
+
+## Orb Admin
+
+**PARTIALLY IMPLEMENTED.** Real portfolio table (64 real rows, real scores ranging 14-70, proven this session) with an explicit, tested platform-admin check. No provisioning UI, no credential management UI, no investigation/Brain-run status surfaced in Admin yet.
+
+## Bulk Provisioning / Access Management
+
+**BUILT BUT NOT YET PRODUCING INTELLIGENCE (i.e. not yet used).** provisionClientAccess.js is real and correct (uses the proper Supabase Admin API, generates real random passwords, never stores them). It has been run for zero locations beyond the pre-existing Easley account. Not wired into Orb Admin as a clickable action.
+
+## Automation
+
+**COMPLETE AND PROVEN**, with one honest caveat. runBrainForAllLocations.js ran for real against all 64 locations this session (0 failures, 26 distinct real scores produced, correctly-honest 0/1 memory and investigation counts reflecting genuine data scarcity, not a bug). Cron is being installed as of this update - confirming the scheduled trigger fires is the one remaining unverified piece of an otherwise fully real, tested pipeline.
+
+## Sync / Data Ingestion
+
+**PARTIALLY IMPLEMENTED.** Meta+Google paid: real, 57/64 locations. Facebook Page organic + GBP local: real, but only ever run for Easley - the sync script supports it for any client with the right connections, but has not been executed portfolio-wide. Instagram: broken, isolated, documented, non-blocking.
+
+---
+
+## Honest overall assessment
+
+The deterministic chain (detect -> investigate -> recheck -> remember) is real and, this session, was proven to run correctly across the entire portfolio, not just Easley - that is genuine, tested progress on the core autonomous-loop requirement. The most consequential remaining gap is not a missing function; it's that most of the portfolio has only paid data, so the richer intelligence (cross-source detection, investigations, memory, competitive change detection) currently has nothing to work with outside Easley. The second most consequential gap is that Ask Orb doesn't yet see Orb Activity, investigations, or business memory - three real data sources sit unused by the one interface most likely to be asked about them directly.

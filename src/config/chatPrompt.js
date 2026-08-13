@@ -66,6 +66,9 @@ function buildChatUserPrompt({
   marketProfile,
   competitors,
   openQuestions,
+  orbActivity,
+  investigations,
+  businessMemory,
 }) {
   let prompt = `SELECTED CLIENT
 ${JSON.stringify(client, null, 2)}`;
@@ -103,6 +106,15 @@ ${snapshots && snapshots.length ? JSON.stringify(snapshots, null, 2) : '(none on
   }
   if (openQuestions !== undefined) {
     prompt += fmtOptionalSection('OPEN QUESTIONS (what Orb genuinely does not know yet - state these plainly when relevant, never paper over them)', openQuestions && openQuestions.length ? openQuestions : null, '(none currently open)');
+  }
+  if (orbActivity !== undefined) {
+    prompt += fmtOptionalSection('WHAT ORB HAS BEEN DOING (real recorded work - use this to answer "what has Orb done" questions, never invent activity)', orbActivity && orbActivity.length ? orbActivity : null, '(no recorded activity yet)');
+  }
+  if (investigations !== undefined) {
+    prompt += fmtOptionalSection('ACTIVE INVESTIGATIONS (question/evidence/possible explanations/confidence/status - use this to answer "what are you investigating" or "why do you think that")', investigations && investigations.length ? investigations : null, '(no open investigations)');
+  }
+  if (businessMemory !== undefined) {
+    prompt += fmtOptionalSection('LEARNED PATTERNS (durable observations, only promoted after real repeated evidence - use this to answer "what have you learned")', businessMemory && businessMemory.length ? businessMemory : null, '(nothing confirmed as a pattern yet)');
   }
 
   prompt += `\n\nORB ACCOUNT NOTES
