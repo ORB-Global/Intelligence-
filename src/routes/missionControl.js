@@ -512,6 +512,22 @@ router.post('/locations/:id/create', async (req, res) => {
 // UI, actually aggregated from real investigation/verdict/memory
 // history. This is the concrete answer to "a new tool starts at
 // zero, this doesn't."
+// YOUR ORB MONTH - real, aggregated proof of value, not a metrics
+// report. Same real-authorization-then-service-role pattern as every
+// cross-tenant-shaped RPC tonight.
+router.get('/locations/:id/value-receipt', async (req, res) => {
+  const { id: locationId } = req.params;
+  const days = Math.min(Math.max(parseInt(req.query.days, 10) || 30, 1), 365);
+
+  const { data: location, error: locError } = await req.supabase.from('locations').select('id').eq('id', locationId).maybeSingle();
+  if (locError) return res.status(500).json({ success: false, error: { message: locError.message } });
+  if (!location) return res.status(404).json({ success: false, error: { message: 'Location not found or not accessible.' } });
+
+  const { data, error } = await supabaseService.rpc('build_monthly_value_receipt', { p_location_id: locationId, p_days: days });
+  if (error) return res.status(500).json({ success: false, error: { message: error.message } });
+  return res.json({ success: true, data });
+});
+
 router.get('/locations/:id/track-record', async (req, res) => {
   const { id: locationId } = req.params;
 
