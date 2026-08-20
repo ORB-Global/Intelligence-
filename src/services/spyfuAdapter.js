@@ -16,7 +16,7 @@
 
 const SPYFU_API_ID = process.env.SPYFU_API_ID;
 const SPYFU_API_SECRET = process.env.SPYFU_API_SECRET;
-const SPYFU_BASE = 'https://www.spyfu.com/apis';
+const SPYFU_BASE = 'https://api.spyfu.com/apis';
 
 function isConfigured() {
   return Boolean(SPYFU_API_ID && SPYFU_API_SECRET);
