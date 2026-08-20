@@ -50,11 +50,15 @@ async function main() {
     if (!loc.oviond_client_id) { skipped++; continue; }
 
     const client = await oviondFetch(`/v1/clients/${loc.oviond_client_id}`);
+    if (client.error || client.message) {
+      skipped++; console.log(`SKIP    ${loc.name} - API error: ${client.error || client.message}`); continue;
+    }
     const gmb = (client.datasources || []).find((d) => d.datasource_id === 'gmb');
+    if (!gmb) { skipped++; console.log(`SKIP    ${loc.name} - no gmb datasource connected`); continue; }
     const desc = gmb?.profile?.locations?.[0]?.description;
     const parsed = parseGbpAddress(desc);
 
-    if (!parsed) { skipped++; console.log(`SKIP    ${loc.name} - no GBP address available`); continue; }
+    if (!parsed) { skipped++; console.log(`SKIP    ${loc.name} - gmb connected but description field empty/unparseable: ${JSON.stringify(desc)}`); continue; }
 
     console.log(`${DRY_RUN ? 'WOULD SET' : 'SET'}     ${loc.name}: ${JSON.stringify(parsed)}`);
     if (!DRY_RUN) {
