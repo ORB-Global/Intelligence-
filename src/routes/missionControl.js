@@ -65,7 +65,7 @@ async function buildTenantChatContext(supabase, locationId) {
     supabase.from('social_content_metrics').select('*').eq('location_id', locationId).order('period_start', { ascending: false }).limit(4),
     supabase.from('local_visibility_metrics').select('*').eq('location_id', locationId).order('period_start', { ascending: false }).limit(4),
     supabase.from('market_profiles').select('*').eq('location_id', locationId).maybeSingle(),
-    supabase.from('competitors').select('name, address, category, status, confidence').eq('location_id', locationId),
+    supabase.from('competitors').select('name, address, category, status, confidence, seo_visibility_data, paid_search_data, provider_enriched_at').eq('location_id', locationId),
     supabase.from('open_questions').select('question, category').eq('location_id', locationId).eq('status', 'open'),
     supabase.from('orb_activity').select('activity_type, description, occurred_at').eq('location_id', locationId).eq('client_visible', true).order('occurred_at', { ascending: false }).limit(10),
     supabase.from('investigations').select('question, evidence_collected, possible_explanations, confidence, status, conclusion').eq('location_id', locationId).eq('client_visible', true),
