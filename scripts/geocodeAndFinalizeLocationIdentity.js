@@ -20,8 +20,34 @@ async function geocode(address, city, state, zip) {
   const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=1`;
   const res = await fetch(url, { headers: { 'User-Agent': 'OrbGlobal-Vantage/1.0 (internal location verification)' } });
   const results = await res.json();
-  if (!results.length) return null;
-  return { lat: parseFloat(results[0].lat), lon: parseFloat(results[0].lon) };
+  if (results.length) return { lat: parseFloat(results[0].lat), lon: parseFloat(results[0].lon) };
+
+  // Real fallback: many small-business suite/unit addresses aren't in
+  // Nominatim's free dataset at that precision. Retry at street level
+  // (strip Suite/Ste/Unit #) - building-level coordinates are still
+  // useful for local-market intelligence even without unit precision.
+  const streetOnly = address.replace(/,?\s*(Suite|Ste|Unit)\s*\w+$/i, '').trim();
+  if (streetOnly !== address) {
+    const retryQuery = [streetOnly, city, state, zip].filter(Boolean).join(', ');
+    const retryUrl = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(retryQuery)}&format=json&limit=1`;
+    await sleep(1100);
+    const retryRes = await fetch(retryUrl, { headers: { 'User-Agent': 'OrbGlobal-Vantage/1.0 (internal location verification)' } });
+    const retryResults = await retryRes.json();
+    if (retryResults.length) return { lat: parseFloat(retryResults[0].lat), lon: parseFloat(retryResults[0].lon), streetLevelOnly: true };
+  }
+
+  // Final fallback: city-center coordinates, clearly marked as
+  // approximate - better than nothing for local-market SERP targeting,
+  // never presented as precise.
+  const cityQuery = [city, state, zip].filter(Boolean).join(', ');
+  if (cityQuery) {
+    await sleep(1100);
+    const cityUrl = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(cityQuery)}&format=json&limit=1`;
+    const cityRes = await fetch(cityUrl, { headers: { 'User-Agent': 'OrbGlobal-Vantage/1.0 (internal location verification)' } });
+    const cityResults = await cityRes.json();
+    if (cityResults.length) return { lat: parseFloat(cityResults[0].lat), lon: parseFloat(cityResults[0].lon), cityLevelOnly: true };
+  }
+  return null;
 }
 
 async function main() {
@@ -34,9 +60,9 @@ async function main() {
     await sleep(1100); // Nominatim rate limit: max 1 req/sec
     if (!coords) { failed++; console.log(`FAILED  ${loc.name} - could not geocode "${loc.address}, ${loc.city}"`); continue; }
     const tz = STATE_TIMEZONE[loc.state] || null;
-    console.log(`${DRY_RUN ? 'WOULD SET' : 'SET'}     ${loc.name}: lat=${coords.lat}, lon=${coords.lon}, tz=${tz}`);
+    console.log(`${DRY_RUN ? 'WOULD SET' : 'SET'}     ${loc.name}: lat=${coords.lat}, lon=${coords.lon}, tz=${tz}${coords.streetLevelOnly ? ' [street-level, no suite precision]' : ''}${coords.cityLevelOnly ? ' [CITY-LEVEL APPROXIMATE ONLY]' : ''}`);
     if (!DRY_RUN) {
-      await supabase.from('locations').update({ latitude: coords.lat, longitude: coords.lon, timezone: tz, identity_status: 'verified', identity_verification_source: 'oviond_gbp+nominatim', identity_verified_at: new Date().toISOString() }).eq('id', loc.id);
+      await supabase.from('locations').update({ latitude: coords.lat, longitude: coords.lon, timezone: tz, identity_status: coords.cityLevelOnly ? 'high_confidence' : 'verified', identity_verification_source: coords.cityLevelOnly ? 'oviond_gbp+nominatim_city_level_only' : 'oviond_gbp+nominatim', identity_verified_at: new Date().toISOString() }).eq('id', loc.id);
     }
     geocoded++;
   }
