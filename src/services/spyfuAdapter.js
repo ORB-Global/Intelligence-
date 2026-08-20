@@ -57,7 +57,7 @@ async function enrichCompetitorDomain(domain) {
       rawResponse: data, // kept for the one-location validation test only
     };
   } catch (err) {
-    return { status: 'failed', reason: err.message };
+    return { status: 'failed', reason: err.cause ? `${err.message}: ${err.cause.message || err.cause.code || JSON.stringify(err.cause)}` : err.message };
   }
 }
 
