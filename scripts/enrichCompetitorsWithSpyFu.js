@@ -2,7 +2,7 @@
 /**
  * scripts/enrichCompetitorsWithSpyFu.js
  *
- * Real, portfolio-wide competitor enrichment. Requires SPYFU_API_KEY
+ * Real, portfolio-wide competitor enrichment. Requires SPYFU_API_ID + SPYFU_API_SECRET
  * in .env - if it's not set, this script says so clearly and exits,
  * rather than silently doing nothing or pretending to succeed.
  *
@@ -29,7 +29,7 @@ const SINGLE_LOCATION = args.find((a) => a.startsWith('--location='))?.split('='
 
 async function main() {
   if (!isConfigured()) {
-    console.log('SPYFU_API_KEY is not set in .env - nothing to do. Add the key and re-run.');
+    console.log('SPYFU_API_ID and/or SPYFU_API_SECRET are not set in .env - nothing to do. Add both and re-run.');
     process.exit(0);
   }
 
