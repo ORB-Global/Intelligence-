@@ -71,3 +71,33 @@ async function enrichCompetitorDomain(domain, locationCode = 2840) {
 }
 
 module.exports = { isConfigured, enrichCompetitorDomain };
+
+/**
+ * Real competitor discovery via DataForSEO's local/Maps SERP data -
+ * no separate Places API needed. Queries a real local-intent search
+ * and extracts real business names/domains appearing in local pack
+ * results as candidate competitors.
+ */
+async function discoverLocalCompetitors(query, locationCode = 2840) {
+  if (!isConfigured()) return { status: 'requires_provider' };
+  try {
+    const res = await fetch(`${DATAFORSEO_BASE}/serp/google/maps/live/advanced`, {
+      method: 'POST',
+      headers: { Authorization: authHeader(), 'Content-Type': 'application/json' },
+      body: JSON.stringify([{ keyword: query, location_code: locationCode, language_code: 'en', depth: 10 }]),
+    });
+    if (!res.ok) return { status: 'failed', reason: `DataForSEO error ${res.status}` };
+    const data = await res.json();
+    const task = data?.tasks?.[0];
+    if (!task || task.status_code !== 20000) return { status: 'failed', reason: task?.status_message || 'unknown' };
+    const items = (task.result?.[0]?.items || []).filter((i) => i.type === 'maps_search');
+    return {
+      status: 'discovered',
+      candidates: items.slice(0, 8).map((i) => ({ name: i.title, domain: i.domain || null, address: i.address, rating: i.rating?.value || null })),
+    };
+  } catch (err) {
+    return { status: 'failed', reason: err.message };
+  }
+}
+
+module.exports.discoverLocalCompetitors = discoverLocalCompetitors;
