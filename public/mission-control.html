@@ -1084,23 +1084,31 @@
     panel.classList.remove('hidden');
     panel.innerHTML = '<p>Checking where you stand…</p>';
     try {
-      const r = await apiFetch(`/api/mc/locations/${currentLocationId}/where-you-stand`);
+      const [r, synthesis] = await Promise.all([
+        apiFetch(`/api/mc/locations/${currentLocationId}/where-you-stand`),
+        apiFetch(`/api/mc/locations/${currentLocationId}/position-synthesis`),
+      ]);
+
       const compHtml = (r.competitors || []).map(c =>
         `<div style="display:flex; justify-content:space-between; padding:0.4rem 0; border-bottom:1px solid rgba(255,255,255,0.06);"><span>${escapeHtml(c.name)}</span><span style="color:#8F98AC;">${Number(c.rankedKeywords).toLocaleString()} ranked keywords</span></div>`
       ).join('') || '<p style="color:#8F98AC; font-size:0.85rem;">No competitors identified yet.</p>';
 
-      const ownLine = r.ownRankingDataAvailable
-        ? ''
-        : `<p style="font-size:0.8rem; color:#C9A96A; font-style:italic; margin-bottom:0.8rem;">Your own site's keyword ranking hasn't been pulled yet, so this is competitor visibility only - not a full head-to-head yet.</p>`;
-
       const historyLine = r.monthsOfHistory > 0
-        ? `<p style="font-size:0.85rem; color:#C9CFDA; margin-bottom:0.8rem;">Vantage has ${r.monthsOfHistory} months of real history on file (${r.historyAvailableFrom} to ${r.historyAvailableTo}). <span style="text-decoration:underline; cursor:pointer;" onclick="askSuggested('Show me what changed over the full history you have')">Want to see how far back it goes?</span></p>`
+        ? `<p style="font-size:0.85rem; color:#C9CFDA; margin-top:1rem;">Vantage has ${r.monthsOfHistory} months of real history on file (${r.historyAvailableFrom} to ${r.historyAvailableTo}). <span style="text-decoration:underline; cursor:pointer;" onclick="askSuggested('Show me what changed over the full history you have')">Want to see how far back it goes?</span></p>`
         : '';
 
+      const sectionRow = (label, s) => `
+        <div style="margin-bottom:0.9rem;">
+          <div style="font-size:0.78rem; text-transform:uppercase; letter-spacing:0.05em; color:#8F98AC;">${label}: <span style="color:#E8C481;">${escapeHtml(s.status)}</span></div>
+          <div style="font-size:0.88rem; color:#EBEDF2; margin-top:0.2rem;">${escapeHtml(s.text)}</div>
+        </div>`;
+
       panel.innerHTML = `
-        <div style="font-weight:600; font-size:0.95rem; margin-bottom:0.6rem; color:#F0F2F5;">Where You Stand</div>
-        ${ownLine}
-        <div style="font-size:0.78rem; text-transform:uppercase; letter-spacing:0.05em; color:#8F98AC; margin-bottom:0.4rem;">Competitors nearby</div>
+        <div style="font-weight:600; font-size:0.95rem; margin-bottom:0.9rem; color:#F0F2F5;">Where You Stand</div>
+        ${sectionRow('Against yourself', synthesis.yourself)}
+        ${sectionRow('Against your market', synthesis.market)}
+        ${sectionRow('Against competitors', synthesis.competition)}
+        <div style="font-size:0.78rem; text-transform:uppercase; letter-spacing:0.05em; color:#8F98AC; margin:1rem 0 0.4rem;">Competitors nearby</div>
         ${compHtml}
         ${historyLine}
       `;

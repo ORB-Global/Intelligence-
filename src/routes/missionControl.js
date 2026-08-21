@@ -663,6 +663,17 @@ router.post('/locations/:id/goal', async (req, res) => {
   return res.json({ success: true, data });
 });
 
+router.get('/locations/:id/position-synthesis', async (req, res) => {
+  const { id: locationId } = req.params;
+  const { data: location, error: locError } = await req.supabase.from('locations').select('id').eq('id', locationId).maybeSingle();
+  if (locError) return res.status(500).json({ success: false, error: { message: locError.message } });
+  if (!location) return res.status(404).json({ success: false, error: { message: 'Location not found or not accessible.' } });
+
+  const { data, error } = await supabaseService.rpc('get_position_synthesis', { p_location_id: locationId });
+  if (error) return res.status(500).json({ success: false, error: { message: error.message } });
+  return res.json({ success: true, data });
+});
+
 router.get('/locations/:id/where-you-stand', async (req, res) => {
   const { id: locationId } = req.params;
   const { data: location, error: locError } = await req.supabase.from('locations').select('id').eq('id', locationId).maybeSingle();
