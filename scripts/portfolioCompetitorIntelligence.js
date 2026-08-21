@@ -34,7 +34,7 @@ async function main() {
 
   for (const loc of locations) {
     const { data: profile } = await supabase.from('market_profiles').select('primary_market, competitor_search_terms').eq('location_id', loc.id).maybeSingle();
-    const { data: existingCompetitors } = await supabase.from('competitors').select('id, domain, provider_enriched_at').eq('location_id', loc.id);
+    const { data: existingCompetitors } = await supabase.from('competitors').select('id, domain, provider_enriched_at, category').eq('location_id', loc.id);
 
     // Real, tenant-derived query - no BoxDrop-specific string in the
     // code itself. Falls back to a generic term only when the tenant
@@ -64,9 +64,13 @@ async function main() {
       }
     }
 
-    // Discover only if no real competitors exist yet for this location
-    console.log(`[debug] ${loc.name}: existingCompetitors=${existingCompetitors?.length}, primary_market=${JSON.stringify(profile?.primary_market)}`);
-    if ((!existingCompetitors || existingCompetitors.length === 0) && profile?.primary_market) {
+    // Discover only if no REAL competitors exist yet - explicitly
+    // excludes the self-listing row, which should never count as a
+    // competitor and would otherwise silently block discovery on any
+    // run after the first self-enrichment.
+    const realExistingCompetitors = (existingCompetitors || []).filter(c => c.category !== 'self');
+    console.log(`[debug] ${loc.name}: existingCompetitors=${existingCompetitors?.length} (real, non-self=${realExistingCompetitors.length}), primary_market=${JSON.stringify(profile?.primary_market)}`);
+    if (realExistingCompetitors.length === 0 && profile?.primary_market) {
       const result = await discoverLocalCompetitors(`${searchTerms} near ${profile.primary_market}`);
       realApiCallCount++;
       if (result.status === 'discovered') {
