@@ -87,6 +87,17 @@ async function main() {
     metrics: ['impressions', 'clicks', 'spend'], dimensions: ['DATE'], data_view: 'CAMPAIGNS',
     advanced: { attribution: 'use_unified_attribution_setting' },
   });
+
+  await tryQuery('Meta Ads - CAMPAIGNS view WITH campaign as a dimension (not just a view)', {
+    datasource_id: 'fb-ads', client_id: EASLEY_OVIOND_CLIENT_ID, date_range: dateRange,
+    metrics: ['impressions', 'clicks', 'spend'], dimensions: ['DATE', 'CAMPAIGN_NAME'], data_view: 'CAMPAIGNS',
+    advanced: { attribution: 'use_unified_attribution_setting' },
+  });
+
+  await tryQuery('Facebook POSTS - batch of plausible real metric names', {
+    datasource_id: 'fb-pg', client_id: EASLEY_OVIOND_CLIENT_ID, date_range: dateRange,
+    metrics: ['reach', 'engagement', 'likes', 'comments', 'shares', 'post_id', 'permalink_url', 'message', 'created_time'], dimensions: ['DATE'], data_view: 'POSTS',
+  });
 }
 
 main().catch((e) => { console.error('Fatal:', e); process.exit(1); });
