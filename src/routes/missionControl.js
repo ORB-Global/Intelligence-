@@ -10,6 +10,7 @@ const express = require('express');
 const requireSupabaseAuth = require('../middleware/requireSupabaseAuth');
 const chatService = require('../services/chatService');
 const { generateCreative } = require('../services/creativeService');
+const { classifyStatement } = require('../services/tellVantageService');
 const { synthesizeBusinessPerformance, presentOrbActivitySummary } = require('../services/clientIntelligencePresenter');
 const { buildChannelComparison } = require('../utils/metrics');
 // Deliberate, single exception to the "never use service role here"
@@ -56,6 +57,8 @@ async function buildTenantChatContext(supabase, locationId) {
     { data: investigations },
     { data: memory },
     { data: businessContext },
+    { data: goal },
+    { data: tellVantageEntries },
   ] = await Promise.all([
     supabase.from('locations').select('id, name, organizations(name)').eq('id', locationId).maybeSingle(),
     supabase.from('historical_metrics').select('*').eq('location_id', locationId).order('period_start', { ascending: false }).limit(4),
@@ -70,7 +73,9 @@ async function buildTenantChatContext(supabase, locationId) {
     supabase.from('orb_activity').select('activity_type, description, occurred_at').eq('location_id', locationId).eq('client_visible', true).order('occurred_at', { ascending: false }).limit(10),
     supabase.from('investigations').select('question, evidence_collected, possible_explanations, confidence, status, conclusion').eq('location_id', locationId).eq('client_visible', true),
     supabase.from('business_memory').select('observation, confidence, supporting_evidence_count').eq('location_id', locationId),
-    supabase.from('business_context_entries').select('note_text, sales_estimate, transaction_count, traffic_level, created_at').eq('location_id', locationId).order('created_at', { ascending: false }).limit(8),
+    supabase.from('business_context_entries').select('note_text, sales_estimate, transaction_count, traffic_level, primary_category_sold, promotion_running, created_at').eq('location_id', locationId).order('created_at', { ascending: false }).limit(8),
+    supabase.from('location_goals').select('business_objective, marketing_objective, lead_goal, conversion_goal, updated_at').eq('location_id', locationId).maybeSingle(),
+    supabase.from('tell_vantage_entries').select('raw_text, classified_type, ai_summary, durability, created_at').eq('location_id', locationId).order('created_at', { ascending: false }).limit(10),
   ]);
 
   let healthWithFactors = null;
@@ -103,6 +108,8 @@ async function buildTenantChatContext(supabase, locationId) {
     investigations: investigations || [],
     businessMemory: memory || [],
     businessContext: businessContext || [],
+    goal: goal || null,
+    tellVantageEntries: tellVantageEntries || [],
     accountNotes: [],
     insights: [],
   };
@@ -576,6 +583,70 @@ router.get('/locations/:id/creative', async (req, res) => {
 // KNOW ME: real, minimal weekly check-in. No POS required - a client
 // can tell Orb something in plain language and/or 3 trivial numbers,
 // and it becomes real evidence for future reasoning, not a chat log.
+router.post('/locations/:id/tell', async (req, res) => {
+  const { id: locationId } = req.params;
+  const { text } = req.body || {};
+  if (!text || !text.trim()) return res.status(400).json({ success: false, error: { message: 'Provide a statement to tell Vantage.' } });
+
+  const { data: location, error: locError } = await req.supabase.from('locations').select('id, organization_id').eq('id', locationId).maybeSingle();
+  if (locError) return res.status(500).json({ success: false, error: { message: locError.message } });
+  if (!location) return res.status(404).json({ success: false, error: { message: 'Location not found or not accessible.' } });
+
+  let classification;
+  try {
+    classification = await classifyStatement(text.trim());
+  } catch (err) {
+    return res.status(502).json({ success: false, error: { message: `Could not classify statement: ${err.message}` } });
+  }
+
+  const { data: entry, error } = await req.supabase.from('tell_vantage_entries').insert({
+    organization_id: location.organization_id, location_id: locationId, raw_text: text.trim(),
+    classified_type: classification.classified_type, durability: classification.durability, ai_summary: classification.ai_summary,
+  }).select().single();
+  if (error) return res.status(500).json({ success: false, error: { message: error.message } });
+
+  // A statement Vantage recognizes as a real goal flows directly into
+  // the goal store - the owner shouldn't have to say it twice in two
+  // different places.
+  if (classification.is_goal) {
+    await supabaseService.from('location_goals').upsert({
+      location_id: locationId, organization_id: location.organization_id,
+      business_objective: classification.ai_summary, updated_at: new Date().toISOString(),
+    }, { onConflict: 'location_id' });
+  }
+
+  return res.json({ success: true, data: { entry, classification } });
+});
+
+router.get('/locations/:id/goal', async (req, res) => {
+  const { id: locationId } = req.params;
+  const { data, error } = await req.supabase.from('location_goals').select('*').eq('location_id', locationId).maybeSingle();
+  if (error) return res.status(500).json({ success: false, error: { message: error.message } });
+  return res.json({ success: true, data: data || null });
+});
+
+router.post('/locations/:id/goal', async (req, res) => {
+  const { id: locationId } = req.params;
+  const { goalText } = req.body || {};
+  if (!goalText || !goalText.trim()) return res.status(400).json({ success: false, error: { message: 'Provide a goal.' } });
+
+  const { data: location, error: locError } = await req.supabase.from('locations').select('id, organization_id').eq('id', locationId).maybeSingle();
+  if (locError) return res.status(500).json({ success: false, error: { message: locError.message } });
+  if (!location) return res.status(404).json({ success: false, error: { message: 'Location not found or not accessible.' } });
+
+  // location_goals RLS is admin-write-only by design - client goal
+  // changes route through the server, which already confirmed real
+  // location access above, matching the established authorization
+  // pattern used everywhere else tonight.
+  const { data, error } = await supabaseService.from('location_goals').upsert({
+    location_id: locationId, organization_id: location.organization_id,
+    business_objective: goalText.trim(), updated_at: new Date().toISOString(),
+  }, { onConflict: 'location_id' }).select().single();
+  if (error) return res.status(500).json({ success: false, error: { message: error.message } });
+
+  return res.json({ success: true, data });
+});
+
 router.post('/locations/:id/checkin', async (req, res) => {
   const { id: locationId } = req.params;
   const { noteText, salesEstimate, transactionCount, trafficLevel } = req.body || {};

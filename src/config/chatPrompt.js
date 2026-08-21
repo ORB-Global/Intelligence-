@@ -73,9 +73,18 @@ function buildChatUserPrompt({
   investigations,
   businessMemory,
   businessContext,
+  goal,
+  tellVantageEntries,
 }) {
   let prompt = `SELECTED CLIENT
 ${JSON.stringify(client, null, 2)}`;
+
+  if (goal !== undefined) {
+    prompt += fmtOptionalSection('CURRENT BUSINESS GOAL (reason in relation to this - a technically interesting signal that does not affect this goal may not deserve attention)', goal, '(no goal set yet - if relevant, you may ask the owner what they are trying to accomplish right now)');
+  }
+  if (tellVantageEntries !== undefined) {
+    prompt += fmtOptionalSection('WHAT THE OWNER HAS TOLD VANTAGE (real, owner-reported - durability shows how long each should be treated as relevant)', tellVantageEntries && tellVantageEntries.length ? tellVantageEntries : null, '(nothing reported yet)');
+  }
 
   if (dateRange) {
     prompt += `\n\nSELECTED DATE RANGE\n${dateRange.start} to ${dateRange.end}`;
