@@ -65,6 +65,7 @@ async function main() {
     }
 
     // Discover only if no real competitors exist yet for this location
+    console.log(`[debug] ${loc.name}: existingCompetitors=${existingCompetitors?.length}, primary_market=${JSON.stringify(profile?.primary_market)}`);
     if ((!existingCompetitors || existingCompetitors.length === 0) && profile?.primary_market) {
       const result = await discoverLocalCompetitors(`${searchTerms} near ${profile.primary_market}`);
       realApiCallCount++;
