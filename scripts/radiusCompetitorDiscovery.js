@@ -30,7 +30,13 @@ async function main() {
     const { count: existingCount } = await supabase.from('competitors').select('id', { count: 'exact', head: true }).eq('location_id', loc.id);
     if ((existingCount || 0) >= 2) { skippedHasCompetitors++; continue; }
 
-    const result = await discoverCompetitorsNearCoordinates('mattress and furniture store', loc.latitude, loc.longitude, RADIUS_MILES);
+    // Real, tenant-derived search terms - no hardcoded category in
+    // the code itself, matches the same fix in
+    // portfolioCompetitorIntelligence.js.
+    const { data: profile } = await supabase.from('market_profiles').select('competitor_search_terms').eq('location_id', loc.id).maybeSingle();
+    const searchTerms = profile?.competitor_search_terms || 'local business';
+
+    const result = await discoverCompetitorsNearCoordinates(searchTerms, loc.latitude, loc.longitude, RADIUS_MILES);
     await sleep(1200); // real rate-limit courtesy between calls
 
     if (result.status !== 'discovered') {

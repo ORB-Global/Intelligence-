@@ -62,7 +62,7 @@ async function enrichCompetitorDomain(domain, locationCode = 2840) {
       seoVisibilityData: { totalRankedKeywords: totalKeywords, sampleKeywordCount: items.length, estimatedMonthlySearchVolume: estimatedTraffic },
       paidSearchData: null, // requires the Google Ads Advertisers endpoint - future work
       keywordOverlapData: null, // requires a second, comparative call against the client's own domain - future work
-      topKeywords: items.slice(0, 10).map((i) => ({ keyword: i.keyword_data?.keyword, position: i.ranked_serp_element?.serp_item?.rank_absolute, searchVolume: i.keyword_data?.keyword_info?.search_volume })),
+      allKeywords: items.map((i) => ({ keyword: i.keyword_data?.keyword, position: i.ranked_serp_element?.serp_item?.rank_absolute, searchVolume: i.keyword_data?.keyword_info?.search_volume })),
       observedAt: new Date().toISOString(),
     };
   } catch (err) {

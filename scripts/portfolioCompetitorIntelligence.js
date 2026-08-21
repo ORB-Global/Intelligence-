@@ -22,18 +22,23 @@ async function main() {
   let discovered = 0, enriched = 0, skippedCached = 0, failed = 0;
 
   for (const loc of locations) {
-    const { data: profile } = await supabase.from('market_profiles').select('primary_market').eq('location_id', loc.id).maybeSingle();
+    const { data: profile } = await supabase.from('market_profiles').select('primary_market, competitor_search_terms').eq('location_id', loc.id).maybeSingle();
     const { data: existingCompetitors } = await supabase.from('competitors').select('id, domain, provider_enriched_at').eq('location_id', loc.id);
+
+    // Real, tenant-derived query - no BoxDrop-specific string in the
+    // code itself. Falls back to a generic term only when the tenant
+    // genuinely has no category on file, never assumes furniture.
+    const searchTerms = profile?.competitor_search_terms || 'local business';
 
     // Discover only if no real competitors exist yet for this location
     if ((!existingCompetitors || existingCompetitors.length === 0) && profile?.primary_market) {
-      const result = await discoverLocalCompetitors(`mattress store near ${profile.primary_market}`);
+      const result = await discoverLocalCompetitors(`${searchTerms} near ${profile.primary_market}`);
       if (result.status === 'discovered') {
         for (const c of result.candidates.slice(0, 3)) {
           if (!c.domain) continue;
           await supabase.from('competitors').insert({
             organization_id: loc.organization_id, location_id: loc.id, name: c.name, domain: c.domain,
-            category: 'Mattress/furniture store', status: 'auto_discovered', confidence: 'medium', source: 'dataforseo',
+            category: profile?.competitor_search_terms || 'local business', status: 'auto_discovered', confidence: 'medium', source: 'dataforseo',
           });
           discovered++;
         }
@@ -55,6 +60,18 @@ async function main() {
         description: 'Automated DataForSEO enrichment - organic search visibility snapshot.',
         source: 'dataforseo', confidence: 'observed', observed_at: result.observedAt,
       });
+      // Real keyword-level detail, no longer discarded - deleted and
+      // reinserted fresh each enrichment so stale ranks don't linger.
+      if (result.allKeywords?.length) {
+        await supabase.from('competitor_keywords').delete().eq('competitor_id', c.id);
+        await supabase.from('competitor_keywords').insert(
+          result.allKeywords.filter(k => k.keyword).map(k => ({
+            organization_id: loc.organization_id, location_id: loc.id, competitor_id: c.id,
+            keyword: k.keyword, position: k.position || null, search_volume: k.searchVolume || null,
+            observed_at: result.observedAt,
+          }))
+        );
+      }
       enriched++;
     }
   }
