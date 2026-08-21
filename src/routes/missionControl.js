@@ -207,9 +207,12 @@ router.get('/locations/:id', async (req, res) => {
   } catch (e) { /* non-fatal - the client-side fallback text still works */ }
 
   let nextAction = null;
+  let nextMove = null;
   try {
     const { data: actionData } = await supabaseService.rpc('synthesize_next_action', { p_location_id: id });
     nextAction = actionData;
+    const { data: moveData } = await supabaseService.rpc('determine_next_move', { p_location_id: id });
+    nextMove = moveData;
   } catch (e) { /* non-fatal */ }
 
   // Real cross-portfolio context for the top recommendation - the
@@ -241,6 +244,7 @@ router.get('/locations/:id', async (req, res) => {
       activitySummary,
       competitivePulse,
       nextAction,
+      nextMove,
       portfolioContext,
     },
 
