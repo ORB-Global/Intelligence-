@@ -15,13 +15,22 @@ const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SER
 const RADIUS_MILES = 8; // real midpoint of the requested 5-10 mile range
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
+// Real hard cap: pass specific location IDs as CLI args to restrict
+// execution to exactly those. With no args, runs against every
+// eligible location (existing default) - this is what silently ran
+// broadly before, so controlled verification MUST pass an explicit ID.
+const LOCATION_FILTER = process.argv.slice(2);
+
 async function main() {
-  const { data: locations, error: locError } = await supabase.from('locations').select('id, name, domain, organization_id, latitude, longitude')
+  let query = supabase.from('locations').select('id, name, domain, organization_id, latitude, longitude')
     .eq('active', true).not('latitude', 'is', null);
+  if (LOCATION_FILTER.length) query = query.in('id', LOCATION_FILTER);
+  const { data: locations, error: locError } = await query;
 
   if (locError) { console.error('Query failed:', locError.message); process.exit(1); }
   if (!locations) { console.error('No locations returned.'); process.exit(1); }
 
+  if (LOCATION_FILTER.length) console.log(`CONTROLLED TEST - restricted to ${locations.length} location(s): ${locations.map(l => l.name).join(', ')}\n`);
   console.log(`Locations with real coordinates: ${locations.length}\n`);
 
   let discovered = 0, skippedHasCompetitors = 0, failed = 0;
