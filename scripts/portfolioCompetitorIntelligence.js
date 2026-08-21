@@ -80,13 +80,19 @@ async function main() {
       realApiCallCount++;
       if (result.status === 'discovered') {
         console.log(`[debug] ${loc.name}: raw candidates =`, JSON.stringify(result.candidates));
-        for (const c of result.candidates.slice(0, 3)) {
-          if (!c.domain) continue;
-          await supabase.from('competitors').insert({
+        const { data: locDomainRow } = await supabase.from('locations').select('domain').eq('id', loc.id).maybeSingle();
+        const ownDomain = locDomainRow?.domain;
+        const realCandidates = result.candidates.filter(c => c.domain && c.domain !== ownDomain);
+        for (const c of realCandidates.slice(0, 3)) {
+          const { error: insertErr } = await supabase.from('competitors').insert({
             organization_id: loc.organization_id, location_id: loc.id, name: c.name, domain: c.domain,
             category: profile?.competitor_search_terms || 'local business', status: 'auto_discovered', confidence: 'medium', source: 'dataforseo',
           });
-          discovered++;
+          if (insertErr) {
+            console.log(`[debug] ${loc.name}: INSERT FAILED for ${c.name}: ${insertErr.message}`);
+          } else {
+            discovered++;
+          }
         }
       }
     }
