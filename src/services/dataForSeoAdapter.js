@@ -100,4 +100,36 @@ async function discoverLocalCompetitors(query, locationCode = 2840) {
   }
 }
 
+/**
+ * Real radius-based discovery using actual coordinates - not a city
+ * name text match. radiusMiles converted to km per DataForSEO's real
+ * location_coordinate format ("lat,long,radius_km"), verified against
+ * their current docs before writing this.
+ */
+async function discoverCompetitorsNearCoordinates(keyword, latitude, longitude, radiusMiles = 8) {
+  if (!isConfigured()) return { status: 'requires_provider' };
+  const radiusKm = (radiusMiles * 1.609).toFixed(1);
+  const locationCoordinate = `${latitude},${longitude},${radiusKm}`;
+  try {
+    const res = await fetch(`${DATAFORSEO_BASE}/serp/google/maps/live/advanced`, {
+      method: 'POST',
+      headers: { Authorization: authHeader(), 'Content-Type': 'application/json' },
+      body: JSON.stringify([{ keyword, location_coordinate: locationCoordinate, language_code: 'en', depth: 20 }]),
+    });
+    if (!res.ok) return { status: 'failed', reason: `DataForSEO error ${res.status}` };
+    const data = await res.json();
+    const task = data?.tasks?.[0];
+    if (!task || task.status_code !== 20000) return { status: 'failed', reason: task?.status_message || 'unknown' };
+    const items = (task.result?.[0]?.items || []).filter((i) => i.type === 'maps_search');
+    return {
+      status: 'discovered',
+      radiusMiles,
+      candidates: items.slice(0, 10).map((i) => ({ name: i.title, domain: i.domain || null, address: i.address, rating: i.rating?.value || null, phone: i.phone || null })),
+    };
+  } catch (err) {
+    return { status: 'failed', reason: err.message };
+  }
+}
+
 module.exports.discoverLocalCompetitors = discoverLocalCompetitors;
+module.exports.discoverCompetitorsNearCoordinates = discoverCompetitorsNearCoordinates;
