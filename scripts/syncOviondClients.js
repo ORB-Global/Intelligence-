@@ -153,12 +153,14 @@ async function saveAggregatedMetrics(location, datasourceNumericId, periodStart,
   const channel = DATASOURCE_TO_CHANNEL[datasourceNumericId];
   if (!channel || !dailyRows || !dailyRows.length) return;
 
-  let impressions = 0, clicks = 0, spend = 0, reach = 0;
+  let impressions = 0, clicks = 0, spend = 0, reach = 0, conversions = 0, conversionsValue = 0;
   for (const row of dailyRows) {
     impressions += Number(row.impressions || 0);
     clicks += Number(row.clicks || 0);
     spend += Number(row.spend ?? row.cost_micros ?? 0);
     reach += Number(row.reach || 0);
+    conversions += Number(row.conversions || 0);
+    conversionsValue += Number(row.conversions_value || 0);
   }
   const ctr = impressions > 0 ? (clicks / impressions) * 100 : null;
   const cpc = clicks > 0 ? spend / clicks : null;
@@ -187,6 +189,9 @@ const { error: deleteError } = await supabase
     clicks,
     ctr,
     cpc,
+    conversions: conversions || null,
+    reported_sales: conversionsValue || null,
+    revenue_source: conversionsValue ? 'google_ads_conversion_value' : null,
   });
   if (insertError) {
     console.error('Failed to insert historical_metrics row:', insertError.message);
@@ -204,7 +209,7 @@ async function pullMetricsForDatasource(location, oviondClientId, datasourceNume
           client_id: oviondClientId,
           date_range: { current_start: periodStart, current_end: periodEnd },
           metrics: datasourceNumericId === 'gadw'
-            ? ['impressions', 'clicks', 'ctr', 'cost_micros', 'average_cpc']
+            ? ['impressions', 'clicks', 'ctr', 'cost_micros', 'average_cpc', 'conversions', 'conversions_value']
             : ['impressions', 'clicks', 'ctr', 'spend', 'reach', 'cpc'],
           dimensions: ['DATE'],
           data_view: 'ACCOUNT',
