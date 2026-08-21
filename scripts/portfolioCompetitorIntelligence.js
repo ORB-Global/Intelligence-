@@ -47,7 +47,9 @@ async function main() {
     if (LOCATION_FILTER.length) {
       const { data: locFull } = await supabase.from('locations').select('domain').eq('id', loc.id).maybeSingle();
       if (locFull?.domain) {
-        const { data: selfRow } = await supabase.from('competitors').select('id').eq('location_id', loc.id).eq('category', 'self').maybeSingle();
+        const { data: selfRow } = await supabase.from('competitors').select('id, provider_enriched_at').eq('location_id', loc.id).eq('category', 'self').maybeSingle();
+        const selfIsFresh = selfRow?.provider_enriched_at && (Date.now() - new Date(selfRow.provider_enriched_at).getTime()) < 86400000; // 1 day, tight for this debug cycle
+        if (!selfIsFresh) {
         const selfResult = await enrichCompetitorDomain(locFull.domain);
         realApiCallCount++;
         if (selfResult.status === 'enriched') {
@@ -60,6 +62,9 @@ async function main() {
               seo_visibility_data: selfResult.seoVisibilityData, provider_enriched_at: selfResult.observedAt,
             });
           }
+        }
+        } else {
+          console.log(`[debug] ${loc.name}: self-enrichment skipped, already fresh`);
         }
       }
     }
@@ -74,6 +79,7 @@ async function main() {
       const result = await discoverLocalCompetitors(`${searchTerms} near ${profile.primary_market}`);
       realApiCallCount++;
       if (result.status === 'discovered') {
+        console.log(`[debug] ${loc.name}: raw candidates =`, JSON.stringify(result.candidates));
         for (const c of result.candidates.slice(0, 3)) {
           if (!c.domain) continue;
           await supabase.from('competitors').insert({
