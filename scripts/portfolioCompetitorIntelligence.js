@@ -15,10 +15,21 @@ const { isConfigured, enrichCompetitorDomain, discoverLocalCompetitors } = requi
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false } });
 const CACHE_DAYS = 30;
 
+// Real hard cap for the controlled test: pass specific location IDs
+// as CLI args, e.g. `node portfolioCompetitorIntelligence.js <id1> <id2> <id3>`.
+// With no args, runs portfolio-wide (unchanged default behavior).
+const LOCATION_FILTER = process.argv.slice(2);
+let realApiCallCount = 0;
+
 async function main() {
   if (!isConfigured()) { console.log('DataForSEO not configured.'); process.exit(0); }
 
-  const { data: locations } = await supabase.from('locations').select('id, name, organization_id').eq('active', true);
+  let query = supabase.from('locations').select('id, name, organization_id').eq('active', true);
+  if (LOCATION_FILTER.length) query = query.in('id', LOCATION_FILTER);
+  const { data: locations } = await query;
+
+  if (LOCATION_FILTER.length) console.log(`CONTROLLED TEST - restricted to ${locations.length} location(s): ${locations.map(l => l.name).join(', ')}\n`);
+
   let discovered = 0, enriched = 0, skippedCached = 0, failed = 0;
 
   for (const loc of locations) {
@@ -30,9 +41,33 @@ async function main() {
     // genuinely has no category on file, never assumes furniture.
     const searchTerms = profile?.competitor_search_terms || 'local business';
 
+    // Controlled-test only: self-enrich this location's own domain
+    // too, so Where You Stand has real data on both sides to compare
+    // - not just competitor data.
+    if (LOCATION_FILTER.length) {
+      const { data: locFull } = await supabase.from('locations').select('domain').eq('id', loc.id).maybeSingle();
+      if (locFull?.domain) {
+        const { data: selfRow } = await supabase.from('competitors').select('id').eq('location_id', loc.id).eq('category', 'self').maybeSingle();
+        const selfResult = await enrichCompetitorDomain(locFull.domain);
+        realApiCallCount++;
+        if (selfResult.status === 'enriched') {
+          if (selfRow) {
+            await supabase.from('competitors').update({ seo_visibility_data: selfResult.seoVisibilityData, provider_enriched_at: selfResult.observedAt }).eq('id', selfRow.id);
+          } else {
+            await supabase.from('competitors').insert({
+              organization_id: loc.organization_id, location_id: loc.id, name: loc.name, domain: locFull.domain,
+              category: 'self', status: 'admin_added', confidence: 'observed', source: 'dataforseo',
+              seo_visibility_data: selfResult.seoVisibilityData, provider_enriched_at: selfResult.observedAt,
+            });
+          }
+        }
+      }
+    }
+
     // Discover only if no real competitors exist yet for this location
     if ((!existingCompetitors || existingCompetitors.length === 0) && profile?.primary_market) {
       const result = await discoverLocalCompetitors(`${searchTerms} near ${profile.primary_market}`);
+      realApiCallCount++;
       if (result.status === 'discovered') {
         for (const c of result.candidates.slice(0, 3)) {
           if (!c.domain) continue;
@@ -52,6 +87,7 @@ async function main() {
         skippedCached++; continue;
       }
       const result = await enrichCompetitorDomain(c.domain);
+      realApiCallCount++;
       if (result.status !== 'enriched') { failed++; continue; }
       await supabase.from('competitors').update({ seo_visibility_data: result.seoVisibilityData, provider_enriched_at: result.observedAt }).eq('id', c.id);
       await supabase.from('competitor_observations').insert({
@@ -76,5 +112,6 @@ async function main() {
     }
   }
   console.log(`Discovered: ${discovered}, Enriched: ${enriched}, Skipped (cached): ${skippedCached}, Failed: ${failed}`);
+  console.log(`Real DataForSEO API calls made: ${realApiCallCount} (per-call cost not exposed in API responses - check your DataForSEO dashboard for actual billing)`);
 }
 main().catch((e) => { console.error(e); process.exit(1); });
