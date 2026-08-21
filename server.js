@@ -1,5 +1,18 @@
 require('dotenv').config();
 
+// Real safety net: log any unhandled rejection/exception loudly
+// instead of it disappearing silently or crashing the process
+// without a trace. Does not by itself fix a hung request - the
+// per-route asyncHandler wrapper in missionControl.js is what
+// guarantees a response - this just makes any remaining crash
+// visible in the logs.
+process.on('unhandledRejection', (reason) => {
+  console.error('[unhandledRejection]', reason);
+});
+process.on('uncaughtException', (err) => {
+  console.error('[uncaughtException]', err);
+});
+
 const path = require('path');
 const express = require('express');
 const cors = require('cors');

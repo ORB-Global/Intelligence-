@@ -9,6 +9,26 @@
 const express = require('express');
 const requireSupabaseAuth = require('../middleware/requireSupabaseAuth');
 const chatService = require('../services/chatService');
+
+// Bounded-failure guarantee: any unhandled rejection inside a route
+// wrapped with this returns a real, fast error response instead of
+// letting the client's fetch hang forever. There is no global Express
+// error-handling middleware in this app, so an unhandled async
+// rejection previously meant the request never got a response at
+// all - confirmed as the real root cause of the infinite-loading
+// production incident.
+function asyncHandler(fn) {
+  return async (req, res) => {
+    try {
+      await fn(req, res);
+    } catch (err) {
+      console.error(`[${req.method} ${req.originalUrl}] Unhandled error:`, err);
+      if (!res.headersSent) {
+        res.status(500).json({ success: false, error: { message: `Server error: ${err.message}` } });
+      }
+    }
+  };
+}
 const { generateCreative } = require('../services/creativeService');
 const { classifyStatement } = require('../services/tellVantageService');
 const { synthesizeBusinessPerformance, presentOrbActivitySummary } = require('../services/clientIntelligencePresenter');
@@ -144,7 +164,7 @@ router.get('/organizations/:id', async (req, res) => {
 
 router.get('/locations/:id', async (req, res) => {
   const { id } = req.params;
-
+  try {
   const [
     { data: location, error: locError },
     { data: connections, error: connError },
@@ -248,6 +268,7 @@ router.get('/locations/:id', async (req, res) => {
       memory: memory || [],
       investigations: investigations || [],
       thesis: thesis || null,
+      goal: goal || null,
       briefing,
       performance,
       activitySummary,
@@ -258,6 +279,12 @@ router.get('/locations/:id', async (req, res) => {
     },
 
   });
+  } catch (err) {
+    // The bounded-failure guarantee: whatever goes wrong here, the
+    // client gets a real, fast error response - never a hang.
+    console.error(`[locations/${id}] Unhandled error:`, err);
+    return res.status(500).json({ success: false, error: { message: `Server error loading location: ${err.message}` } });
+  }
 });
 
 /**
@@ -663,7 +690,7 @@ router.post('/locations/:id/goal', async (req, res) => {
   return res.json({ success: true, data });
 });
 
-router.get('/locations/:id/position-synthesis', async (req, res) => {
+router.get('/locations/:id/position-synthesis', asyncHandler(async (req, res) => {
   const { id: locationId } = req.params;
   const { data: location, error: locError } = await req.supabase.from('locations').select('id').eq('id', locationId).maybeSingle();
   if (locError) return res.status(500).json({ success: false, error: { message: locError.message } });
@@ -672,9 +699,9 @@ router.get('/locations/:id/position-synthesis', async (req, res) => {
   const { data, error } = await supabaseService.rpc('get_position_synthesis', { p_location_id: locationId });
   if (error) return res.status(500).json({ success: false, error: { message: error.message } });
   return res.json({ success: true, data });
-});
+}));
 
-router.get('/locations/:id/where-you-stand', async (req, res) => {
+router.get('/locations/:id/where-you-stand', asyncHandler(async (req, res) => {
   const { id: locationId } = req.params;
   const { data: location, error: locError } = await req.supabase.from('locations').select('id').eq('id', locationId).maybeSingle();
   if (locError) return res.status(500).json({ success: false, error: { message: locError.message } });
@@ -683,9 +710,9 @@ router.get('/locations/:id/where-you-stand', async (req, res) => {
   const { data, error } = await supabaseService.rpc('get_where_you_stand', { p_location_id: locationId });
   if (error) return res.status(500).json({ success: false, error: { message: error.message } });
   return res.json({ success: true, data });
-});
+}));
 
-router.get('/locations/:id/business-model', async (req, res) => {
+router.get('/locations/:id/business-model', asyncHandler(async (req, res) => {
   const { id: locationId } = req.params;
   const { data: location, error: locError } = await req.supabase.from('locations').select('id').eq('id', locationId).maybeSingle();
   if (locError) return res.status(500).json({ success: false, error: { message: locError.message } });
@@ -694,9 +721,9 @@ router.get('/locations/:id/business-model', async (req, res) => {
   const { data, error } = await supabaseService.rpc('get_business_model', { p_location_id: locationId });
   if (error) return res.status(500).json({ success: false, error: { message: error.message } });
   return res.json({ success: true, data });
-});
+}));
 
-router.get('/locations/:id/unified-activity', async (req, res) => {
+router.get('/locations/:id/unified-activity', asyncHandler(async (req, res) => {
   const { id: locationId } = req.params;
   const { data: location, error: locError } = await req.supabase.from('locations').select('id').eq('id', locationId).maybeSingle();
   if (locError) return res.status(500).json({ success: false, error: { message: locError.message } });
@@ -705,9 +732,9 @@ router.get('/locations/:id/unified-activity', async (req, res) => {
   const { data, error } = await supabaseService.rpc('get_unified_activity', { p_location_id: locationId, p_limit: 15 });
   if (error) return res.status(500).json({ success: false, error: { message: error.message } });
   return res.json({ success: true, data });
-});
+}));
 
-router.post('/open-questions/:id/answer', async (req, res) => {
+router.post('/open-questions/:id/answer', asyncHandler(async (req, res) => {
   const { id: questionId } = req.params;
   const { answer } = req.body || {};
   if (!answer || !answer.trim()) return res.status(400).json({ success: false, error: { message: 'Provide an answer.' } });
@@ -719,9 +746,9 @@ router.post('/open-questions/:id/answer', async (req, res) => {
   const { data, error } = await supabaseService.rpc('resolve_open_question', { p_question_id: questionId, p_answer: answer.trim() });
   if (error) return res.status(500).json({ success: false, error: { message: error.message } });
   return res.json({ success: true, data });
-});
+}));
 
-router.post('/investigations/:id/seen', async (req, res) => {
+router.post('/investigations/:id/seen', asyncHandler(async (req, res) => {
   const { id: investigationId } = req.params;
   const { data: inv, error: checkErr } = await req.supabase.from('investigations').select('id, location_id').eq('id', investigationId).maybeSingle();
   if (checkErr) return res.status(500).json({ success: false, error: { message: checkErr.message } });
@@ -730,9 +757,9 @@ router.post('/investigations/:id/seen', async (req, res) => {
   const { data, error } = await supabaseService.rpc('mark_investigation_seen', { p_investigation_id: investigationId });
   if (error) return res.status(500).json({ success: false, error: { message: error.message } });
   return res.json({ success: true, data });
-});
+}));
 
-router.get('/locations/:id/brief', async (req, res) => {
+router.get('/locations/:id/brief', asyncHandler(async (req, res) => {
   const { id: locationId } = req.params;
   const { data: location, error: locError } = await req.supabase.from('locations').select('id').eq('id', locationId).maybeSingle();
   if (locError) return res.status(500).json({ success: false, error: { message: locError.message } });
@@ -741,7 +768,7 @@ router.get('/locations/:id/brief', async (req, res) => {
   const { data, error } = await supabaseService.rpc('compose_vantage_brief', { p_location_id: locationId });
   if (error) return res.status(500).json({ success: false, error: { message: error.message } });
   return res.json({ success: true, data });
-});
+}));
 
 router.post('/locations/:id/checkin', async (req, res) => {
   const { id: locationId } = req.params;
