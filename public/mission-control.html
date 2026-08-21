@@ -535,11 +535,11 @@
       // presented differently, because they ARE different, not
       // variations of one template.
       const moveLabels = {
-        INVESTIGATE: 'Orb is investigating',
-        RECOMMEND: 'Orb recommends',
-        WATCH: "Orb is watching this",
-        ASK: 'Orb needs one thing from you',
-        DO_NOTHING: nextMove?.detail ? 'Nothing needs your attention' : "Orb is still learning",
+        INVESTIGATE: 'Vantage is investigating',
+        RECOMMEND: 'Vantage recommends',
+        WATCH: "Vantage is watching this",
+        ASK: 'Vantage needs one thing from you',
+        DO_NOTHING: nextMove?.detail ? 'Nothing needs your attention' : "Vantage is still learning",
       };
       if (nextMove) {
         // Return-visit recap: same investigation, already seen -
@@ -607,13 +607,13 @@
         <div class="brain-hero-top">
           <div class="brain-hero-text">
             <div class="orb-greeting">${timeGreeting}, ${escapeHtml(location.name)}.</div>
-            ${goal?.business_objective ? `<div style="font-size:0.8rem; color:#8F98AC; margin-bottom:0.9rem; cursor:pointer;" onclick="editGoal()">Working toward: <span style="color:#C9A96A;">${escapeHtml(goal.business_objective)}</span> <span style="opacity:0.5;">(edit)</span></div>` : `<div style="font-size:0.8rem; color:#8F98AC; margin-bottom:0.9rem; cursor:pointer;" onclick="editGoal()">No current goal set - <span style="text-decoration:underline;">tell Orb what you're working toward</span></div>`}
+            ${goal?.business_objective ? `<div style="font-size:0.8rem; color:#8F98AC; margin-bottom:0.9rem; cursor:pointer;" onclick="editGoal()">Working toward: <span style="color:#C9A96A;">${escapeHtml(goal.business_objective)}</span> <span style="opacity:0.5;">(edit)</span></div>` : `<div style="font-size:0.8rem; color:#8F98AC; margin-bottom:0.9rem; cursor:pointer;" onclick="editGoal()">No current goal set - <span style="text-decoration:underline;">tell Vantage what you're working toward</span></div>`}
             <div class="orb-thread">
               ${threadMessages.map((m, i) => `<div class="orb-msg ${m.weight === 'minor' ? 'minor' : ''} ${m.weight === 'dominant' ? 'dominant' : ''} ${m.tier ? 'tier-'+m.tier : ''}" style="animation-delay:${i*0.06}s;">
                 ${m.label ? `<div class="orb-msg-label">${escapeHtml(m.label)}</div>` : ''}
                 <div class="orb-msg-text">${escapeHtml(m.text)}</div>
                 ${m.subtext ? `<div style="margin-top:0.4rem; font-size:0.78rem; color:#C9A96A; font-style:italic;">${escapeHtml(m.subtext)}</div>` : ''}
-                ${m.recId ? `<div style="margin-top:0.5rem; display:flex; align-items:center; gap:0.5rem;"><span style="font-size:0.72rem; color:#8F98AC;">Was Orb right about this?</span><button class="command-option" style="padding:0.15rem 0.55rem; font-size:0.76rem;" onclick="submitRecFeedback('${m.recId}', true, this)">👍</button><button class="command-option" style="padding:0.15rem 0.55rem; font-size:0.76rem;" onclick="submitRecFeedback('${m.recId}', false, this)">👎</button></div>` : ''}
+                ${m.recId ? `<div style="margin-top:0.5rem; display:flex; align-items:center; gap:0.5rem;"><span style="font-size:0.72rem; color:#8F98AC;">Was Vantage right about this?</span><button class="command-option" style="padding:0.15rem 0.55rem; font-size:0.76rem;" onclick="submitRecFeedback('${m.recId}', true, this)">👍</button><button class="command-option" style="padding:0.15rem 0.55rem; font-size:0.76rem;" onclick="submitRecFeedback('${m.recId}', false, this)">👎</button></div>` : ''}
                 ${m.askQuestionId ? `<div style="margin-top:0.6rem; display:flex; gap:0.5rem;"><input type="text" id="askAnswerInput" placeholder="Your answer…" style="flex:1; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.15); border-radius:8px; padding:0.5rem 0.7rem; color:#EBEDF2; font-size:0.82rem;" onkeydown="if(event.key==='Enter') submitAskAnswer('${m.askQuestionId}', this)"><button class="command-option" onclick="submitAskAnswer('${m.askQuestionId}', document.getElementById('askAnswerInput'))">Send</button></div>` : ''}
               </div>`).join('')}
             </div>
@@ -628,7 +628,7 @@
             </div>
 
             <div class="reply-box">
-              <input type="text" id="orbReplyInput" placeholder="Ask Orb a question, or tell it something…" onkeydown="if(event.key==='Enter') sendOrbReply()">
+              <input type="text" id="orbReplyInput" placeholder="Ask Vantage a question, or tell it something…" onkeydown="if(event.key==='Enter') sendOrbReply()">
               <button onclick="sendOrbReply()">Send</button>
             </div>
             <div class="quick-replies">
@@ -664,7 +664,6 @@
             <div id="createPanel" class="hidden orb-msg" style="margin-top:1rem;"></div>
           </div>
           <div>
-            ${brainSvg}
             ${activeDomainLabels.length ? `<div style="text-align:center; font-size:0.72rem; color:#8F98AC; margin-top:0.6rem; max-width:220px;">Currently active: ${activeDomainLabels.join(' · ')}</div>` : ''}
           </div>
         </div>
