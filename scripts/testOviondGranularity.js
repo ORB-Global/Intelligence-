@@ -47,11 +47,23 @@ async function main() {
   await tryQuery('Meta Ads - CAMPAIGN data_view + dimensions', {
     datasource_id: 'fb-ads', client_id: EASLEY_OVIOND_CLIENT_ID, date_range: dateRange,
     metrics: ['impressions', 'clicks', 'spend'], dimensions: ['DATE', 'CAMPAIGN'], data_view: 'CAMPAIGN',
+    advanced: { attribution: 'use_unified_attribution_setting' },
   });
 
-  await tryQuery('Facebook Page - POST data_view + dimensions', {
+  await tryQuery('Facebook Page - POSTS data_view (real, confirmed valid by Oviond error message)', {
     datasource_id: 'fb-pg', client_id: EASLEY_OVIOND_CLIENT_ID, date_range: dateRange,
-    metrics: ['post_engagements', 'reach'], dimensions: ['DATE', 'POST'], data_view: 'POST',
+    metrics: ['post_engagements', 'reach'], dimensions: ['DATE'], data_view: 'POSTS',
+  });
+
+  await tryQuery('Google Ads - intentionally invalid data_view (to reveal the real valid list)', {
+    datasource_id: 'gadw', client_id: EASLEY_OVIOND_CLIENT_ID, date_range: dateRange,
+    metrics: ['impressions'], dimensions: ['DATE'], data_view: 'INVALID_PROBE',
+  });
+
+  await tryQuery('Meta Ads - intentionally invalid data_view (to reveal the real valid list)', {
+    datasource_id: 'fb-ads', client_id: EASLEY_OVIOND_CLIENT_ID, date_range: dateRange,
+    metrics: ['impressions'], dimensions: ['DATE'], data_view: 'INVALID_PROBE',
   });
 }
+
 main().catch((e) => { console.error('Fatal:', e); process.exit(1); });
