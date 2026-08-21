@@ -63,6 +63,29 @@ async function main() {
   await tryQuery('Meta Ads - intentionally invalid data_view (to reveal the real valid list)', {
     datasource_id: 'fb-ads', client_id: EASLEY_OVIOND_CLIENT_ID, date_range: dateRange,
     metrics: ['impressions'], dimensions: ['DATE'], data_view: 'INVALID_PROBE',
+    advanced: { attribution: 'use_unified_attribution_setting' },
+  });
+
+  await tryQuery('Facebook Page POSTS - invalid metric probe (to reveal real valid post-level metric names)', {
+    datasource_id: 'fb-pg', client_id: EASLEY_OVIOND_CLIENT_ID, date_range: dateRange,
+    metrics: ['INVALID_METRIC_PROBE'], dimensions: ['DATE'], data_view: 'POSTS',
+  });
+
+  // Real, confirmed-valid views - checking actual field-level data
+  await tryQuery('Google Ads - real CAMPAIGNS view (does it return campaign names?)', {
+    datasource_id: 'gadw', client_id: EASLEY_OVIOND_CLIENT_ID, date_range: dateRange,
+    metrics: ['impressions', 'clicks', 'cost_micros'], dimensions: ['DATE'], data_view: 'CAMPAIGNS',
+  });
+
+  await tryQuery('Google Ads - real SEARCH_TERMS view (actual search queries)', {
+    datasource_id: 'gadw', client_id: EASLEY_OVIOND_CLIENT_ID, date_range: dateRange,
+    metrics: ['impressions', 'clicks'], dimensions: ['DATE'], data_view: 'SEARCH_TERMS',
+  });
+
+  await tryQuery('Meta Ads - real CAMPAIGNS view (does it return campaign names?)', {
+    datasource_id: 'fb-ads', client_id: EASLEY_OVIOND_CLIENT_ID, date_range: dateRange,
+    metrics: ['impressions', 'clicks', 'spend'], dimensions: ['DATE'], data_view: 'CAMPAIGNS',
+    advanced: { attribution: 'use_unified_attribution_setting' },
   });
 }
 
