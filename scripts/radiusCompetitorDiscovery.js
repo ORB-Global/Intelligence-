@@ -16,8 +16,11 @@ const RADIUS_MILES = 8; // real midpoint of the requested 5-10 mile range
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 async function main() {
-  const { data: locations } = await supabase.from('locations').select('id, name, organization_id, latitude, longitude, category')
+  const { data: locations, error: locError } = await supabase.from('locations').select('id, name, organization_id, latitude, longitude')
     .eq('active', true).not('latitude', 'is', null);
+
+  if (locError) { console.error('Query failed:', locError.message); process.exit(1); }
+  if (!locations) { console.error('No locations returned.'); process.exit(1); }
 
   console.log(`Locations with real coordinates: ${locations.length}\n`);
 
