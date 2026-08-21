@@ -73,6 +73,7 @@ function buildChatUserPrompt({
   investigations,
   businessMemory,
   businessContext,
+  anchoredInvestigation,
   goal,
   tellVantageEntries,
 }) {
@@ -81,6 +82,9 @@ ${JSON.stringify(client, null, 2)}`;
 
   if (goal !== undefined) {
     prompt += fmtOptionalSection('CURRENT BUSINESS GOAL (reason in relation to this - a technically interesting signal that does not affect this goal may not deserve attention)', goal, '(no goal set yet - if relevant, you may ask the owner what they are trying to accomplish right now)');
+  }
+  if (anchoredInvestigation) {
+    prompt += fmtOptionalSection('THE INVESTIGATION THIS CONVERSATION IS ABOUT (answer in this specific context - the person is asking about THIS investigation, not investigations in general)', anchoredInvestigation, '');
   }
   if (tellVantageEntries !== undefined) {
     prompt += fmtOptionalSection('WHAT THE OWNER HAS TOLD VANTAGE (real, owner-reported - durability shows how long each should be treated as relevant)', tellVantageEntries && tellVantageEntries.length ? tellVantageEntries : null, '(nothing reported yet)');

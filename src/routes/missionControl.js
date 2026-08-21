@@ -71,7 +71,7 @@ async function buildTenantChatContext(supabase, locationId) {
     supabase.from('competitors').select('name, address, category, status, confidence, seo_visibility_data, paid_search_data, provider_enriched_at').eq('location_id', locationId),
     supabase.from('open_questions').select('question, category').eq('location_id', locationId).eq('status', 'open'),
     supabase.from('orb_activity').select('activity_type, description, occurred_at').eq('location_id', locationId).eq('client_visible', true).order('occurred_at', { ascending: false }).limit(10),
-    supabase.from('investigations').select('question, evidence_collected, possible_explanations, confidence, status, conclusion').eq('location_id', locationId).eq('client_visible', true),
+    supabase.from('investigations').select('id, question, evidence_collected, possible_explanations, confidence, status, conclusion').eq('location_id', locationId).eq('client_visible', true),
     supabase.from('business_memory').select('observation, confidence, supporting_evidence_count').eq('location_id', locationId),
     supabase.from('business_context_entries').select('note_text, sales_estimate, transaction_count, traffic_level, primary_category_sold, promotion_running, created_at').eq('location_id', locationId).order('created_at', { ascending: false }).limit(8),
     supabase.from('location_goals').select('business_objective, marketing_objective, lead_goal, conversion_goal, updated_at').eq('location_id', locationId).maybeSingle(),
@@ -326,7 +326,7 @@ function buildCrossSourceBriefing(metrics, socialMetrics, localMetrics) {
 // duplicated product.
 router.post('/locations/:id/ask', async (req, res) => {
   const { id: locationId } = req.params;
-  const { question, conversationId } = req.body || {};
+  const { question, conversationId, investigationId } = req.body || {};
 
   if (!question || typeof question !== 'string' || !question.trim()) {
     return res.status(400).json({ success: false, error: { message: 'A question is required.' } });
@@ -369,7 +369,7 @@ router.post('/locations/:id/ask', async (req, res) => {
       history = existingMessages || [];
     } else {
       const { data: newConvo, error: convoError } = await req.supabase
-        .from('ai_conversations').insert({ organization_id: location.organization_id, location_id: locationId }).select().single();
+        .from('ai_conversations').insert({ organization_id: location.organization_id, location_id: locationId, anchor_investigation_id: investigationId || null }).select().single();
       if (convoError) return res.status(500).json({ success: false, error: { message: convoError.message } });
       convoId = newConvo.id;
     }
@@ -377,6 +377,20 @@ router.post('/locations/:id/ask', async (req, res) => {
     await req.supabase.from('ai_messages').insert({ conversation_id: convoId, role: 'user', content: question });
 
     const context = await buildTenantChatContext(req.supabase, locationId);
+
+    // If this conversation is anchored to a specific investigation,
+    // put that investigation's real evidence first and explicitly -
+    // the question should be answered in that context, not buried in
+    // the general investigations list.
+    let anchorInvestigationId = investigationId;
+    if (convoId && !anchorInvestigationId) {
+      const { data: convo } = await req.supabase.from('ai_conversations').select('anchor_investigation_id').eq('id', convoId).maybeSingle();
+      anchorInvestigationId = convo?.anchor_investigation_id;
+    }
+    if (anchorInvestigationId) {
+      const anchored = (context.investigations || []).find((i) => i.id === anchorInvestigationId);
+      if (anchored) context.anchoredInvestigation = anchored;
+    }
 
     let result;
     try {
@@ -646,6 +660,64 @@ router.post('/locations/:id/goal', async (req, res) => {
   }, { onConflict: 'location_id' }).select().single();
   if (error) return res.status(500).json({ success: false, error: { message: error.message } });
 
+  return res.json({ success: true, data });
+});
+
+router.get('/locations/:id/business-model', async (req, res) => {
+  const { id: locationId } = req.params;
+  const { data: location, error: locError } = await req.supabase.from('locations').select('id').eq('id', locationId).maybeSingle();
+  if (locError) return res.status(500).json({ success: false, error: { message: locError.message } });
+  if (!location) return res.status(404).json({ success: false, error: { message: 'Location not found or not accessible.' } });
+
+  const { data, error } = await supabaseService.rpc('get_business_model', { p_location_id: locationId });
+  if (error) return res.status(500).json({ success: false, error: { message: error.message } });
+  return res.json({ success: true, data });
+});
+
+router.get('/locations/:id/unified-activity', async (req, res) => {
+  const { id: locationId } = req.params;
+  const { data: location, error: locError } = await req.supabase.from('locations').select('id').eq('id', locationId).maybeSingle();
+  if (locError) return res.status(500).json({ success: false, error: { message: locError.message } });
+  if (!location) return res.status(404).json({ success: false, error: { message: 'Location not found or not accessible.' } });
+
+  const { data, error } = await supabaseService.rpc('get_unified_activity', { p_location_id: locationId, p_limit: 15 });
+  if (error) return res.status(500).json({ success: false, error: { message: error.message } });
+  return res.json({ success: true, data });
+});
+
+router.post('/open-questions/:id/answer', async (req, res) => {
+  const { id: questionId } = req.params;
+  const { answer } = req.body || {};
+  if (!answer || !answer.trim()) return res.status(400).json({ success: false, error: { message: 'Provide an answer.' } });
+
+  const { data: q, error: checkErr } = await req.supabase.from('open_questions').select('id, location_id').eq('id', questionId).maybeSingle();
+  if (checkErr) return res.status(500).json({ success: false, error: { message: checkErr.message } });
+  if (!q) return res.status(404).json({ success: false, error: { message: 'Question not found or not accessible.' } });
+
+  const { data, error } = await supabaseService.rpc('resolve_open_question', { p_question_id: questionId, p_answer: answer.trim() });
+  if (error) return res.status(500).json({ success: false, error: { message: error.message } });
+  return res.json({ success: true, data });
+});
+
+router.post('/investigations/:id/seen', async (req, res) => {
+  const { id: investigationId } = req.params;
+  const { data: inv, error: checkErr } = await req.supabase.from('investigations').select('id, location_id').eq('id', investigationId).maybeSingle();
+  if (checkErr) return res.status(500).json({ success: false, error: { message: checkErr.message } });
+  if (!inv) return res.status(404).json({ success: false, error: { message: 'Investigation not found or not accessible.' } });
+
+  const { data, error } = await supabaseService.rpc('mark_investigation_seen', { p_investigation_id: investigationId });
+  if (error) return res.status(500).json({ success: false, error: { message: error.message } });
+  return res.json({ success: true, data });
+});
+
+router.get('/locations/:id/brief', async (req, res) => {
+  const { id: locationId } = req.params;
+  const { data: location, error: locError } = await req.supabase.from('locations').select('id').eq('id', locationId).maybeSingle();
+  if (locError) return res.status(500).json({ success: false, error: { message: locError.message } });
+  if (!location) return res.status(404).json({ success: false, error: { message: 'Location not found or not accessible.' } });
+
+  const { data, error } = await supabaseService.rpc('compose_vantage_brief', { p_location_id: locationId });
+  if (error) return res.status(500).json({ success: false, error: { message: error.message } });
   return res.json({ success: true, data });
 });
 
