@@ -98,6 +98,12 @@ async function main() {
     datasource_id: 'fb-pg', client_id: EASLEY_OVIOND_CLIENT_ID, date_range: dateRange,
     metrics: ['reach', 'engagement', 'likes', 'comments', 'shares', 'post_id', 'permalink_url', 'message', 'created_time'], dimensions: ['DATE'], data_view: 'POSTS',
   });
+
+  await tryQuery('Meta Ads - invalid dimension probe (reveal real valid dimension list)', {
+    datasource_id: 'fb-ads', client_id: EASLEY_OVIOND_CLIENT_ID, date_range: dateRange,
+    metrics: ['impressions'], dimensions: ['INVALID_DIM_PROBE'], data_view: 'CAMPAIGNS',
+    advanced: { attribution: 'use_unified_attribution_setting' },
+  });
 }
 
 main().catch((e) => { console.error('Fatal:', e); process.exit(1); });
