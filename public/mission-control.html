@@ -128,6 +128,7 @@
   .orb-msg{ background:rgba(255,255,255,0.055); border-radius:16px 16px 16px 4px; padding:0.85rem 1.1rem; max-width:92%; animation: msgIn 0.35s ease-out backwards; }
   .orb-msg.tier-needs_attention{ background:rgba(224,121,111,0.14); border:1px solid rgba(224,121,111,0.3); }
   .orb-msg.tier-opportunity{ background:rgba(173,138,78,0.14); border:1px solid rgba(173,138,78,0.32); }
+  .orb-msg.tier-watching{ background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.15); }
   .orb-msg.tier-healthy{ background:rgba(79,191,154,0.1); border:1px solid rgba(79,191,154,0.25); }
   .orb-msg-label{ font-size:0.64rem; text-transform:uppercase; letter-spacing:0.08em; color:#8F98AC; margin-bottom:0.3rem; }
   .orb-msg-text{ font-size:0.92rem; line-height:1.55; color:#EBEDF2; }
@@ -396,7 +397,7 @@
     currentLocationId = locId;
     document.getElementById('exploreBtn').classList.remove('hidden');
     try {
-      const { location, connections, metrics, feed, health, socialMetrics, localMetrics, briefing, marketProfile, competitors, openQuestions, brainState, recentActivity, memory, investigations, performance, activitySummary, competitivePulse: competitivePulseData, thesis, nextAction, nextMove, portfolioContext } = await apiFetch(`/api/mc/locations/${locId}`);
+      const { location, connections, metrics, feed, health, socialMetrics, localMetrics, briefing, marketProfile, competitors, openQuestions, brainState, recentActivity, memory, investigations, performance, activitySummary, competitivePulse: competitivePulseData, thesis, nextAction, nextMove, portfolioContext, goal } = await apiFetch(`/api/mc/locations/${locId}`);
       setBreadcrumbs([
         { label: 'Mission Control', action: 'viewOrganizations()' },
         { label: location.organizations?.name || 'Organization', action: `viewOrganization('${location.organization_id}')` },
@@ -546,20 +547,36 @@
       if (!drivingViewIsRedundant) {
         threadMessages.push({ weight: 'minor', label: "What's driving this", text: drivingView });
       }
-      threadMessages.push({ weight: 'normal', label: 'What I believe matters most', text: mattersMost, recId: mattersMostRecId, subtext: portfolioContext });
-      threadMessages.push({ weight: 'minor', label: "What I'm watching next", text: watchingNext });
+      // Real gating, not just de-weighting: when nothing genuinely
+      // needs attention, speculative "what's driving this / what
+      // matters most" filler is suppressed entirely rather than
+      // shown at lower volume - per "silence is better than filler."
+      // Orb Activity and confirmed memory stay, since they're real
+      // proof of ongoing work, not manufactured insight.
+      const isCalm = nextMove?.moveType === 'DO_NOTHING';
+      if (!isCalm) {
+        threadMessages.push({ weight: 'normal', label: 'What I believe matters most', text: mattersMost, recId: mattersMostRecId, subtext: portfolioContext });
+        threadMessages.push({ weight: 'minor', label: "What I'm watching next", text: watchingNext });
+      }
       threadMessages.push({ weight: 'minor', label: "What I've done", text: doneText });
       if (qualifyingMemory.length) {
         qualifyingMemory.forEach(m => threadMessages.push({ weight: 'minor', label: 'Already on my radar', text: m.observation }));
       }
-      if (competitivePulse && !competitivePulse.includes('not yet established')) {
-        threadMessages.push({ weight: 'minor', label: 'Your market', text: competitivePulse });
-      }
+      // Secondary active investigations/signals beyond the one the
+      // Decision Engine already surfaced as dominant - shown quietly,
+      // not competing for the same attention.
+      const secondaryInvestigations = (investigations || []).filter(inv => inv.status === 'investigating' && inv.id !== nextMove?.sourceId);
+      secondaryInvestigations.forEach(inv => {
+        threadMessages.push({ weight: 'minor', label: 'Also investigating', text: inv.question });
+      });
+      // Competitive/market evidence lives in Explore, not the primary
+      // thread - it's evidence for "why", not part of the homepage.
 
       const brainHero = `<div class="brain-hero">
         <div class="brain-hero-top">
           <div class="brain-hero-text">
             <div class="orb-greeting">${timeGreeting}, ${escapeHtml(location.name)}.</div>
+            ${goal?.business_objective ? `<div style="font-size:0.8rem; color:#8F98AC; margin-bottom:0.9rem; cursor:pointer;" onclick="editGoal()">Working toward: <span style="color:#C9A96A;">${escapeHtml(goal.business_objective)}</span> <span style="opacity:0.5;">(edit)</span></div>` : `<div style="font-size:0.8rem; color:#8F98AC; margin-bottom:0.9rem; cursor:pointer;" onclick="editGoal()">No current goal set - <span style="text-decoration:underline;">tell Orb what you're working toward</span></div>`}
             <div class="orb-thread">
               ${threadMessages.map((m, i) => `<div class="orb-msg ${m.weight === 'minor' ? 'minor' : ''} ${m.weight === 'dominant' ? 'dominant' : ''} ${m.tier ? 'tier-'+m.tier : ''}" style="animation-delay:${i*0.06}s;">
                 ${m.label ? `<div class="orb-msg-label">${escapeHtml(m.label)}</div>` : ''}
@@ -569,8 +586,17 @@
               </div>`).join('')}
             </div>
 
+            <div style="margin: 1rem 0 0.6rem; font-size:0.78rem; color:#8F98AC;">How's business today?</div>
+            <div class="quick-replies" style="margin-bottom:0.4rem;">
+              <button class="command-option" onclick="sendStorePulse('Dead')">Dead</button>
+              <button class="command-option" onclick="sendStorePulse('Slow')">Slow</button>
+              <button class="command-option" onclick="sendStorePulse('Normal')">Normal</button>
+              <button class="command-option" onclick="sendStorePulse('Good')">Good</button>
+              <button class="command-option" onclick="sendStorePulse('Busy')">Busy</button>
+            </div>
+
             <div class="reply-box">
-              <input type="text" id="orbReplyInput" placeholder="Reply to Orb, or tell it something about this week…" onkeydown="if(event.key==='Enter') sendOrbReply()">
+              <input type="text" id="orbReplyInput" placeholder="Ask Orb a question, or tell it something…" onkeydown="if(event.key==='Enter') sendOrbReply()">
               <button onclick="sendOrbReply()">Send</button>
             </div>
             <div class="quick-replies">
@@ -749,6 +775,10 @@
             <h3 style="display:flex; align-items:center; gap:0.5rem;">Orb's Track Record<span style="font-size:0.68rem; font-weight:400; color:var(--muted); text-transform:none;">accumulated over time - not regenerated from scratch</span></h3>
             <div id="trackRecordContent"><p class="empty-honest">Loading...</p></div>
           </div>
+          <div class="brain-card" style="margin-bottom:1.2rem;">
+            <h3>Your Market</h3>
+            <p style="font-size:0.9rem; color:var(--ink-soft); line-height:1.6;">${escapeHtml(competitivePulse)}</p>
+          </div>
           ${pulseRow}
           ${commandCenter}
           ${timelineBlock}
@@ -903,6 +933,12 @@
   // context (stored, wired into future investigations/Ask Orb) AND
   // gets a real conversational reply, appended right into the same
   // thread - not a separate form, not a separate chat drawer.
+  function looksLikeQuestion(text){
+    const t = text.trim().toLowerCase();
+    if (t.endsWith('?')) return true;
+    return /^(what|why|how|who|when|where|which|is|are|do|does|did|can|should|will)\b/.test(t);
+  }
+
   async function sendOrbReply(){
     const input = document.getElementById('orbReplyInput');
     const text = input.value.trim();
@@ -911,23 +947,59 @@
     appendThreadMessage(text, 'You');
     appendThreadMessage('…', 'Orb');
 
+    const isQuestion = looksLikeQuestion(text);
+    try {
+      if (isQuestion) {
+        const result = await apiFetch(`/api/mc/locations/${currentLocationId}/ask`, {
+          method: 'POST', body: JSON.stringify({ question: text, conversationId: currentConversationId }),
+        });
+        currentConversationId = result.conversationId;
+        const answerText = [result.answer.findings, result.answer.recommended_actions, result.answer.insufficient_data].filter(Boolean).join(' ');
+        updateLastOrbMessage(answerText);
+      } else {
+        // Tell Vantage: not a question, so Orb classifies and stores
+        // it as real business context rather than trying to answer it.
+        const result = await apiFetch(`/api/mc/locations/${currentLocationId}/tell`, {
+          method: 'POST', body: JSON.stringify({ text }),
+        });
+        updateLastOrbMessage(`Got it - noted as ${result.classification.classified_type.replace('_',' ')}. ${result.classification.ai_summary}`);
+      }
+    } catch (err) {
+      updateLastOrbMessage(`Could not process that: ${err.message}`);
+    }
+  }
+
+  function updateLastOrbMessage(text){
+    const pendingMsgs = document.querySelectorAll('.orb-msg-label');
+    const lastMsg = [...pendingMsgs].reverse().find(l => l.textContent === 'Orb');
+    if (lastMsg) lastMsg.nextElementSibling.textContent = text;
+  }
+
+  async function sendStorePulse(trafficLevel){
+    if (!currentLocationId) return;
+    appendThreadMessage(`Traffic: ${trafficLevel}`, 'You');
+    appendThreadMessage('…', 'Orb');
     try {
       await apiFetch(`/api/mc/locations/${currentLocationId}/checkin`, {
-        method: 'POST', body: JSON.stringify({ noteText: text }),
-      }).catch(() => {});
-
-      const result = await apiFetch(`/api/mc/locations/${currentLocationId}/ask`, {
-        method: 'POST', body: JSON.stringify({ question: text, conversationId: currentConversationId }),
+        method: 'POST', body: JSON.stringify({ trafficLevel }),
       });
-      currentConversationId = result.conversationId;
-      const answerText = [result.answer.findings, result.answer.recommended_actions, result.answer.insufficient_data].filter(Boolean).join(' ');
-      const pendingMsgs = document.querySelectorAll('.orb-msg-label');
-      const lastMsg = [...pendingMsgs].reverse().find(l => l.textContent === 'Orb');
-      if (lastMsg) lastMsg.nextElementSibling.textContent = answerText;
+      updateLastOrbMessage('Thanks - noted.');
     } catch (err) {
-      const pendingMsgs = document.querySelectorAll('.orb-msg-label');
-      const lastMsg = [...pendingMsgs].reverse().find(l => l.textContent === 'Orb');
-      if (lastMsg) lastMsg.nextElementSibling.textContent = `Could not get a response: ${err.message}`;
+      updateLastOrbMessage(`Could not save that: ${err.message}`);
+    }
+  }
+
+  async function editGoal(){
+    if (!currentLocationId) return;
+    const goalText = prompt("What are you working toward right now? (e.g. \"more weekend foot traffic\", \"sell more sectionals this month\")");
+    if (!goalText || !goalText.trim()) return;
+    try {
+      await apiFetch(`/api/mc/locations/${currentLocationId}/goal`, {
+        method: 'POST', body: JSON.stringify({ goalText: goalText.trim() }),
+      });
+      viewLocation(currentLocationId);
+    } catch (err) {
+      alert(`Could not save goal: ${err.message}`);
     }
   }
 

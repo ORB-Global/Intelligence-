@@ -162,6 +162,7 @@ router.get('/locations/:id', async (req, res) => {
     { data: memory },
     { data: investigations },
     { data: thesis },
+    { data: goal },
   ] = await Promise.all([
     req.supabase.from('locations').select('*, organizations(name)').eq('id', id).maybeSingle(),
     req.supabase.from('connection_health').select('*').eq('location_id', id).order('channel'),
