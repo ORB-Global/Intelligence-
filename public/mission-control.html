@@ -398,6 +398,23 @@
     document.getElementById('exploreBtn').classList.remove('hidden');
     try {
       const { location, connections, metrics, feed, health, socialMetrics, localMetrics, briefing, marketProfile, competitors, openQuestions, brainState, recentActivity, memory, investigations, performance, activitySummary, competitivePulse: competitivePulseData, thesis, nextAction, nextMove, portfolioContext, goal } = await apiFetch(`/api/mc/locations/${locId}`);
+
+      // Real seen-tracking: a first view of an investigation gets the
+      // full detail; a return visit gets a quiet recap instead of a
+      // replay. Fetched here, used when building the dominant message
+      // below.
+      let investigationSeenInfo = null;
+      if (nextMove?.moveType === 'INVESTIGATE' && nextMove.sourceId) {
+        try { investigationSeenInfo = await apiFetch(`/api/mc/investigations/${nextMove.sourceId}/seen`, { method: 'POST' }); } catch (e) { /* non-fatal */ }
+      }
+      // One real in-context activity line - not a separate feed
+      // section, just the most relevant thing Vantage or Orb Global
+      // actually did recently, shown where it's relevant.
+      let inContextActivity = null;
+      try {
+        const activityData = await apiFetch(`/api/mc/locations/${locId}/unified-activity`);
+        inContextActivity = (activityData || []).find(a => a.actor === 'orb_global_staff') || (activityData || [])[0] || null;
+      } catch (e) { /* non-fatal */ }
       setBreadcrumbs([
         { label: 'Mission Control', action: 'viewOrganizations()' },
         { label: location.organizations?.name || 'Organization', action: `viewOrganization('${location.organization_id}')` },
@@ -521,15 +538,20 @@
         INVESTIGATE: 'Orb is investigating',
         RECOMMEND: 'Orb recommends',
         WATCH: "Orb is watching this",
+        ASK: 'Orb needs one thing from you',
         DO_NOTHING: nextMove?.detail ? 'Nothing needs your attention' : "Orb is still learning",
       };
       if (nextMove) {
+        // Return-visit recap: same investigation, already seen -
+        // advance the story instead of replaying the full detail.
+        const isReturnVisit = nextMove.moveType === 'INVESTIGATE' && investigationSeenInfo && investigationSeenInfo.isFirstView === false;
         threadMessages.push({
           weight: 'dominant',
           tier: nextMove.moveType === 'RECOMMEND' ? 'opportunity' : (nextMove.moveType === 'WATCH' ? 'watching' : (nextMove.moveType === 'DO_NOTHING' ? 'healthy' : 'needs_attention')),
-          label: moveLabels[nextMove.moveType] || 'Orb sees',
+          label: isReturnVisit ? 'Still watching this' : (moveLabels[nextMove.moveType] || 'Orb sees'),
           text: nextMove.headline,
-          subtext: nextMove.detail,
+          subtext: isReturnVisit ? 'Same investigation as before - no new evidence yet.' : nextMove.detail,
+          askQuestionId: nextMove.moveType === 'ASK' ? nextMove.sourceId : null,
         });
       } else if (nextAction) {
         threadMessages.push({
@@ -558,7 +580,16 @@
         threadMessages.push({ weight: 'normal', label: 'What I believe matters most', text: mattersMost, recId: mattersMostRecId, subtext: portfolioContext });
         threadMessages.push({ weight: 'minor', label: "What I'm watching next", text: watchingNext });
       }
-      threadMessages.push({ weight: 'minor', label: "What I've done", text: doneText });
+      // Real, actor-aware in-context activity, matching the exact
+      // truthful phrasing distinction required: Orb Global staff
+      // action vs Vantage's own detection vs owner-reported context -
+      // never blurred together.
+      if (inContextActivity) {
+        const actorLabel = { orb_global_staff: 'Orb Global', vantage_detected: 'Vantage', vantage_investigated: 'Vantage', owner: 'You' }[inContextActivity.actor] || 'Vantage';
+        threadMessages.push({ weight: 'minor', label: actorLabel, text: inContextActivity.text.replace(/^(Vantage (noticed|investigated): |You told Vantage: )/, '') });
+      } else if (doneText) {
+        threadMessages.push({ weight: 'minor', label: "What I've done", text: doneText });
+      }
       if (qualifyingMemory.length) {
         qualifyingMemory.forEach(m => threadMessages.push({ weight: 'minor', label: 'Already on my radar', text: m.observation }));
       }
@@ -583,6 +614,7 @@
                 <div class="orb-msg-text">${escapeHtml(m.text)}</div>
                 ${m.subtext ? `<div style="margin-top:0.4rem; font-size:0.78rem; color:#C9A96A; font-style:italic;">${escapeHtml(m.subtext)}</div>` : ''}
                 ${m.recId ? `<div style="margin-top:0.5rem; display:flex; align-items:center; gap:0.5rem;"><span style="font-size:0.72rem; color:#8F98AC;">Was Orb right about this?</span><button class="command-option" style="padding:0.15rem 0.55rem; font-size:0.76rem;" onclick="submitRecFeedback('${m.recId}', true, this)">👍</button><button class="command-option" style="padding:0.15rem 0.55rem; font-size:0.76rem;" onclick="submitRecFeedback('${m.recId}', false, this)">👎</button></div>` : ''}
+                ${m.askQuestionId ? `<div style="margin-top:0.6rem; display:flex; gap:0.5rem;"><input type="text" id="askAnswerInput" placeholder="Your answer…" style="flex:1; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.15); border-radius:8px; padding:0.5rem 0.7rem; color:#EBEDF2; font-size:0.82rem;" onkeydown="if(event.key==='Enter') submitAskAnswer('${m.askQuestionId}', this)"><button class="command-option" onclick="submitAskAnswer('${m.askQuestionId}', document.getElementById('askAnswerInput'))">Send</button></div>` : ''}
               </div>`).join('')}
             </div>
 
@@ -779,6 +811,10 @@
             <h3>Your Market</h3>
             <p style="font-size:0.9rem; color:var(--ink-soft); line-height:1.6;">${escapeHtml(competitivePulse)}</p>
           </div>
+          <div class="brain-card" style="margin-bottom:1.2rem;">
+            <h3>What Vantage Knows About This Business</h3>
+            <div id="vantageMemoryContent"><p class="empty-honest">Loading...</p></div>
+          </div>
           ${pulseRow}
           ${commandCenter}
           ${timelineBlock}
@@ -851,6 +887,46 @@
       renderChannelChart(firstChannel, 'perfChart');
     }
     loadTrackRecord();
+    loadVantageMemory();
+  }
+
+  async function loadVantageMemory(){
+    const el = document.getElementById('vantageMemoryContent');
+    if (!el || el.dataset.loaded) return;
+    try {
+      const [locData, activityData] = await Promise.all([
+        apiFetch(`/api/mc/locations/${currentLocationId}`),
+        apiFetch(`/api/mc/locations/${currentLocationId}/unified-activity`),
+      ]);
+      el.dataset.loaded = 'true';
+      const memoryData = locData.memory || [];
+      const openQs = (locData.openQuestions || []).filter(q => q.status === 'open');
+
+      const learned = (memoryData || []).filter(m => m.confidence !== 'emerging');
+      const learnedHtml = learned.length
+        ? learned.map(m => `<div class="intel-item"><div class="intel-dot positive"></div><div style="font-size:0.85rem; color:var(--ink-soft);">${escapeHtml(m.observation)}</div></div>`).join('')
+        : '<p class="empty-honest">Nothing confirmed yet - patterns need to repeat before Vantage treats them as known.</p>';
+
+      const happenedHtml = (activityData || []).slice(0, 5).map(a => {
+        const actorLabel = { orb_global_staff: 'Orb Global', vantage_detected: 'Vantage', vantage_investigated: 'Vantage', owner: 'You' }[a.actor] || 'Vantage';
+        return `<div class="intel-item"><div class="intel-dot"></div><div style="font-size:0.85rem;"><strong>${actorLabel}</strong> <span style="color:var(--ink-soft);">${escapeHtml(a.text.replace(/^(Vantage (noticed|investigated): |You told Vantage: )/, ''))}</span><div style="color:var(--muted); font-size:0.74rem; margin-top:0.15rem;">${new Date(a.occurred_at).toLocaleDateString()}</div></div></div>`;
+      }).join('') || '<p class="empty-honest">Nothing recorded yet.</p>';
+
+      const stillLearningHtml = openQs.length
+        ? openQs.map(q => `<div class="intel-item"><div class="intel-dot watch"></div><div style="font-size:0.85rem; color:var(--ink-soft);">${escapeHtml(q.question)}</div></div>`).join('')
+        : '<p class="empty-honest">No open questions right now.</p>';
+
+      el.innerHTML = `
+        <h4 style="font-size:0.85rem; margin-bottom:0.6rem;">What Vantage has learned</h4>
+        ${learnedHtml}
+        <h4 style="font-size:0.85rem; margin:1.2rem 0 0.6rem;">What happened</h4>
+        ${happenedHtml}
+        <h4 style="font-size:0.85rem; margin:1.2rem 0 0.6rem;">What Vantage is still trying to understand</h4>
+        ${stillLearningHtml}
+      `;
+    } catch (err) {
+      el.innerHTML = `<p class="empty-honest">Could not load: ${escapeHtml(err.message)}</p>`;
+    }
   }
 
   async function loadTrackRecord(){
@@ -911,6 +987,19 @@
       wrapper.innerHTML = `<span style="font-size:0.74rem; color:#8F98AC;">Thanks — noted.</span>`;
     } catch (err) {
       wrapper.innerHTML = `<span style="font-size:0.74rem; color:#8F98AC;">Could not save feedback.</span>`;
+    }
+  }
+
+  async function submitAskAnswer(questionId, inputEl){
+    const answer = inputEl.value.trim();
+    if (!answer) return;
+    const wrapper = inputEl.parentElement;
+    wrapper.innerHTML = `<span style="font-size:0.82rem; color:#C9A96A;">Got it. That changes what I'm looking at…</span>`;
+    try {
+      await apiFetch(`/api/mc/open-questions/${questionId}/answer`, { method: 'POST', body: JSON.stringify({ answer }) });
+      setTimeout(() => viewLocation(currentLocationId), 1400);
+    } catch (err) {
+      wrapper.innerHTML = `<span style="font-size:0.78rem; color:#8F98AC;">Could not save that: ${escapeHtml(err.message)}</span>`;
     }
   }
 
