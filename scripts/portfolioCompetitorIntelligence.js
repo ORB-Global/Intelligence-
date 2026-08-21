@@ -82,11 +82,21 @@ async function main() {
         console.log(`[debug] ${loc.name}: raw candidates =`, JSON.stringify(result.candidates));
         const { data: locDomainRow } = await supabase.from('locations').select('domain').eq('id', loc.id).maybeSingle();
         const ownDomain = locDomainRow?.domain;
-        const realCandidates = result.candidates.filter(c => c.domain && c.domain !== ownDomain);
+        // Real gap found and fixed: exact domain match alone missed
+        // a real case where the same business uses a different
+        // domain in Maps data than what's on file (BoxDrop Temple:
+        // bdtemple.com in Maps vs boxdroptemple.com on file). Also
+        // exclude by name similarity - generic (checks whether the
+        // location's own name appears in the candidate's name), not
+        // a hardcoded BoxDrop string.
+        const realCandidates = result.candidates.filter(c =>
+          c.domain && c.domain !== ownDomain &&
+          !c.name?.toLowerCase().includes(loc.name.toLowerCase())
+        );
         for (const c of realCandidates.slice(0, 3)) {
           const { error: insertErr } = await supabase.from('competitors').insert({
             organization_id: loc.organization_id, location_id: loc.id, name: c.name, domain: c.domain,
-            category: profile?.competitor_search_terms || 'local business', status: 'auto_discovered', confidence: 'medium', source: 'dataforseo',
+            category: profile?.competitor_search_terms || 'local business', status: 'auto_discovered', confidence: 'estimated', source: 'dataforseo',
           });
           if (insertErr) {
             console.log(`[debug] ${loc.name}: INSERT FAILED for ${c.name}: ${insertErr.message}`);
