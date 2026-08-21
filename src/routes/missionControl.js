@@ -441,9 +441,40 @@ router.post('/locations/:id/ask', async (req, res) => {
       estimated_cost_usd: result.usage ? (result.usage.input_tokens / 1e6) * 1.0 + (result.usage.output_tokens / 1e6) * 5.0 : null,
     });
 
+    // Real control-surface resolution: the model chose an action
+    // type, this fetches the actual real data for it - never
+    // fabricated, and any lookup failure degrades to text-only
+    // rather than breaking the response.
+    let resolvedAction = null;
+    const suggested = result.answer.suggested_action;
+    if (suggested?.type) {
+      try {
+        if (suggested.type === 'open_where_you_stand') {
+          const { data: synthesis } = await supabaseService.rpc('get_position_synthesis', { p_location_id: locationId });
+          const { data: standing } = await supabaseService.rpc('get_where_you_stand', { p_location_id: locationId });
+          resolvedAction = { type: suggested.type, synthesis, standing };
+        } else if (suggested.type === 'show_keyword_evidence') {
+          let query = req.supabase.from('competitor_keywords').select('keyword, position, search_volume, competitors(name)').eq('location_id', locationId).order('search_volume', { ascending: false }).limit(20);
+          const { data: keywords } = await query;
+          resolvedAction = { type: suggested.type, keywords: keywords || [] };
+        } else if (suggested.type === 'show_review_chain') {
+          const { data: chain } = await req.supabase.from('human_review_chain').select('*').eq('location_id', locationId).order('detected_at', { ascending: false }).limit(10);
+          resolvedAction = { type: suggested.type, chain: chain || [] };
+        } else if (suggested.type === 'ask_store_pulse') {
+          resolvedAction = { type: suggested.type, prompt: 'How was business?', options: ['Dead', 'Slow', 'Normal', 'Good', 'Busy'] };
+        } else if (suggested.type === 'open_investigation' && suggested.investigation_id) {
+          const { data: inv } = await req.supabase.from('investigations').select('*').eq('id', suggested.investigation_id).eq('location_id', locationId).maybeSingle();
+          if (inv) resolvedAction = { type: suggested.type, investigation: inv };
+        } else if (suggested.type === 'show_search_opportunities') {
+          const { data: keywords } = await req.supabase.from('competitor_keywords').select('keyword, position, search_volume').eq('location_id', locationId).order('search_volume', { ascending: false }).limit(15);
+          resolvedAction = { type: suggested.type, opportunities: keywords || [] };
+        }
+      } catch (e) { /* non-fatal - falls back to text-only answer */ }
+    }
+
     return res.json({
       success: true,
-      data: { conversationId: convoId, answer: result.answer, remaining: limit - (usedToday || 0) - 1, limit },
+      data: { conversationId: convoId, answer: result.answer, resolvedAction, remaining: limit - (usedToday || 0) - 1, limit },
     });
   } catch (err) {
     return res.status(500).json({ success: false, error: { message: err.message || 'Something went wrong answering that question.' } });

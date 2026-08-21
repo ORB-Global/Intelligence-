@@ -17,8 +17,18 @@ const ANSWER_TOOL = {
       evidence: { type: ['string', 'null'] },
       recommended_actions: { type: ['string', 'null'] },
       insufficient_data: { type: ['string', 'null'] },
+      suggested_action: {
+        type: ['object', 'null'],
+        description: 'Only set this when the answer would genuinely benefit from opening a real, structured view instead of just text - never set it speculatively.',
+        properties: {
+          type: { type: 'string', enum: ['show_search_opportunities', 'show_keyword_evidence', 'open_where_you_stand', 'show_review_chain', 'ask_store_pulse', 'open_investigation'] },
+          competitor_name: { type: ['string', 'null'], description: 'Only for open_where_you_stand or show_keyword_evidence when scoped to one named competitor.' },
+          investigation_id: { type: ['string', 'null'], description: 'Only for open_investigation - the real investigation id already in context, never invented.' },
+        },
+        required: ['type'],
+      },
     },
-    required: ['findings', 'evidence', 'recommended_actions', 'insufficient_data'],
+    required: ['findings', 'evidence', 'recommended_actions', 'insufficient_data', 'suggested_action'],
     additionalProperties: false,
   },
 };
@@ -29,13 +39,13 @@ function validateAnswerPayload(input) {
   if (!input || typeof input !== 'object' || Array.isArray(input)) {
     throw new Error('Structured response missing or not an object.');
   }
-  const allowed = Object.keys(FIELD_LIMITS);
+  const allowed = [...Object.keys(FIELD_LIMITS), 'suggested_action'];
   const unexpected = Object.keys(input).filter((k) => !allowed.includes(k));
   if (unexpected.length) throw new Error(`Unexpected field(s): ${unexpected.join(', ')}.`);
   if (typeof input.findings !== 'string' || input.findings.trim().length === 0) {
     throw new Error('findings missing, empty, or not a string.');
   }
-  for (const field of allowed) {
+  for (const field of Object.keys(FIELD_LIMITS)) {
     const value = input[field];
     if (field === 'findings') continue;
     if (value !== null && typeof value !== 'string') throw new Error(`${field} must be a string or null.`);
@@ -44,6 +54,12 @@ function validateAnswerPayload(input) {
     }
   }
   if (input.findings.length > FIELD_LIMITS.findings) throw new Error(`findings exceeds ${FIELD_LIMITS.findings} characters.`);
+  const VALID_ACTION_TYPES = ['show_search_opportunities', 'show_keyword_evidence', 'open_where_you_stand', 'show_review_chain', 'ask_store_pulse', 'open_investigation'];
+  if (input.suggested_action) {
+    if (typeof input.suggested_action !== 'object' || !VALID_ACTION_TYPES.includes(input.suggested_action.type)) {
+      throw new Error('suggested_action present but malformed.');
+    }
+  }
   return input;
 }
 
