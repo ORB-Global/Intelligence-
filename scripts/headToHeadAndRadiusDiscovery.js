@@ -32,7 +32,9 @@ async function main() {
   }
 
   console.log(`\n=== Radius competitor discovery: ${loc.city}, ${loc.state} ===\n`);
-  const discovered = await discoverLocalCompetitors(`mattress store near ${loc.city}, ${loc.state}`);
+  const { data: profile } = await supabase.from('market_profiles').select('competitor_search_terms').eq('location_id', LOCATION_ID).maybeSingle();
+  const searchTerms = profile?.competitor_search_terms || 'local business';
+  const discovered = await discoverLocalCompetitors(`${searchTerms} near ${loc.city}, ${loc.state}`);
   console.log(JSON.stringify(discovered, null, 2));
 }
 main().catch((e) => { console.error(e); process.exit(1); });

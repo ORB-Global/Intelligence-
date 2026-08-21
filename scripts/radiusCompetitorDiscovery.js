@@ -16,7 +16,7 @@ const RADIUS_MILES = 8; // real midpoint of the requested 5-10 mile range
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 async function main() {
-  const { data: locations, error: locError } = await supabase.from('locations').select('id, name, organization_id, latitude, longitude')
+  const { data: locations, error: locError } = await supabase.from('locations').select('id, name, domain, organization_id, latitude, longitude')
     .eq('active', true).not('latitude', 'is', null);
 
   if (locError) { console.error('Query failed:', locError.message); process.exit(1); }
@@ -45,14 +45,24 @@ async function main() {
       continue;
     }
 
+    // Real self-exclusion, same fix as portfolioCompetitorIntelligence.js -
+    // never store a business as its own competitor.
+    const realCandidates = result.candidates.filter(c =>
+      c.domain !== loc.domain && !c.name?.toLowerCase().includes(loc.name.toLowerCase())
+    );
+
     let added = 0;
-    for (const c of result.candidates.slice(0, 6)) {
+    for (const c of realCandidates.slice(0, 6)) {
       if (!c.name) continue;
-      await supabase.from('competitors').insert({
+      const { error: insertErr } = await supabase.from('competitors').insert({
         organization_id: loc.organization_id, location_id: loc.id, name: c.name, domain: c.domain || null,
-        address: c.address || null, category: 'Mattress/furniture store', status: 'auto_discovered',
-        confidence: 'medium', source: 'dataforseo_radius',
+        address: c.address || null, category: searchTerms, status: 'auto_discovered',
+        confidence: 'estimated', source: 'dataforseo_radius',
       });
+      if (insertErr) {
+        console.log(`INSERT FAILED for ${c.name}: ${insertErr.message}`);
+        continue;
+      }
       added++;
     }
     console.log(`OK      ${loc.name}: found ${result.candidates.length}, added ${added} within ${RADIUS_MILES}mi`);
