@@ -482,14 +482,45 @@
         { key: 'memory', label: 'Business Memory', active: Boolean(memoryQualifies) },
       ];
       const nodePositions = [[90,10],[142,32],[170,90],[142,148],[90,170],[38,148],[10,90],[38,32],[90,90]];
+      // Real hand-drawn pencil brain, replacing the abstract dot/line
+      // graph. Domain activity (already computed above from real
+      // signals/investigations, never hardcoded) drives which real
+      // region pulses - general regions, not anatomical labels, per
+      // the explicit correction that lobes must not map to marketing
+      // categories.
+      const anyAttentionActive = domains.some(d => d.active);
       const brainSvg = `<div class="brain-viz-wrap">
         <div class="brain-viz-glow"></div>
-        <svg viewBox="0 0 180 180" xmlns="http://www.w3.org/2000/svg" style="width:100%; height:100%; position:relative;">
-          ${domains.map((d,i) => domains.map((d2,j) => i<j ? `<line class="brain-edge" x1="${nodePositions[i][0]}" y1="${nodePositions[i][1]}" x2="${nodePositions[j][0]}" y2="${nodePositions[j][1]}" stroke="${d.active&&d2.active?'#AD8A4E':'#2A3040'}" stroke-width="1" opacity="${d.active&&d2.active?'0.7':'0.15'}"/>` : '').join('')).join('')}
-          <circle cx="90" cy="90" r="9" fill="#AD8A4E" opacity="${hasActiveInvestigation ? '0.9' : '0.55'}" style="animation: nodepulse ${hasActiveInvestigation ? '1.8s' : '3.4s'} ease-in-out infinite;"/>
-          ${domains.map((d,i) => `<circle class="brain-node ${d.active?'':'inactive'}" cx="${nodePositions[i][0]}" cy="${nodePositions[i][1]}" r="4.5" fill="${d.active?'#E8C481':'#454C5C'}"/>`).join('')}
+        <svg viewBox="0 0 260 230" xmlns="http://www.w3.org/2000/svg" style="width:100%; height:100%; position:relative; overflow:visible;">
+          <g style="animation: pencilBreathe 5.6s ease-in-out infinite; transform-origin:130px 115px;">
+            <path fill="none" stroke="rgba(232,196,129,0.55)" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round" d="
+              M 47 87 C 40 70, 47 50, 67 41 C 80 35, 90 39, 100 34
+              C 112 28, 127 29, 139 36 C 150 30, 165 32, 174 42
+              C 186 39, 199 46, 202 58 C 214 61, 221 74, 217 87
+              C 226 94, 228 107, 221 117 C 226 126, 223 138, 212 143
+              C 210 153, 200 159, 189 157 C 184 165, 173 168, 164 163
+              C 159 168, 149 167, 144 161 C 130 164, 116 158, 111 148
+              C 99 146, 90 137, 89 125 C 79 122, 72 112, 74 101
+              C 67 98, 63 88, 66 76" style="opacity:${anyAttentionActive ? '0.7' : '0.45'};"/>
+            <path fill="none" stroke="rgba(232,196,129,0.55)" stroke-width="1.3" d="M 64 125 C 70 134, 79 140, 86 148"/>
+            <path fill="none" stroke="rgba(232,196,129,0.4)" stroke-width="0.7" stroke-linecap="round" d="
+              M 64 125 C 59 134, 58 146, 65 155 C 70 162, 80 165, 89 161
+              C 98 157, 100 147, 95 139 C 92 132, 85 127, 76 126 C 72 125, 67 124, 64 125 Z"/>
+            <path fill="none" stroke="rgba(232,196,129,0.28)" stroke-width="0.6" d="M 120 45 C 118 60, 122 75, 118 89 C 115 100, 120 111, 116 122"/>
+            ${domains.map((d,i) => {
+              const pos = [[72,55],[150,50],[195,70],[70,140],[135,155],[190,110]][i % 6];
+              return d.active ? `<g style="animation: gyriPulse ${2.4 + (i%3)*0.6}s ease-in-out infinite;">
+                <path fill="none" stroke="#E8C481" stroke-width="0.8" stroke-linecap="round" opacity="0.7"
+                  d="M ${pos[0]} ${pos[1]} C ${pos[0]+8} ${pos[1]+8}, ${pos[0]+4} ${pos[1]+16}, ${pos[0]+12} ${pos[1]+22}"/>
+              </g>` : '';
+            }).join('')}
+          </g>
         </svg>
-      </div>`;
+      </div>
+      <style>
+        @keyframes pencilBreathe{ 0%,100%{ transform:scale(1); } 50%{ transform:scale(1.015); } }
+        @keyframes gyriPulse{ 0%,100%{ opacity:0.4; } 50%{ opacity:0.9; } }
+      </style>`;
       const activeDomainLabels = domains.filter(d => d.active).map(d => d.label);
 
       // ---------- Layer 1: Brain landing - minimal, ~10-second read ----------
@@ -616,6 +647,7 @@
 
       const brainHero = `<div class="brain-hero">
         <div class="brain-hero-top">
+          ${brainSvg}
           <div class="brain-hero-text">
             <div class="orb-greeting">${timeGreeting}, ${escapeHtml(location.name)}.</div>
             ${goal?.business_objective ? `<div style="font-size:0.8rem; color:#8F98AC; margin-bottom:0.9rem; cursor:pointer;" onclick="editGoal()">Working toward: <span style="color:#C9A96A;">${escapeHtml(goal.business_objective)}</span> <span style="opacity:0.5;">(edit)</span></div>` : `<div style="font-size:0.8rem; color:#8F98AC; margin-bottom:0.9rem; cursor:pointer;" onclick="editGoal()">No current goal set - <span style="text-decoration:underline;">tell Vantage what you're working toward</span></div>`}
