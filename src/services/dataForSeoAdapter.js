@@ -143,7 +143,7 @@ module.exports.discoverCompetitorsNearCoordinates = discoverCompetitorsNearCoord
 // rank number.
 async function checkLocalRankAtPoint(ownDomainOrName, keyword, latitude, longitude) {
   if (!isConfigured()) return { status: 'requires_provider' };
-  const locationCoordinate = `${latitude},${longitude},2`; // tight 2km radius per point - this IS the point, not an area search
+  const locationCoordinate = `${latitude},${longitude},5`; // widened from 2km to 5km after real failures at 3 of 4 offset points around a smaller town - 2km was too tight to reliably return real results
   try {
     const res = await fetch(`${DATAFORSEO_BASE}/serp/google/maps/live/advanced`, {
       method: 'POST',
