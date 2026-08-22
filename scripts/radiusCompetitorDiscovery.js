@@ -10,6 +10,7 @@
 require('dotenv').config();
 const { createClient } = require('@supabase/supabase-js');
 const { discoverCompetitorsNearCoordinates } = require('../src/services/dataForSeoAdapter');
+const { isConfigured: spyfuConfigured, enrichCompetitorDomain } = require('../src/services/spyfuAdapter');
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false } });
 const RADIUS_MILES = 8; // real midpoint of the requested 5-10 mile range
@@ -61,20 +62,40 @@ async function main() {
     );
 
     let added = 0;
+    let spyfuEnriched = 0;
+    if (!spyfuConfigured()) {
+      console.log(`  NOTE: SpyFu not configured on this server (SPYFU_API_ID/SPYFU_API_SECRET missing) - competitors will be added without real paid/organic SEO enrichment.`);
+    }
     for (const c of realCandidates.slice(0, 6)) {
       if (!c.name) continue;
-      const { error: insertErr } = await supabase.from('competitors').insert({
+      const { data: inserted, error: insertErr } = await supabase.from('competitors').insert({
         organization_id: loc.organization_id, location_id: loc.id, name: c.name, domain: c.domain || null,
         address: c.address || null, category: searchTerms, status: 'auto_discovered',
         confidence: 'estimated', source: 'dataforseo_radius',
-      });
+      }).select().single();
       if (insertErr) {
         console.log(`INSERT FAILED for ${c.name}: ${insertErr.message}`);
         continue;
       }
       added++;
+
+      // Real SpyFu enrichment, right after real discovery - the
+      // exact wiring that was missing before tonight.
+      if (spyfuConfigured() && c.domain) {
+        const spyfu = await enrichCompetitorDomain(c.domain);
+        if (spyfu.status === 'enriched') {
+          await supabase.from('competitors').update({
+            seo_visibility_data: spyfu.seoVisibilityData,
+            paid_search_data: spyfu.paidSearchData,
+            provider_enriched_at: spyfu.observedAt,
+          }).eq('id', inserted.id);
+          spyfuEnriched++;
+        } else {
+          console.log(`  SpyFu enrichment for ${c.name} (${c.domain}): ${spyfu.status} - ${spyfu.reason || ''}`);
+        }
+      }
     }
-    console.log(`OK      ${loc.name}: found ${result.candidates.length}, added ${added} within ${RADIUS_MILES}mi`);
+    console.log(`OK      ${loc.name}: found ${result.candidates.length}, added ${added} within ${RADIUS_MILES}mi, SpyFu-enriched ${spyfuEnriched}`);
     discovered++;
   }
 
