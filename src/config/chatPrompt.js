@@ -71,6 +71,7 @@ function buildChatUserPrompt({
   competitors,
   openQuestions,
   orbActivity,
+  oversightCadence,
   investigations,
   businessMemory,
   businessContext,
@@ -126,7 +127,7 @@ ${snapshots && snapshots.length ? JSON.stringify(snapshots, null, 2) : '(none on
     prompt += fmtOptionalSection('OPEN QUESTIONS (what Orb genuinely does not know yet - state these plainly when relevant, never paper over them)', openQuestions && openQuestions.length ? openQuestions : null, '(none currently open)');
   }
   if (orbActivity !== undefined) {
-    prompt += fmtOptionalSection('WHAT ORB HAS BEEN DOING (real recorded work - use this to answer "what has Orb done" questions, never invent activity)', orbActivity && orbActivity.length ? orbActivity : null, '(no recorded activity yet)');
+    prompt += fmtOptionalSection('WHAT ORB HAS BEEN DOING (real recorded work - use this to answer "what has Orb done" questions, never invent activity)', orbActivity && orbActivity.length ? orbActivity : null, oversightCadence ? `(No specific logged action for this event - but the account remains under its normal active oversight cadence: ${oversightCadence}. Never say "nothing for Orb to do" - frame it as ongoing standing oversight, distinct from a specific verified intervention.)` : '(no recorded activity yet)');
   }
   if (investigations !== undefined) {
     prompt += fmtOptionalSection('ACTIVE INVESTIGATIONS (question/evidence/possible explanations/confidence/status - use this to answer "what are you investigating" or "why do you think that")', investigations && investigations.length ? investigations : null, '(no open investigations)');

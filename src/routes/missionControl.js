@@ -98,6 +98,9 @@ async function buildTenantChatContext(supabase, locationId) {
     supabase.from('tell_vantage_entries').select('raw_text, classified_type, ai_summary, durability, created_at').eq('location_id', locationId).order('created_at', { ascending: false }).limit(10),
   ]);
 
+  const { data: oversightResult } = await supabaseService.rpc('get_oversight_status', { p_location_id: locationId });
+  const oversightCadence = oversightResult?.oversightCadence || null;
+
   let healthWithFactors = null;
   if (health) {
     const { data: factors } = await supabase.from('health_score_factors').select('factor, score, weight, status, explanation').eq('health_score_id', health.id);
@@ -125,6 +128,7 @@ async function buildTenantChatContext(supabase, locationId) {
     competitors: competitors || [],
     openQuestions: openQuestions || [],
     orbActivity: activity || [],
+    oversightCadence,
     investigations: investigations || [],
     businessMemory: memory || [],
     businessContext: businessContext || [],
