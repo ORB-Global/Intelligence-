@@ -173,15 +173,27 @@ async function checkLocalRankAtPoint(ownDomainOrName, keyword, latitude, longitu
   }
 }
 
-async function checkLocalRankGrid(ownDomainOrName, keyword, centerLat, centerLng, offsetMiles = 3) {
-  const offsetDeg = offsetMiles / 69; // real, approximate miles-to-degrees at mid-latitudes
-  const points = [
-    { label: 'center', lat: centerLat, lng: centerLng },
-    { label: 'north', lat: centerLat + offsetDeg, lng: centerLng },
-    { label: 'south', lat: centerLat - offsetDeg, lng: centerLng },
-    { label: 'east', lat: centerLat, lng: centerLng + offsetDeg },
-    { label: 'west', lat: centerLat, lng: centerLng - offsetDeg },
-  ];
+async function checkLocalRankGrid(ownDomainOrName, keyword, centerLat, centerLng, offsetMiles = 3, pointCount = 5) {
+  const offsetDeg = offsetMiles / 69;
+  const points = pointCount >= 9
+    ? [
+        { label: 'center', lat: centerLat, lng: centerLng },
+        { label: 'north', lat: centerLat + offsetDeg, lng: centerLng },
+        { label: 'south', lat: centerLat - offsetDeg, lng: centerLng },
+        { label: 'east', lat: centerLat, lng: centerLng + offsetDeg },
+        { label: 'west', lat: centerLat, lng: centerLng - offsetDeg },
+        { label: 'northeast', lat: centerLat + offsetDeg*0.7, lng: centerLng + offsetDeg*0.7 },
+        { label: 'northwest', lat: centerLat + offsetDeg*0.7, lng: centerLng - offsetDeg*0.7 },
+        { label: 'southeast', lat: centerLat - offsetDeg*0.7, lng: centerLng + offsetDeg*0.7 },
+        { label: 'southwest', lat: centerLat - offsetDeg*0.7, lng: centerLng - offsetDeg*0.7 },
+      ]
+    : [
+        { label: 'center', lat: centerLat, lng: centerLng },
+        { label: 'north', lat: centerLat + offsetDeg, lng: centerLng },
+        { label: 'south', lat: centerLat - offsetDeg, lng: centerLng },
+        { label: 'east', lat: centerLat, lng: centerLng + offsetDeg },
+        { label: 'west', lat: centerLat, lng: centerLng - offsetDeg },
+      ];
   const results = [];
   for (const p of points) {
     const r = await checkLocalRankAtPoint(ownDomainOrName, keyword, p.lat, p.lng);
