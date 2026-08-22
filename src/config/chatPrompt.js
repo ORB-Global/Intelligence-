@@ -106,7 +106,7 @@ ${JSON.stringify(client, null, 2)}`;
     prompt += fmtOptionalSection('THE INVESTIGATION THIS CONVERSATION IS ABOUT (answer in this specific context - the person is asking about THIS investigation, not investigations in general)', anchoredInvestigation, '');
   }
   if (tellVantageEntries !== undefined) {
-    prompt += fmtOptionalSection('WHAT THE OWNER HAS TOLD VANTAGE (real, owner-reported - durability shows how long each should be treated as relevant)', tellVantageEntries && tellVantageEntries.length ? tellVantageEntries : null, '(nothing reported yet)');
+    prompt += fmtOptionalSection('WHAT HAS BEEN TOLD TO VANTAGE (each entry has an author_type - "owner" is the business owner\'s own words, "staff" is Orb staff sharing context/completed work. Treat both as real evidence with provenance, but never call a staff note "what the owner said" or vice versa. durability shows how long each should be treated as relevant)', tellVantageEntries && tellVantageEntries.length ? tellVantageEntries : null, '(nothing reported yet)');
   }
 
   if (dateRange) {
