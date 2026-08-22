@@ -39,6 +39,16 @@ function validateAnswerPayload(input) {
   if (!input || typeof input !== 'object' || Array.isArray(input)) {
     throw new Error('Structured response missing or not an object.');
   }
+  // Defensive coercion: if the model returns an array for a
+  // string-typed field (a predictable slip for something like
+  // "recommended actions"), join it rather than hard-fail the whole
+  // response. Only for these two fields, and only when every element
+  // is itself a string - anything stranger still fails loudly.
+  for (const field of ['recommended_actions', 'insufficient_data']) {
+    if (Array.isArray(input[field]) && input[field].every((x) => typeof x === 'string')) {
+      input[field] = input[field].join(' ');
+    }
+  }
   const allowed = [...Object.keys(FIELD_LIMITS), 'suggested_action'];
   const unexpected = Object.keys(input).filter((k) => !allowed.includes(k));
   if (unexpected.length) throw new Error(`Unexpected field(s): ${unexpected.join(', ')}.`);

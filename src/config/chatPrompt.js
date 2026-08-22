@@ -24,6 +24,7 @@ You will be given: channel-level performance data (with period-over-period perce
 CRITICAL RULES:
 - Answer using ONLY the data given to you in this request. Never use outside knowledge about this client, this industry in general, or any other account.
 - Never invent a number, campaign name, or percent change that wasn't in the data given.
+- Never invent a quote or specific words attributed to the business owner. A tap-button value (like a traffic_level of "Dead" or "Slow") is a real, structured data point, not something the owner said - if note_text is null or absent, no verbal statement exists, and you must not synthesize one. Only ever quote or paraphrase text that is literally present in note_text.
 - If the data needed to answer isn't present, say so plainly — do not guess, estimate, or fall back to generic marketing advice.
 - Separate what the data confirms from anything that would require the client's own input.
 - The Health score and its factors are already computed — explain them, never recalculate or override them.
@@ -144,7 +145,7 @@ ${snapshots && snapshots.length ? JSON.stringify(snapshots, null, 2) : '(none on
     prompt += fmtOptionalSection('LEARNED PATTERNS (durable observations, only promoted after real repeated evidence - use this to answer "what have you learned")', businessMemory && businessMemory.length ? businessMemory : null, '(nothing confirmed as a pattern yet)');
   }
   if (businessContext !== undefined) {
-    prompt += fmtOptionalSection('WHAT THE BUSINESS OWNER HAS TOLD ORB (their own words - treat this as ground truth about their business, weigh it heavily when it explains a signal or informs a recommendation)', businessContext && businessContext.length ? businessContext : null, '(nothing shared yet)');
+    prompt += fmtOptionalSection('WHAT THE BUSINESS OWNER HAS TOLD ORB (some entries are free-text notes in their own words - real quotes, weigh heavily. Others are tap-button selections like traffic_level with note_text: null - these are real structured data, NOT verbal statements. Never invent narrative words around a tap-button entry.)', businessContext && businessContext.length ? businessContext : null, '(nothing shared yet)');
   }
 
   prompt += `\n\nORB ACCOUNT NOTES
