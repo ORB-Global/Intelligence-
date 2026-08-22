@@ -137,7 +137,7 @@
   .reply-box input{ flex:1; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.18); border-radius:999px; padding:0.7rem 1.1rem; color:#E4E8EE; font-family:inherit; font-size:0.88rem; }
   .reply-box button{ background:var(--brass); color:#1A1E28; border:none; border-radius:999px; padding:0.7rem 1.3rem; font-weight:600; cursor:pointer; font-size:0.85rem; }
   .quick-replies{ display:flex; flex-wrap:wrap; gap:0.5rem; margin-top:0.7rem; max-width:600px; }
-  .brain-hero-top{ display:flex; gap:2.5rem; align-items:center; flex-wrap:wrap; }
+  .brain-hero-top{ display:flex; gap:2.5rem; align-items:flex-start; flex-wrap:wrap; }
   .brain-hero-text{ flex:1; min-width:300px; }
   .brain-greeting{ font-family:'Fraunces',serif; font-size:1.7rem; font-weight:500; margin-bottom:0.3rem; }
   .brain-subline{ font-family:'IBM Plex Mono',monospace; font-size:0.72rem; text-transform:uppercase; letter-spacing:0.1em; color:#8F98AC; margin-bottom:1rem; }
@@ -157,10 +157,11 @@
   .brain-ask-cta:hover{ background:rgba(255,255,255,0.13); }
   .brain-ask-cta span.label{ font-weight:600; font-size:0.88rem; }
   .brain-ask-cta span.sub{ font-size:0.76rem; color:#9CA4B5; display:block; margin-top:0.15rem; }
-  .brain-viz-wrap{ width:440px; height:440px; flex-shrink:0; position:relative; }
-  .brain-viz-glow{ position:absolute; inset:-40px; background:radial-gradient(circle, rgba(173,138,78,0.18) 0%, rgba(173,138,78,0.04) 45%, transparent 70%); border-radius:50%; animation: glowbreathe 4.5s ease-in-out infinite; }
+  .brain-viz-wrap{ width:340px; height:300px; flex-shrink:0; position:sticky; top:24px; }
+  .brain-viz-glow{ position:absolute; inset:-30px; background:radial-gradient(circle, rgba(173,138,78,0.16) 0%, rgba(173,138,78,0.04) 45%, transparent 70%); border-radius:50%; animation: glowbreathe 4.5s ease-in-out infinite; }
   @keyframes glowbreathe{ 0%,100%{ opacity:0.6; transform:scale(0.96); } 50%{ opacity:1; transform:scale(1.04); } }
-  @media (max-width:900px){ .brain-viz-wrap{ width:280px; height:280px; } .brain-hero-top{ flex-direction:column; } }
+  @media (max-width:900px){ .brain-viz-wrap{ width:240px; height:210px; position:static; } .brain-hero-top{ flex-direction:column; } }
+
 
   @keyframes nodepulse{ 0%,100%{ opacity:0.35; r:3.2; } 50%{ opacity:1; r:4.4; } }
   @keyframes edgeflow{ 0%{ stroke-dashoffset:24; } 100%{ stroke-dashoffset:0; } }
@@ -491,35 +492,33 @@
       const anyAttentionActive = domains.some(d => d.active);
       const brainSvg = `<div class="brain-viz-wrap">
         <div class="brain-viz-glow"></div>
-        <svg viewBox="0 0 260 230" xmlns="http://www.w3.org/2000/svg" style="width:100%; height:100%; position:relative; overflow:visible;">
-          <g style="animation: pencilBreathe 5.6s ease-in-out infinite; transform-origin:130px 115px;">
-            <path fill="none" stroke="rgba(232,196,129,0.55)" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round" d="
-              M 47 87 C 40 70, 47 50, 67 41 C 80 35, 90 39, 100 34
-              C 112 28, 127 29, 139 36 C 150 30, 165 32, 174 42
-              C 186 39, 199 46, 202 58 C 214 61, 221 74, 217 87
-              C 226 94, 228 107, 221 117 C 226 126, 223 138, 212 143
-              C 210 153, 200 159, 189 157 C 184 165, 173 168, 164 163
-              C 159 168, 149 167, 144 161 C 130 164, 116 158, 111 148
-              C 99 146, 90 137, 89 125 C 79 122, 72 112, 74 101
-              C 67 98, 63 88, 66 76" style="opacity:${anyAttentionActive ? '0.7' : '0.45'};"/>
-            <path fill="none" stroke="rgba(232,196,129,0.55)" stroke-width="1.3" d="M 64 125 C 70 134, 79 140, 86 148"/>
-            <path fill="none" stroke="rgba(232,196,129,0.4)" stroke-width="0.7" stroke-linecap="round" d="
-              M 64 125 C 59 134, 58 146, 65 155 C 70 162, 80 165, 89 161
-              C 98 157, 100 147, 95 139 C 92 132, 85 127, 76 126 C 72 125, 67 124, 64 125 Z"/>
-            <path fill="none" stroke="rgba(232,196,129,0.28)" stroke-width="0.6" d="M 120 45 C 118 60, 122 75, 118 89 C 115 100, 120 111, 116 122"/>
-            ${domains.map((d,i) => {
-              const pos = [[72,55],[150,50],[195,70],[70,140],[135,155],[190,110]][i % 6];
-              return d.active ? `<g style="animation: gyriPulse ${2.4 + (i%3)*0.6}s ease-in-out infinite;">
-                <path fill="none" stroke="#E8C481" stroke-width="0.8" stroke-linecap="round" opacity="0.7"
-                  d="M ${pos[0]} ${pos[1]} C ${pos[0]+8} ${pos[1]+8}, ${pos[0]+4} ${pos[1]+16}, ${pos[0]+12} ${pos[1]+22}"/>
-              </g>` : '';
+        <svg viewBox="0 0 300 220" xmlns="http://www.w3.org/2000/svg" style="width:100%; height:100%; position:relative; overflow:visible;">
+          <g style="animation: pencilBreathe 5.6s ease-in-out infinite; transform-origin:160px 115px;">
+            <path fill="none" stroke="rgba(232,196,129,0.65)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"
+              d="M 90 155
+                 C 65 145, 55 115, 68 88
+                 C 78 68, 95 55, 118 48
+                 C 130 35, 155 28, 180 32
+                 C 205 28, 230 38, 245 58
+                 C 265 68, 275 92, 267 115
+                 C 275 130, 270 150, 253 160
+                 C 248 172, 233 180, 218 176
+                 C 210 186, 195 190, 183 183
+                 C 170 190, 152 188, 143 176
+                 C 128 182, 110 178, 100 165
+                 C 96 161, 92 158, 90 155 Z"
+              style="opacity:${anyAttentionActive ? '0.9' : '0.6'};"/>
+            <path fill="none" stroke="rgba(232,196,129,0.5)" stroke-width="1.3" stroke-linecap="round" d="M 143 176 C 138 168, 137 159, 142 150"/>
+            ${['M 105 78 C 112 92, 108 104, 116 116','M 155 58 C 160 74, 156 88, 163 100','M 205 60 C 211 74, 207 87, 214 100','M 240 82 C 244 94, 240 104, 246 115'].map((d,i) => {
+              const active = domains[i]?.active;
+              return `<path fill="none" stroke="rgba(232,196,129,${active?0.7:0.24})" stroke-width="0.9" stroke-linecap="round" d="${d}" ${active ? `style="animation: gyriPulse ${2.6+i*0.5}s ease-in-out infinite;"` : ''}/>`;
             }).join('')}
           </g>
         </svg>
       </div>
       <style>
         @keyframes pencilBreathe{ 0%,100%{ transform:scale(1); } 50%{ transform:scale(1.015); } }
-        @keyframes gyriPulse{ 0%,100%{ opacity:0.4; } 50%{ opacity:0.9; } }
+        @keyframes gyriPulse{ 0%,100%{ opacity:0.35; } 50%{ opacity:0.85; } }
       </style>`;
       const activeDomainLabels = domains.filter(d => d.active).map(d => d.label);
 
