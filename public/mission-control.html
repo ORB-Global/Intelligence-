@@ -409,7 +409,7 @@
     currentLocationId = locId;
     document.getElementById('exploreBtn').classList.remove('hidden');
     try {
-      const { location, connections, metrics, feed, health, socialMetrics, localMetrics, briefing, marketProfile, competitors, openQuestions, brainState, recentActivity, memory, investigations, performance, activitySummary, competitivePulse: competitivePulseData, thesis, nextAction, nextMove, portfolioContext, goal } = await apiFetch(`/api/mc/locations/${locId}`);
+      const { location, connections, metrics, feed, health, socialMetrics, localMetrics, briefing, marketProfile, competitors, openQuestions, brainState, recentActivity, memory, investigations, performance, activitySummary, competitivePulse: competitivePulseData, thesis, nextAction, nextMove, portfolioContext, goal, businessState } = await apiFetch(`/api/mc/locations/${locId}`);
 
       // Real seen-tracking: a first view of an investigation gets the
       // full detail; a return visit gets a quiet recap instead of a
@@ -633,6 +633,16 @@
       if (!isCalm) {
         threadMessages.push({ weight: 'normal', label: 'What I believe matters most', text: mattersMost, recId: mattersMostRecId, subtext: portfolioContext });
         threadMessages.push({ weight: 'minor', label: "What I'm watching next", text: watchingNext });
+      }
+      // Real ad-level intelligence - only shown when a real intent
+      // signal actually exists (leads/messaging), never fabricated.
+      const topAd = businessState?.state?.top_ad;
+      if (topAd?.status === 'ok') {
+        threadMessages.push({ weight: 'minor', label: 'Your strongest real ad', text: topAd.clientFacingText });
+      }
+      const metaPacing = businessState?.state?.meta_pacing;
+      if (metaPacing?.status === 'ok') {
+        threadMessages.push({ weight: 'minor', label: 'Meta budget pacing', text: metaPacing.clientFacingText });
       }
       // Real, actor-aware in-context activity, matching the exact
       // truthful phrasing distinction required: Orb Global staff
