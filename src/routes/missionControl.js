@@ -8,6 +8,7 @@
 
 const express = require('express');
 const requireSupabaseAuth = require('../middleware/requireSupabaseAuth');
+const requireStaffRole = require('../middleware/requireStaffRole');
 const chatService = require('../services/chatService');
 
 // Bounded-failure guarantee: any unhandled rejection inside a route
@@ -844,11 +845,11 @@ router.get('/locations/:id/checkins', async (req, res) => {
   return res.json({ success: true, data: data || [] });
 });
 
-router.post('/locations/:id/activity', async (req, res) => {
+router.post('/locations/:id/activity', requireStaffRole, async (req, res) => {
   const { id: locationId } = req.params;
-  const { activityType, description, clientVisible, reviewType } = req.body || {};
+  const { activityType, description, clientVisible, reviewType, channel, reason, relatedInvestigationId, relatedRecommendationId } = req.body || {};
 
-  const validTypes = ['review','optimization','launch','test','creative_change','budget_change','targeting_change','landing_page_update','connection_repair','client_conversation','other'];
+  const validTypes = ['review','optimization','launch','pause','test','creative_change','budget_change','targeting_change','landing_page_update','local_update','search_change','seasonal_strategy_update','connection_repair','client_conversation','other'];
   if (!validTypes.includes(activityType)) {
     return res.status(400).json({ success: false, error: { message: `activityType must be one of: ${validTypes.join(', ')}` } });
   }
@@ -864,16 +865,35 @@ router.post('/locations/:id/activity', async (req, res) => {
   if (locError) return res.status(500).json({ success: false, error: { message: locError.message } });
   if (!location) return res.status(404).json({ success: false, error: { message: 'Location not found or not accessible.' } });
 
+  const fullDescription = reason ? `${description.trim()} (${reason.trim()})` : description.trim();
   const { data: activity, error } = await req.supabase.from('orb_activity').insert({
     organization_id: location.organization_id,
     location_id: locationId,
     activity_type: activityType,
     review_type: reviewType || null,
-    description: description.trim(),
+    description: fullDescription,
     performed_by: req.user.id,
     client_visible: clientVisible !== false,
   }).select().single();
   if (error) return res.status(500).json({ success: false, error: { message: error.message } });
+
+  // Real link: if this action relates to a real, existing investigation
+  // or recommendation, record it on the human_review_chain so the
+  // full detected->reviewed->acted lifecycle stays connected - not a
+  // disconnected log entry.
+  if (relatedInvestigationId || relatedRecommendationId) {
+    const sourceType = relatedInvestigationId ? 'investigation' : 'recommendation';
+    const sourceId = relatedInvestigationId || relatedRecommendationId;
+    const { data: existingChain } = await req.supabase.from('human_review_chain').select('id, reviewed_at').eq('source_type', sourceType).eq('source_id', sourceId).maybeSingle();
+    if (existingChain) {
+      await req.supabase.from('human_review_chain').update({
+        reviewed_at: existingChain.reviewed_at || new Date().toISOString(),
+        reviewed_by: req.user.id,
+        action_taken: activityType === 'review' ? null : fullDescription,
+        action_at: activityType === 'review' ? null : new Date().toISOString(),
+      }).eq('id', existingChain.id);
+    }
+  }
 
   // Real cadence tracking updates automatically - not a separate step
   // staff have to remember to do.
