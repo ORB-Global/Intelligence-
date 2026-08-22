@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Vantage</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;1,9..144,400&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<style>
+  :root{ --ink:#2b2f36; --ink-dim:#7a8494; --graphite:rgba(30,34,42,0.55); --accent:#9a7a45; }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  html,body{height:100%;}
+  body{
+    font-family:'IBM Plex Mono',monospace; color:var(--ink); width:100vw; height:100vh; overflow:hidden; position:relative;
+    background: radial-gradient(ellipse 1400px 1000px at 50% 42%, #F6F9FB, #EBF0F5 75%);
+  }
+  canvas{ position:absolute; top:0; left:0; }
+
+  .thought-wrap{
+    position:absolute; top:38%; left:50%; transform:translate(-50%,-50%); width:620px; text-align:center; z-index:10;
+    opacity:0; animation: resolveIn 1.2s cubic-bezier(.2,.7,.3,1) forwards;
+  }
+  @keyframes resolveIn{ 0%{opacity:0; filter:blur(4px);} 100%{opacity:1; filter:blur(0);} }
+  .thought{ font-family:'Fraunces',serif; font-weight:400; font-size:26px; line-height:1.4; color:var(--ink); }
+  .thought-sub{ font-family:'Fraunces',serif; font-style:italic; font-size:15px; color:var(--ink-dim); margin-top:14px; }
+
+  .timeline-wrap{ position:absolute; bottom:36px; left:50%; transform:translateX(-50%); width:600px; z-index:20; }
+  .timeline{ position:relative; height:1px; background:linear-gradient(to right, transparent, rgba(30,34,42,0.25) 8%, rgba(30,34,42,0.25) 92%, transparent); }
+  .tl-node{ position:absolute; top:-4px; width:9px; height:9px; border-radius:50%; background:#EBF0F5; border:1px solid var(--accent); cursor:pointer; transition:all 0.2s; }
+  .tl-node:hover, .tl-node.active{ background:var(--accent); }
+  .tl-node::after{ content:attr(data-p); position:absolute; top:14px; left:50%; transform:translateX(-50%); font-size:9px; color:var(--ink-dim); white-space:nowrap; opacity:0; transition:opacity 0.3s; }
+  .tl-node:hover::after{ opacity:1; }
+
+  .status{ position:fixed; top:20px; left:20px; font-size:10px; color:var(--ink-dim); z-index:30; }
+  .loading{ position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); font-size:12px; color:var(--ink-dim); }
+</style>
+</head>
+<body>
+<div class="status" id="status">loading…</div>
+<canvas id="brain-canvas"></canvas>
+<div class="loading" id="loading-msg">Vantage is looking at your business…</div>
+
+<div class="thought-wrap" id="thought-wrap" style="display:none;">
+  <div class="thought" id="thought-text"></div>
+  <div class="thought-sub" id="thought-sub"></div>
+</div>
+
+<div class="timeline-wrap" id="timeline-wrap" style="display:none;">
+  <div class="timeline"></div>
+</div>
+
+<script>
+const SUPABASE_URL = window.location.origin.includes('localhost') ? '' : '';
+let supabaseClient = null;
+
+async function boot(){
+  await loadRealData();
+}
+
+async function apiFetch(path){
+  const token = await getRealToken();
+  if (!token) { window.location.href = '/login.html'; return; }
+  const res = await fetch(path, { headers: { Authorization: `Bearer ${token}` } });
+  const body = await res.json();
+  if (!res.ok || !body.success) throw new Error(body.error?.message || 'fetch failed');
+  return body.data;
+}
+
+async function getRealToken(){
+  if (window.__vantageClient) {
+    const { data } = await window.__vantageClient.auth.getSession();
+    return data.session?.access_token || null;
+  }
+  return null;
+}
+
+let REAL_LOCATION_ID = null;
+
+async function loadRealData(){
+  const SUPABASE_URL = 'https://vdhsvasxccdrashmvvdk.supabase.co';
+  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZkaHN2YXN4Y2NkcmFzaG12dmRrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUzNDMyMDUsImV4cCI6MjEwMDkxOTIwNX0.rZvlbqrdYXlIeAKou-dllsO6MQr3ehzm7h3FBK2sZ6o';
+  window.__vantageClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { auth: { autoRefreshToken: true, persistSession: true, detectSessionInUrl: true } });
+
+  const { data: sessionData } = await window.__vantageClient.auth.getSession();
+  if (!sessionData.session) { window.location.href = '/login.html'; return; }
+
+  const params = new URLSearchParams(window.location.search);
+  const orgs = await apiFetch('/api/mc/organizations');
+  const firstOrg = orgs[0];
+  const { locations } = await apiFetch(`/api/mc/organizations/${firstOrg.id}`);
+  REAL_LOCATION_ID = params.get('location') || locations[0]?.id;
+
+  const payload = await apiFetch(`/api/mc/locations/${REAL_LOCATION_ID}`);
+  renderReal(payload);
+}
+
+function renderReal(payload){
+  document.getElementById('loading-msg').style.display = 'none';
+  document.getElementById('status').textContent = payload.location?.name || '';
+
+  const state = payload.businessState?.state || {};
+  const briefing = payload.briefing || 'Vantage is still gathering enough history to brief you.';
+
+  document.getElementById('thought-text').textContent = briefing;
+  const sub = state.territory_furniture?.fact || '';
+  document.getElementById('thought-sub').textContent = sub;
+  document.getElementById('thought-wrap').style.display = 'block';
+
+  renderTimeline(payload);
+  startBrainPhysics(state);
+}
+
+function renderTimeline(payload){
+  const wrap = document.getElementById('timeline-wrap');
+  wrap.style.display = 'block';
+  const timeline = wrap.querySelector('.timeline');
+  timeline.innerHTML = '';
+  const points = [
+    {label:'6mo ago', pos: 6},
+    {label:'3mo ago', pos: 30},
+    {label:'1mo ago', pos: 60},
+    {label:'Today', pos: 94, active:true},
+  ];
+  points.forEach(p=>{
+    const node = document.createElement('div');
+    node.className = 'tl-node' + (p.active ? ' active' : '');
+    node.style.left = p.pos + '%';
+    node.dataset.p = p.label;
+    timeline.appendChild(node);
+  });
+}
+
+/* Real physics: validated brain silhouette + particle/spring canvas */
+function startBrainPhysics(state){
+  const canvas = document.getElementById('brain-canvas');
+  const ctx = canvas.getContext('2d');
+  function resize(){ canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
+  resize(); window.addEventListener('resize', resize);
+
+  const cx = () => window.innerWidth/2;
+  const cy = () => window.innerHeight/2 - 60;
+
+  // Validated silhouette path points (from the real anatomical
+  // reference, test-rendered with cairosvg before use)
+  const mainPath = [
+    [100,118],[84,100],[86,68],[112,50],[132,36],[156,30],[180,32],[200,20],[235,18],[260,30],
+    [285,24],[315,34],[330,57],[350,67],[362,90],[355,114],[365,130],[362,152],[345,167],[340,180],
+    [325,188],[310,185],[300,197],[282,202],[268,192],[255,200],[238,199],[228,188],[210,192],[190,184],
+    [180,170],[165,174],[148,170],[138,157],[122,152],[106,142],[100,118]
+  ];
+  const scale = 1.3;
+  const offsetX = -230, offsetY = -110;
+  let particles = mainPath.map(([x,y], i) => {
+    const hx = (x+offsetX)*scale, hy = (y+offsetY)*scale;
+    return { hx, hy, x:hx, y:hy, vx:0, vy:0, phase: i*0.4 };
+  });
+  let springs = particles.map((_, i) => [i, (i+1) % particles.length]);
+
+  const anyActive = Object.values(state).some(s => s?.status === 'STRONG' || s?.status === 'OPPORTUNITY');
+  let t = 0;
+  function animate(){
+    t += 0.016;
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    const ox = cx(), oy = cy();
+    particles.forEach(p=>{
+      const breathe = 1 + Math.sin(t*0.85)*0.018;
+      const jitterX = Math.sin(t*1.8+p.phase)*0.8;
+      const jitterY = Math.cos(t*1.5+p.phase)*0.8;
+      const tx = p.hx*breathe + jitterX, ty = p.hy*breathe + jitterY;
+      p.vx += (tx - p.x)*0.02; p.vy += (ty - p.y)*0.02;
+      p.vx *= 0.82; p.vy *= 0.82;
+      p.x += p.vx; p.y += p.vy;
+    });
+    ctx.strokeStyle = anyActive ? 'rgba(30,34,42,0.55)' : 'rgba(30,34,42,0.35)';
+    ctx.lineWidth = 1.3;
+    ctx.beginPath();
+    particles.forEach((p,i)=>{ if(i===0) ctx.moveTo(ox+p.x,oy+p.y); else ctx.lineTo(ox+p.x,oy+p.y); });
+    ctx.closePath();
+    ctx.stroke();
+    requestAnimationFrame(animate);
+  }
+  animate();
+}
+
+boot();
+</script>
+</body>
+</html>
