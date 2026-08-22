@@ -72,6 +72,8 @@ function buildChatUserPrompt({
   openQuestions,
   orbActivity,
   oversightCadence,
+  activeBeliefs,
+  currentJudgments,
   investigations,
   businessMemory,
   businessContext,
@@ -84,6 +86,12 @@ ${JSON.stringify(client, null, 2)}`;
 
   if (goal !== undefined) {
     prompt += fmtOptionalSection('CURRENT BUSINESS GOAL (reason in relation to this - a technically interesting signal that does not affect this goal may not deserve attention)', goal, '(no goal set yet - if relevant, you may ask the owner what they are trying to accomplish right now)');
+  }
+  if (activeBeliefs !== undefined) {
+    prompt += fmtOptionalSection('WHAT VANTAGE CURRENTLY BELIEVES ABOUT THIS BUSINESS (real, evidence-backed beliefs with their real status - emerging/supported/weakened. Use these to add depth, not to override current evidence)', activeBeliefs && activeBeliefs.length ? activeBeliefs : null, '(no confirmed beliefs yet for this business - say so plainly if asked, do not imply otherwise)');
+  }
+  if (currentJudgments !== undefined) {
+    prompt += fmtOptionalSection('CURRENT REAL JUDGMENTS (deterministically generated from real cross-source evidence - these are the strongest real findings right now, already scored by business value)', currentJudgments && currentJudgments.length ? currentJudgments : null, '(nothing currently meets the threshold for a real judgment - this is honest silence, not a gap)');
   }
   if (anchoredInvestigation) {
     prompt += fmtOptionalSection('THE INVESTIGATION THIS CONVERSATION IS ABOUT (answer in this specific context - the person is asking about THIS investigation, not investigations in general)', anchoredInvestigation, '');

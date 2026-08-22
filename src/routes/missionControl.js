@@ -101,6 +101,8 @@ async function buildTenantChatContext(supabase, locationId) {
   const { data: oversightResult } = await supabaseService.rpc('get_oversight_status', { p_location_id: locationId });
   const oversightCadence = oversightResult?.oversightCadence || null;
 
+  const { data: businessModel } = await supabaseService.rpc('get_business_model_context', { p_location_id: locationId });
+
   let healthWithFactors = null;
   if (health) {
     const { data: factors } = await supabase.from('health_score_factors').select('factor, score, weight, status, explanation').eq('health_score_id', health.id);
@@ -129,6 +131,8 @@ async function buildTenantChatContext(supabase, locationId) {
     openQuestions: openQuestions || [],
     orbActivity: activity || [],
     oversightCadence,
+    activeBeliefs: businessModel?.activeBeliefs || [],
+    currentJudgments: businessModel?.currentJudgments || [],
     investigations: investigations || [],
     businessMemory: memory || [],
     businessContext: businessContext || [],
