@@ -96,7 +96,7 @@ async function buildTenantChatContext(supabase, locationId) {
     supabase.from('business_memory').select('observation, confidence, supporting_evidence_count').eq('location_id', locationId),
     supabase.from('business_context_entries').select('note_text, sales_estimate, transaction_count, traffic_level, primary_category_sold, promotion_running, created_at').eq('location_id', locationId).eq('excluded_from_evidence', false).order('created_at', { ascending: false }).limit(8),
     supabase.from('location_goals').select('business_objective, marketing_objective, lead_goal, conversion_goal, updated_at').eq('location_id', locationId).maybeSingle(),
-    supabase.from('tell_vantage_entries').select('raw_text, classified_type, ai_summary, durability, created_at').eq('location_id', locationId).order('created_at', { ascending: false }).limit(10),
+    supabase.from('tell_vantage_entries').select('raw_text, classified_type, ai_summary, durability, author_type, created_at').eq('location_id', locationId).order('created_at', { ascending: false }).limit(10),
   ]);
 
   const { data: oversightResult } = await supabaseService.rpc('get_oversight_status', { p_location_id: locationId });
@@ -682,9 +682,13 @@ router.post('/locations/:id/tell', async (req, res) => {
     return res.status(502).json({ success: false, error: { message: `Could not classify statement: ${err.message}` } });
   }
 
+  const { data: membership } = await req.supabase.from('organization_memberships').select('role').eq('organization_id', location.organization_id).eq('user_id', req.user.id).maybeSingle();
+  const realAuthorType = membership && ['admin', 'account_manager'].includes(membership.role) ? 'staff' : 'owner';
+
   const { data: entry, error } = await req.supabase.from('tell_vantage_entries').insert({
     organization_id: location.organization_id, location_id: locationId, raw_text: text.trim(),
     classified_type: classification.classified_type, durability: classification.durability, ai_summary: classification.ai_summary,
+    author_id: req.user.id, author_type: realAuthorType,
   }).select().single();
   if (error) return res.status(500).json({ success: false, error: { message: error.message } });
 
