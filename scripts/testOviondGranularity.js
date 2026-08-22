@@ -104,6 +104,15 @@ async function main() {
     metrics: ['impressions'], dimensions: ['INVALID_DIM_PROBE'], data_view: 'CAMPAIGNS',
     advanced: { attribution: 'use_unified_attribution_setting' },
   });
+
+  // Real, targeted probe using Oviond's OWN marketing-page language
+  // ("post views", "post clicks", "post reach") rather than guessed
+  // generic Graph API metric names - their public docs describe a
+  // real Facebook Overview report template with post-level metrics.
+  await tryQuery('Facebook POSTS - metric names from Oviond\'s own docs (post_views, post_clicks, post_reach)', {
+    datasource_id: 'fb-pg', client_id: EASLEY_OVIOND_CLIENT_ID, date_range: dateRange,
+    metrics: ['post_views'], dimensions: ['DATE'], data_view: 'POSTS',
+  });
 }
 
 main().catch((e) => { console.error('Fatal:', e); process.exit(1); });
