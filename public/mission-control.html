@@ -640,6 +640,13 @@
               <button class="command-option" onclick="sendStorePulse('Busy')">Busy</button>
             </div>
 
+            <div style="margin: 1rem 0 0.6rem; font-size:0.78rem; color:#8F98AC;">This week's real numbers (optional, helps Vantage a lot)</div>
+            <div style="display:flex; gap:0.5rem; margin-bottom:0.6rem;">
+              <input type="number" id="weeklyTransactions" placeholder="People who came in" style="flex:1; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.15); border-radius:8px; padding:0.5rem 0.7rem; color:#EBEDF2; font-size:0.82rem;">
+              <input type="number" id="weeklySales" placeholder="Sales made ($)" style="flex:1; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.15); border-radius:8px; padding:0.5rem 0.7rem; color:#EBEDF2; font-size:0.82rem;">
+              <button class="command-option" onclick="sendWeeklyNumbers()">Save</button>
+            </div>
+
             <div class="reply-box">
               <input type="text" id="orbReplyInput" placeholder="Ask Vantage a question, or tell it something…" onkeydown="if(event.key==='Enter') sendOrbReply()">
               <button onclick="sendOrbReply()">Send</button>
@@ -1089,6 +1096,32 @@
       updateLastOrbMessage(`Could not save that: ${err.message}`);
     }
   }
+
+  async function sendWeeklyNumbers(){
+    if (!currentLocationId) return;
+    const transactionCount = document.getElementById('weeklyTransactions').value;
+    const salesEstimate = document.getElementById('weeklySales').value;
+    if (!transactionCount && !salesEstimate) return;
+    appendThreadMessage(`This week: ${transactionCount ? transactionCount + ' people in' : ''}${transactionCount && salesEstimate ? ', ' : ''}${salesEstimate ? '$' + salesEstimate + ' in sales' : ''}`, 'You');
+    appendThreadMessage('…', 'Orb');
+    try {
+      await apiFetch(`/api/mc/locations/${currentLocationId}/checkin`, {
+        method: 'POST', body: JSON.stringify({
+          transactionCount: transactionCount ? Number(transactionCount) : undefined,
+          salesEstimate: salesEstimate ? Number(salesEstimate) : undefined,
+        }),
+      });
+      updateLastOrbMessage('Got it - saved for this week.');
+      document.getElementById('weeklyTransactions').value = '';
+      document.getElementById('weeklySales').value = '';
+    } catch (err) {
+      updateLastOrbMessage(`Could not save that: ${err.message}`);
+    }
+  }
+
+  // logOrbChange intentionally not built into this client-facing page
+  // - it would let any authenticated client self-report a fake Orb
+  // action. That needs a genuine staff-only entry point instead.
 
   async function showWhereYouStand(){
     const panel = document.getElementById('whereYouStandPanel');
