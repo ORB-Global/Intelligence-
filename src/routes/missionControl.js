@@ -93,7 +93,7 @@ async function buildTenantChatContext(supabase, locationId) {
     supabase.from('orb_activity').select('activity_type, description, occurred_at').eq('location_id', locationId).eq('client_visible', true).order('occurred_at', { ascending: false }).limit(10),
     supabase.from('investigations').select('id, question, evidence_collected, possible_explanations, confidence, status, conclusion').eq('location_id', locationId).eq('client_visible', true),
     supabase.from('business_memory').select('observation, confidence, supporting_evidence_count').eq('location_id', locationId),
-    supabase.from('business_context_entries').select('note_text, sales_estimate, transaction_count, traffic_level, primary_category_sold, promotion_running, created_at').eq('location_id', locationId).order('created_at', { ascending: false }).limit(8),
+    supabase.from('business_context_entries').select('note_text, sales_estimate, transaction_count, traffic_level, primary_category_sold, promotion_running, created_at').eq('location_id', locationId).eq('excluded_from_evidence', false).order('created_at', { ascending: false }).limit(8),
     supabase.from('location_goals').select('business_objective, marketing_objective, lead_goal, conversion_goal, updated_at').eq('location_id', locationId).maybeSingle(),
     supabase.from('tell_vantage_entries').select('raw_text, classified_type, ai_summary, durability, created_at').eq('location_id', locationId).order('created_at', { ascending: false }).limit(10),
   ]);
@@ -835,7 +835,7 @@ router.post('/locations/:id/checkin', async (req, res) => {
 
 router.get('/locations/:id/checkins', async (req, res) => {
   const { id: locationId } = req.params;
-  const { data, error } = await req.supabase.from('business_context_entries').select('*').eq('location_id', locationId).order('created_at', { ascending: false }).limit(12);
+  const { data, error } = await req.supabase.from('business_context_entries').select('*').eq('location_id', locationId).eq('excluded_from_evidence', false).order('created_at', { ascending: false }).limit(12);
   if (error) return res.status(500).json({ success: false, error: { message: error.message } });
   return res.json({ success: true, data: data || [] });
 });
