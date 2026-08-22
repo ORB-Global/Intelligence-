@@ -102,6 +102,9 @@ ${JSON.stringify(client, null, 2)}`;
       prompt += `\n\nIMPORTANT - each judgment above carries an "alreadyToldClient" field. If alreadyToldClient.isNew is false, this exact finding was already surfaced ${currentJudgments[0]?.alreadyToldClient?.daysSinceSurfaced ?? 'some days'} ago - do NOT present it as a new discovery. Instead say something like "the thing I mentioned is still developing" or "nothing's changed enough on this to revise what I told you before." Only present a judgment as new when alreadyToldClient.isNew is true.`;
     }
   }
+  if (businessState !== undefined && businessState) {
+    prompt += fmtOptionalSection('REAL BUSINESS STATE (includes top_ad - the specific real ad winning on actual intent, not just clicks, with its real creative image URL - and meta_pacing - real ad-set budget consumption. Use these directly when asked "which ad is working," "show me my best ad," "is my budget being spent well," or "which creative is producing leads" - do not guess or reconstruct from raw historical_metrics when this object already has the answer)', businessState, null);
+  }
   if (anchoredInvestigation) {
     prompt += fmtOptionalSection('THE INVESTIGATION THIS CONVERSATION IS ABOUT (answer in this specific context - the person is asking about THIS investigation, not investigations in general)', anchoredInvestigation, '');
   }

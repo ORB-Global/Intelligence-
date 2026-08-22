@@ -103,6 +103,7 @@ async function buildTenantChatContext(supabase, locationId) {
   const oversightCadence = oversightResult?.oversightCadence || null;
 
   const { data: businessModel } = await supabaseService.rpc('get_business_model_context', { p_location_id: locationId });
+  const { data: businessState } = await supabaseService.rpc('build_business_state', { p_location_id: locationId });
 
   let healthWithFactors = null;
   if (health) {
@@ -134,6 +135,7 @@ async function buildTenantChatContext(supabase, locationId) {
     oversightCadence,
     activeBeliefs: businessModel?.activeBeliefs || [],
     currentJudgments: businessModel?.currentJudgments || [],
+    businessState: businessState || null,
     investigations: investigations || [],
     businessMemory: memory || [],
     businessContext: businessContext || [],
