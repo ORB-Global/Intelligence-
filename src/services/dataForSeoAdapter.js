@@ -133,3 +133,58 @@ async function discoverCompetitorsNearCoordinates(keyword, latitude, longitude, 
 
 module.exports.discoverLocalCompetitors = discoverLocalCompetitors;
 module.exports.discoverCompetitorsNearCoordinates = discoverCompetitorsNearCoordinates;
+
+// Real, cost-controlled local-rank grid: checks a SMALL number of
+// real points (center + 4 cardinal offsets, 5 total calls) rather
+// than an expensive dense grid, per the explicit cost-discipline
+// instruction. For each point, finds where the business's own
+// domain/name ranks among real maps_search results, or null if
+// absent from the top 20 - genuine territory awareness, not a single
+// rank number.
+async function checkLocalRankAtPoint(ownDomainOrName, keyword, latitude, longitude) {
+  if (!isConfigured()) return { status: 'requires_provider' };
+  const locationCoordinate = `${latitude},${longitude},2`; // tight 2km radius per point - this IS the point, not an area search
+  try {
+    const res = await fetch(`${DATAFORSEO_BASE}/serp/google/maps/live/advanced`, {
+      method: 'POST',
+      headers: { Authorization: authHeader(), 'Content-Type': 'application/json' },
+      body: JSON.stringify([{ keyword, location_coordinate: locationCoordinate, language_code: 'en', depth: 20 }]),
+    });
+    if (!res.ok) return { status: 'failed', reason: `DataForSEO error ${res.status}` };
+    const data = await res.json();
+    const task = data?.tasks?.[0];
+    if (!task || task.status_code !== 20000) return { status: 'failed', reason: task?.status_message || 'unknown' };
+    const items = (task.result?.[0]?.items || []).filter((i) => i.type === 'maps_search');
+    const ownIndex = items.findIndex((i) =>
+      (i.domain && ownDomainOrName.domain && i.domain.includes(ownDomainOrName.domain)) ||
+      (i.title && ownDomainOrName.name && i.title.toLowerCase().includes(ownDomainOrName.name.toLowerCase()))
+    );
+    return {
+      status: 'ok',
+      ownRank: ownIndex === -1 ? null : ownIndex + 1,
+      topCompetitor: items[0] ? { name: items[0].title, rank: 1 } : null,
+    };
+  } catch (err) {
+    return { status: 'failed', reason: err.message };
+  }
+}
+
+async function checkLocalRankGrid(ownDomainOrName, keyword, centerLat, centerLng, offsetMiles = 3) {
+  const offsetDeg = offsetMiles / 69; // real, approximate miles-to-degrees at mid-latitudes
+  const points = [
+    { label: 'center', lat: centerLat, lng: centerLng },
+    { label: 'north', lat: centerLat + offsetDeg, lng: centerLng },
+    { label: 'south', lat: centerLat - offsetDeg, lng: centerLng },
+    { label: 'east', lat: centerLat, lng: centerLng + offsetDeg },
+    { label: 'west', lat: centerLat, lng: centerLng - offsetDeg },
+  ];
+  const results = [];
+  for (const p of points) {
+    const r = await checkLocalRankAtPoint(ownDomainOrName, keyword, p.lat, p.lng);
+    results.push({ ...p, ...r });
+  }
+  return { keyword, points: results };
+}
+
+module.exports.checkLocalRankAtPoint = checkLocalRankAtPoint;
+module.exports.checkLocalRankGrid = checkLocalRankGrid;
