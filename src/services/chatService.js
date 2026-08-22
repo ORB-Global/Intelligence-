@@ -39,14 +39,18 @@ function validateAnswerPayload(input) {
   if (!input || typeof input !== 'object' || Array.isArray(input)) {
     throw new Error('Structured response missing or not an object.');
   }
-  // Defensive coercion: if the model returns an array for a
-  // string-typed field (a predictable slip for something like
-  // "recommended actions"), join it rather than hard-fail the whole
-  // response. Only for these two fields, and only when every element
-  // is itself a string - anything stranger still fails loudly.
+  // Defensive coercion: the model can slip into non-string shapes for
+  // these two fields in predictable ways. Handle every shape actually
+  // observed rather than just one - a narrow fix (array-of-strings
+  // only) was tried first and the same failure recurred with a
+  // different shape, so this covers arrays of any content and plain
+  // objects by extracting/stringifying rather than hard-failing.
   for (const field of ['recommended_actions', 'insufficient_data']) {
-    if (Array.isArray(input[field]) && input[field].every((x) => typeof x === 'string')) {
-      input[field] = input[field].join(' ');
+    const value = input[field];
+    if (Array.isArray(value)) {
+      input[field] = value.map((x) => (typeof x === 'string' ? x : JSON.stringify(x))).join(' ');
+    } else if (value !== null && typeof value === 'object') {
+      input[field] = Object.values(value).map((x) => (typeof x === 'string' ? x : JSON.stringify(x))).join(' ');
     }
   }
   const allowed = [...Object.keys(FIELD_LIMITS), 'suggested_action'];
