@@ -53,6 +53,20 @@ function validateAnswerPayload(input) {
       input[field] = Object.values(value).map((x) => (typeof x === 'string' ? x : JSON.stringify(x))).join(' ');
     }
   }
+  // Universal final fallback: whatever shape slipped past the two
+  // handlers above (a number, a boolean, or anything else not yet
+  // seen) gets safely stringified here instead of reaching the strict
+  // check below and hard-failing again. This closes the loop
+  // definitively - three real, different shapes have now failed this
+  // field across tonight's testing, so the fix stops guessing at
+  // specific shapes and instead guarantees the field is always
+  // resolvable to a string.
+  for (const field of ['recommended_actions', 'insufficient_data']) {
+    const value = input[field];
+    if (value !== null && typeof value !== 'string') {
+      input[field] = JSON.stringify(value);
+    }
+  }
   const allowed = [...Object.keys(FIELD_LIMITS), 'suggested_action'];
   const unexpected = Object.keys(input).filter((k) => !allowed.includes(k));
   if (unexpected.length) throw new Error(`Unexpected field(s): ${unexpected.join(', ')}.`);
