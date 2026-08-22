@@ -159,10 +159,14 @@ async function checkLocalRankAtPoint(ownDomainOrName, keyword, latitude, longitu
       (i.domain && ownDomainOrName.domain && i.domain.includes(ownDomainOrName.domain)) ||
       (i.title && ownDomainOrName.name && i.title.toLowerCase().includes(ownDomainOrName.name.toLowerCase()))
     );
+    // Real fix: the "top competitor" must never be the business's own
+    // listing - if rank 1 IS the business itself, the real top
+    // EXTERNAL competitor is whichever real listing is next.
+    const topExternal = items.find((i, idx) => idx !== ownIndex);
     return {
-      status: 'ok',
+      status: items.length === 0 ? 'no_results' : 'ok',
       ownRank: ownIndex === -1 ? null : ownIndex + 1,
-      topCompetitor: items[0] ? { name: items[0].title, rank: 1 } : null,
+      topCompetitor: topExternal ? { name: topExternal.title, rank: items.indexOf(topExternal) + 1 } : null,
     };
   } catch (err) {
     return { status: 'failed', reason: err.message };
