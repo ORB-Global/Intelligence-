@@ -98,6 +98,9 @@ ${JSON.stringify(client, null, 2)}`;
   }
   if (currentJudgments !== undefined) {
     prompt += fmtOptionalSection('CURRENT REAL JUDGMENTS (deterministically generated from real cross-source evidence - these are the strongest real findings right now, already scored by business value)', currentJudgments && currentJudgments.length ? currentJudgments : null, '(nothing currently meets the threshold for a real judgment - this is honest silence, not a gap)');
+    if (currentJudgments && currentJudgments.length) {
+      prompt += `\n\nIMPORTANT - each judgment above carries an "alreadyToldClient" field. If alreadyToldClient.isNew is false, this exact finding was already surfaced ${currentJudgments[0]?.alreadyToldClient?.daysSinceSurfaced ?? 'some days'} ago - do NOT present it as a new discovery. Instead say something like "the thing I mentioned is still developing" or "nothing's changed enough on this to revise what I told you before." Only present a judgment as new when alreadyToldClient.isNew is true.`;
+    }
   }
   if (anchoredInvestigation) {
     prompt += fmtOptionalSection('THE INVESTIGATION THIS CONVERSATION IS ABOUT (answer in this specific context - the person is asking about THIS investigation, not investigations in general)', anchoredInvestigation, '');
