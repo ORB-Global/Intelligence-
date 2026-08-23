@@ -88,6 +88,7 @@ function buildChatUserPrompt({
   tellVantageEntries,
   businessState,
   keywordFocus,
+  deepIntelligence,
 }) {
   let prompt = `SELECTED CLIENT
 ${JSON.stringify(client, null, 2)}`;
@@ -109,6 +110,9 @@ ${JSON.stringify(client, null, 2)}`;
   }
   if (keywordFocus !== undefined && keywordFocus) {
     prompt += fmtOptionalSection('REAL KEYWORD FOCUS DATA (real competitor keywords with real search volume - use this directly when asked "what keywords should I focus on," "what\'s trending," or "what search terms should I target" - realLocalIntentGap is real, high-volume terms competitors rank for with no local buying-intent language yet, the strongest real recommendation. Never invent a keyword or volume number not present here)', keywordFocus, '(no real keyword data exists yet for this business - say so plainly if asked)');
+  }
+  if (deepIntelligence !== undefined && deepIntelligence) {
+    prompt += fmtOptionalSection('REAL DEEP INTELLIGENCE (includes historicalAnalogues - use this directly when asked "have we seen this before," "what happened last time," or "is this normal for us." If historicalAnalogues.status is "analogue_found", cite the real similarity percentage and the real clientFacingText. If status is "novel_state" or "insufficient_current_data", say plainly that this looks new / there is not enough data yet - never force a comparison. If a real known action exists near the analogue period, mention it as correlation only, never as proven causation)', deepIntelligence, null);
   }
   if (anchoredInvestigation) {
     prompt += fmtOptionalSection('THE INVESTIGATION THIS CONVERSATION IS ABOUT (answer in this specific context - the person is asking about THIS investigation, not investigations in general)', anchoredInvestigation, '');
