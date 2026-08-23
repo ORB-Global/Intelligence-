@@ -1780,16 +1780,16 @@ body{
 
   <section class="v36-story">
     <div class="v32-scene violet">
-      <div class="v32-k">04 · What happens next?</div><h3>Vantage expects mattress-related local intent to strengthen next.</h3>
+      <div class="v32-k">04 · What happens next?</div><h3 id="v44-whats-next-headline">Loading real evidence…</h3>
       <p>It should compare the current state with real historical analogues, sequence timing, territory movement, seasonality, local context and store-specific lag.</p>
       <div class="v32-highlight">If calls, directions and Store Pulse do not follow, Vantage weakens the belief.</div>
     </div>
     <div class="v32-scene amber">
-      <div class="v32-k">05 · What should I do?</div><h3>Keep budget steady. Prepare the strongest story. Measure the result.</h3>
+      <div class="v32-k">05 · What should I do?</div><h3 id="v44-whattodo-headline">Loading…</h3>
       <div class="v32-facts">
-        <div class="v32-fact"><small>Budget</small><b>Hold</b><span>no justified increase yet</span></div>
-        <div class="v32-fact"><small>Creative</small><b>Prepare</b><span>mattress + financing</span></div>
-        <div class="v32-fact"><small>Evidence</small><b>Capture</b><span>store outcome</span></div>
+        <div class="v32-fact"><small>Budget</small><b id="v44-wtd-budget">—</b></div>
+        <div class="v32-fact"><small>Focus</small><b id="v44-wtd-focus">—</b></div>
+        <div class="v32-fact"><small>Evidence</small><b id="v44-wtd-evidence">—</b></div>
       </div>
     </div>
   </section>
@@ -2279,6 +2279,18 @@ document.querySelectorAll('.tab').forEach(btn=>{
         <div style="margin-top:6px; font-style:italic; color:#8a95a3;"><b>Historical analogues:</b> ${deep.historicalAnalogues.note}</div>
         <div style="font-style:italic; color:#8a95a3;"><b>Prediction ledger:</b> ${deep.predictionLedger.note}</div>
       </div>`;
+  }
+
+  // Real "What happens next / What should I do" - replaces the
+  // real hardcoded demo content that was here before ("mattress
+  // demand strengthening", "keep budget steady")
+  const next = payload.whatsNext;
+  if (next) {
+    if (el('v44-whats-next-headline')) el('v44-whats-next-headline').textContent = next.whatHappensNext;
+    if (el('v44-whattodo-headline')) el('v44-whattodo-headline').textContent = next.whatToDo.focus;
+    if (el('v44-wtd-budget')) el('v44-wtd-budget').textContent = next.whatToDo.budget;
+    if (el('v44-wtd-focus')) el('v44-wtd-focus').textContent = next.whatToDo.focus;
+    if (el('v44-wtd-evidence')) el('v44-wtd-evidence').textContent = next.whatToDo.evidence;
   }
 
   // Real Living Business Plan wiring
