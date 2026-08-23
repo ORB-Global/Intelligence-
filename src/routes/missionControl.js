@@ -828,9 +828,9 @@ router.get('/locations/:id/brief', asyncHandler(async (req, res) => {
 
 router.post('/locations/:id/checkin', async (req, res) => {
   const { id: locationId } = req.params;
-  const { noteText, salesEstimate, transactionCount, trafficLevel } = req.body || {};
+  const { noteText, salesEstimate, transactionCount, trafficLevel, walkIns } = req.body || {};
 
-  if (!noteText && salesEstimate === undefined && transactionCount === undefined && !trafficLevel) {
+  if (!noteText && salesEstimate === undefined && transactionCount === undefined && !trafficLevel && walkIns === undefined) {
     return res.status(400).json({ success: false, error: { message: 'Provide at least a note or one of the simple numbers.' } });
   }
 
@@ -847,6 +847,7 @@ router.post('/locations/:id/checkin', async (req, res) => {
     sales_estimate: salesEstimate ?? null,
     transaction_count: transactionCount ?? null,
     traffic_level: trafficLevel || null,
+    walk_ins: walkIns ?? null,
     week_of: new Date().toISOString().slice(0, 10),
   }).select().single();
   if (error) return res.status(500).json({ success: false, error: { message: error.message } });

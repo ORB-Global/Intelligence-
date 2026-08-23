@@ -1828,22 +1828,24 @@ body{
     <div class="v36-storegrid">
       <div class="v36-entry">
         <div class="v32-k">Quick Store Pulse</div><h3>How did business actually feel?</h3>
-        <div class="v36-mood"><button>Strong</button><button>Normal</button><button>Slow</button><button>Unusual</button></div>
+        <div class="v36-mood" id="v44-mood-buttons"><button data-mood="strong">Strong</button><button data-mood="normal">Normal</button><button data-mood="slow">Slow</button><button data-mood="unusual">Unusual</button></div>
         <div class="v36-fields">
-          <div class="v36-field"><small>Walk-ins</small><b>Enter count</b></div>
-          <div class="v36-field"><small>Sales</small><b>Enter count</b></div>
-          <div class="v36-field"><small>Revenue</small><b>Enter $</b></div>
+          <div class="v36-field"><small>Walk-ins</small><input type="number" id="v44-walkins" placeholder="unknown" style="width:100%; border:none; background:transparent; font:inherit; font-weight:700;"></div>
+          <div class="v36-field"><small>Sales</small><input type="number" id="v44-sales-count" placeholder="unknown" style="width:100%; border:none; background:transparent; font:inherit; font-weight:700;"></div>
+          <div class="v36-field"><small>Revenue</small><input type="number" id="v44-revenue" placeholder="unknown" style="width:100%; border:none; background:transparent; font:inherit; font-weight:700;"></div>
         </div>
-        <div class="v36-upload"><b>What sold?</b><br>Enter products/categories, quantities, notable tickets, financing use, or a short note about what customers asked for.</div>
+        <div class="v36-upload"><b>What sold?</b><br><textarea id="v44-store-note" placeholder="Products/categories, quantities, notable tickets, financing use, or a short note about what customers asked for." style="width:100%; min-height:50px; border:1px solid rgba(37,43,49,.10); border-radius:8px; padding:8px; font:inherit; margin-top:6px; background:rgba(255,255,255,.4);"></textarea></div>
+        <button id="v44-store-submit" style="margin-top:10px; border:1px solid rgba(37,43,49,.15); border-radius:999px; padding:8px 16px; background:rgba(37,43,49,.04); cursor:pointer; font:inherit;">Send to Vantage →</button>
+        <div id="v44-store-status" style="font-size:11px; color:#7a8690; margin-top:8px;"></div>
       </div>
       <div class="v36-import">
         <div class="v32-k">Bring the real outcome in</div><h3>Upload it or connect it.</h3>
-        <div class="v36-upload"><b>Upload sales / product data</b><br>CSV · spreadsheet · exported POS report · product list. Vantage maps it into Store Memory and preserves the original source.</div>
-        <div class="v32-status"><span>Upload sales file</span><span>Upload product list</span><span>Connect POS</span></div>
+        <div class="v36-upload"><b>Upload sales / product data</b><br>CSV · spreadsheet · exported POS report · product list. <em id="v44-upload-status">Not yet available — requires a real ingestion path that doesn't exist yet.</em></div>
+        <div class="v32-status"><span style="opacity:.5;">Upload sales file (not available)</span><span style="opacity:.5;">Upload product list (not available)</span><span>Connect POS</span></div>
         
 <div class="v37-pos">
- <div class="v37-poshead"><h4>Connect your POS</h4><button>Connect POS →</button></div>
- <p>When supported, Vantage should securely bring in actual transactions and product/category outcomes so the owner does not have to manually enter Store Pulse every day. Manual entry and uploads remain available when a POS connection is unavailable.</p>
+ <div class="v37-poshead"><h4>Connect your POS</h4><button id="v44-pos-connect">Connect POS →</button></div>
+ <p id="v44-pos-status">No POS is connected for this business. Manual Store Pulse and uploads remain the way to close this loop until a real integration exists.</p>
  <div class="v37-posdata"><span>transactions</span><span>revenue</span><span>products/categories</span><span>quantity</span><span>ticket value</span><span>time/day</span><span>inventory when available</span></div>
 </div>
 
@@ -2146,6 +2148,60 @@ document.querySelectorAll('.tab').forEach(btn=>{
       `).join('') || '<div class="v34-add">No real competitors discovered yet for this location.</div>';
     }
   }
+
+  // Real Store Pulse wiring - mood selection + real write action
+  let selectedMood = null;
+  const moodBtns = document.querySelectorAll('#v44-mood-buttons button');
+  moodBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      moodBtns.forEach(b => b.style.opacity = '0.5');
+      btn.style.opacity = '1';
+      btn.style.fontWeight = '700';
+      selectedMood = btn.dataset.mood;
+    });
+  });
+
+  const storeSubmit = el('v44-store-submit');
+  if (storeSubmit) {
+    storeSubmit.addEventListener('click', async () => {
+      const walkInsVal = el('v44-walkins').value;
+      const salesVal = el('v44-sales-count').value;
+      const revenueVal = el('v44-revenue').value;
+      const noteVal = el('v44-store-note').value;
+
+      const body = {};
+      if (selectedMood) body.trafficLevel = selectedMood;
+      if (walkInsVal !== '') body.walkIns = parseInt(walkInsVal, 10);
+      if (salesVal !== '') body.transactionCount = parseInt(salesVal, 10);
+      if (revenueVal !== '') body.salesEstimate = parseFloat(revenueVal);
+      if (noteVal.trim() !== '') body.noteText = noteVal.trim();
+
+      if (Object.keys(body).length === 0) {
+        el('v44-store-status').textContent = 'Tell Vantage at least one thing before sending.';
+        return;
+      }
+
+      storeSubmit.textContent = 'Sending…';
+      try {
+        const res = await fetch(`/api/mc/locations/${locationId}/checkin`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify(body),
+        });
+        const result = await res.json();
+        if (result.success) {
+          el('v44-store-status').textContent = `Real entry saved at ${new Date(result.data.created_at).toLocaleTimeString()}.`;
+        } else {
+          el('v44-store-status').textContent = `Could not save: ${result.error?.message || 'unknown error'}`;
+        }
+      } catch (e) {
+        el('v44-store-status').textContent = 'Could not reach Vantage - try again.';
+      }
+      storeSubmit.textContent = 'Send to Vantage →';
+    });
+  }
+
+  const posBtn = el('v44-pos-connect');
+  if (posBtn) posBtn.addEventListener('click', () => { alert('POS integration is not built yet. Manual Store Pulse and uploads are the real way to share store outcomes right now.'); });
 })();
 </script>
 
