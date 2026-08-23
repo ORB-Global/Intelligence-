@@ -1892,7 +1892,7 @@ body{
 
 <details class="v32-deep v36-deep">
     <summary>Explore Deep Intelligence →</summary>
-    <div class="inside"><p style="font-size:11px;line-height:1.55;color:#66727b">Historical analogues · decision memory · model coverage · causal evidence · business rules · counterfactual paths · prediction ledger · territory history · creative evidence · experiments · execution controls.</p></div>
+    <div class="inside" id="v44-deep-intelligence"><p style="font-size:11px;line-height:1.55;color:#66727b">Loading real evidence…</p></div>
   </details>
 </div>
 
@@ -2262,6 +2262,23 @@ document.querySelectorAll('.tab').forEach(btn=>{
       });
     });
     el('v44-mode-status').textContent = support.clientFacingNote;
+  }
+
+  // Real Deep Intelligence - genuine evidence only, Phase 2/3 concepts honestly labeled not-built
+  const deep = payload.deepIntelligence;
+  const deepEl = el('v44-deep-intelligence');
+  if (deep && deepEl) {
+    const mtd = deep.mtdNormalizedComparison;
+    const mtdLine = mtd?.status === 'sufficient_daily_comparison' ? mtd.clientFacingText : (mtd?.note || 'MTD comparison not yet available.');
+    deepEl.innerHTML = `
+      <div style="font-size:11px; line-height:1.7; color:#66727b;">
+        <div><b>Source coverage:</b> ${deep.sourceCoverage.byChannel.map(c => `${c.channel}: ${c.realMonths}mo (${c.depthState})`).join(' · ') || 'none'}</div>
+        <div><b>MTD normalized comparison:</b> ${mtdLine}</div>
+        <div><b>Decision memory:</b> ${deep.decisionMemory.note}</div>
+        <div><b>Business memory:</b> ${deep.businessMemory.note}</div>
+        <div style="margin-top:6px; font-style:italic; color:#8a95a3;"><b>Historical analogues:</b> ${deep.historicalAnalogues.note}</div>
+        <div style="font-style:italic; color:#8a95a3;"><b>Prediction ledger:</b> ${deep.predictionLedger.note}</div>
+      </div>`;
   }
 
   // Real Living Business Plan wiring
