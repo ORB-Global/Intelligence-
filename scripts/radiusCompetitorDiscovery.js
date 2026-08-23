@@ -61,23 +61,24 @@ async function main() {
       c.domain !== loc.domain && !c.name?.toLowerCase().includes(loc.name.toLowerCase())
     );
 
-    let added = 0;
+    let added = 0, updated = 0;
     let spyfuEnriched = 0;
     if (!spyfuConfigured()) {
       console.log(`  NOTE: SpyFu not configured on this server (SPYFU_API_ID/SPYFU_API_SECRET missing) - competitors will be added without real paid/organic SEO enrichment.`);
     }
     for (const c of realCandidates.slice(0, 6)) {
       if (!c.name) continue;
-      const { data: inserted, error: insertErr } = await supabase.from('competitors').insert({
-        organization_id: loc.organization_id, location_id: loc.id, name: c.name, domain: c.domain || null,
-        address: c.address || null, category: searchTerms, status: 'auto_discovered',
-        confidence: 'estimated', source: 'dataforseo_radius',
-      }).select().single();
-      if (insertErr) {
-        console.log(`INSERT FAILED for ${c.name}: ${insertErr.message}`);
+      const { data: upsertResult, error: upsertErr } = await supabase.rpc('upsert_competitor', {
+        p_location_id: loc.id, p_organization_id: loc.organization_id, p_name: c.name,
+        p_address: c.address || null, p_category: searchTerms, p_domain: c.domain || null,
+        p_source: 'dataforseo_radius', p_confidence: 'estimated',
+      });
+      if (upsertErr) {
+        console.log(`UPSERT FAILED for ${c.name}: ${upsertErr.message}`);
         continue;
       }
-      added++;
+      const inserted = { id: upsertResult.id };
+      if (upsertResult.wasNew) added++; else updated++;
 
       // Real SpyFu enrichment, right after real discovery - the
       // exact wiring that was missing before tonight.
@@ -95,7 +96,7 @@ async function main() {
         }
       }
     }
-    console.log(`OK      ${loc.name}: found ${result.candidates.length}, added ${added} within ${RADIUS_MILES}mi, SpyFu-enriched ${spyfuEnriched}`);
+    console.log(`OK      ${loc.name}: found ${result.candidates.length}, added ${added} new / updated ${updated} existing within ${RADIUS_MILES}mi, SpyFu-enriched ${spyfuEnriched}`);
     discovered++;
   }
 

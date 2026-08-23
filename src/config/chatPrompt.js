@@ -150,7 +150,7 @@ ${snapshots && snapshots.length ? JSON.stringify(snapshots, null, 2) : '(none on
     prompt += fmtOptionalSection('MARKET PROFILE (where this business operates)', marketProfile, '(not yet resolved)');
   }
   if (competitors !== undefined) {
-    prompt += fmtOptionalSection('KNOWN COMPETITORS (real, sourced observations - never invent additional ones)', competitors && competitors.length ? competitors : null, '(none discovered yet)');
+    prompt += fmtOptionalSection('KNOWN COMPETITORS (real, sourced observations - never invent additional ones. IMPORTANT: entries with same_brand=true are sister locations of the SAME business (e.g. another BoxDrop franchise) - never present these as real competitive threats, only as real territory-overlap context if directly relevant)', competitors && competitors.length ? competitors : null, '(none discovered yet)');
   }
   if (openQuestions !== undefined) {
     prompt += fmtOptionalSection('OPEN QUESTIONS (what Orb genuinely does not know yet - state these plainly when relevant, never paper over them)', openQuestions && openQuestions.length ? openQuestions : null, '(none currently open)');
