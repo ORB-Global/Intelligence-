@@ -72,6 +72,23 @@ async function logSync({ locationId, oviondClientId, datasource, status, error, 
   } catch (e) {
     console.error('Failed to write sync_log row (non-fatal):', e.message);
   }
+
+  // Real fix: connection_health.freshness_status was hardcoded to
+  // 'unavailable' at connection-setup time and never touched again -
+  // update it here, after every real sync attempt, to the actual
+  // real outcome instead.
+  try {
+    const healthUpdate = {
+      freshness_status: status === 'success' ? 'fresh' : 'sync_failed',
+      last_attempted_sync_at: new Date().toISOString(),
+      last_error: status === 'success' ? null : (error || null),
+      last_error_at: status === 'success' ? null : new Date().toISOString(),
+    };
+    if (status === 'success') healthUpdate.last_successful_sync_at = new Date().toISOString();
+    await supabase.from('connection_health').update(healthUpdate).eq('location_id', locationId).eq('channel', datasource);
+  } catch (e) {
+    console.error('Failed to update connection_health freshness (non-fatal):', e.message);
+  }
 }
 
 async function withRetry(fn, attempts = 3) {
@@ -384,3 +401,19 @@ main().catch((e) => {
   console.error('Fatal error:', e);
   process.exit(1);
 });
+
+/* KNOWN DEFECT - logged, not fixed, per explicit instruction not to
+ * let it derail Phase 1:
+ *
+ * Datasource: inst (Instagram organic, via pullSocialMetrics)
+ * Failing request: POST /v1/data/query
+ *   { datasource_id: 'inst', dimensions: ['MONTH'], data_view: 'PERFORMANCE',
+ *     metrics: ['account_follower_count'] }
+ * Real error: "Oviond /v1/data/query returned 400: The request cannot
+ * be fulfilled due to bad syntax."
+ * Real hypothesis, unverified: dimensions:['MONTH'] may not be a real
+ * valid value for this datasource - every other real call in this
+ * file uses ['DATE']. Not changed without live-testing the fix first.
+ * Correctly isolated: this failure does not block fb-ads/gadw/fb-pg/gmb,
+ * which all continue to sync successfully.
+ */
