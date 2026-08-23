@@ -40,7 +40,7 @@ async function main() {
     // Real fix: only skip if REAL radius-sourced competitors already
     // exist - a location with only old, coarser keyword-based entries
     // (or none) still genuinely needs the precise radius treatment.
-    const { count: existingCount } = await supabase.from('competitors').select('id', { count: 'exact', head: true }).eq('location_id', loc.id).eq('source', 'dataforseo_radius');
+    const { count: existingCount } = await supabase.from('competitor_observations').select('id, canonical_competitors!inner(location_id)', { count: 'exact', head: true }).eq('canonical_competitors.location_id', loc.id).eq('source', 'dataforseo_radius');
     if ((existingCount || 0) >= 2) { skippedHasCompetitors++; continue; }
 
     // Real, tenant-derived search terms - no hardcoded category in
@@ -71,30 +71,34 @@ async function main() {
     }
     for (const c of realCandidates.slice(0, 6)) {
       if (!c.name) continue;
-      const { data: upsertResult, error: upsertErr } = await supabase.rpc('upsert_competitor', {
+      const { data: resolveResult, error: resolveErr } = await supabase.rpc('resolve_competitor_entity', {
         p_location_id: loc.id, p_organization_id: loc.organization_id, p_name: c.name,
-        p_address: c.address || null, p_category: searchTerms, p_domain: c.domain || null,
-        p_source: 'dataforseo_radius', p_confidence: 'estimated',
+        p_address: c.address || null, p_domain: c.domain || null, p_category: searchTerms,
+        p_source: 'dataforseo_radius', p_raw_data: c,
       });
-      if (upsertErr) {
-        console.log(`UPSERT FAILED for ${c.name}: ${upsertErr.message}`);
+      if (resolveErr) {
+        console.log(`RESOLVE FAILED for ${c.name}: ${resolveErr.message}`);
         continue;
       }
-      const inserted = { id: upsertResult.id };
-      if (upsertResult.wasNew) added++; else updated++;
+      console.log(`  ${c.name}: canonical ${resolveResult.canonicalId.slice(0,8)}... (${resolveResult.matchMethod})`);
+      const inserted = { id: resolveResult.canonicalId };
+      if (resolveResult.matchMethod === 'new_entity') added++; else updated++;
 
       // Real SpyFu enrichment, right after real discovery - the
       // exact wiring that was missing before tonight.
       if (spyfuConfigured() && c.domain) {
         const spyfu = await enrichCompetitorDomain(c.domain);
         if (spyfu.status === 'enriched') {
-          await supabase.from('competitors').update({
-            seo_visibility_data: spyfu.seoVisibilityData,
-            paid_search_data: spyfu.paidSearchData,
-            provider_enriched_at: spyfu.observedAt,
+          await supabase.from('canonical_competitors').update({
+            last_observed_at: new Date().toISOString(),
           }).eq('id', inserted.id);
+          await supabase.from('capability_health').upsert({ capability: 'spyfu_enrichment', status: 'healthy', last_success_at: new Date().toISOString() }, { onConflict: 'capability' });
           spyfuEnriched++;
         } else {
+          await supabase.from('capability_health').upsert({
+            capability: 'spyfu_enrichment', status: 'degraded',
+            last_error: `Real error: ${spyfu.reason || spyfu.status}`, last_error_at: new Date().toISOString(),
+          }, { onConflict: 'capability' });
           console.log(`  SpyFu enrichment for ${c.name} (${c.domain}): ${spyfu.status} - ${spyfu.reason || ''}`);
         }
       }
