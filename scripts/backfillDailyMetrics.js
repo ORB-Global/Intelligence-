@@ -19,6 +19,8 @@
 require('dotenv').config();
 const { createClient } = require('@supabase/supabase-js');
 
+const { normalizeGoogleSpend, normalizeGoogleCpc } = require('../src/utils/oviondUnits');
+
 const OVIOND_API_KEY = process.env.OVIOND_API_KEY;
 const OVIOND_BASE = 'https://api.oviond.com';
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
@@ -65,10 +67,10 @@ async function backfillOne(location, oviondClientId, datasourceId, periodStart, 
       if (!obsDate) continue;
       const { error } = await supabase.from('daily_historical_metrics').upsert({
         location_id: location.id, channel, observation_date: obsDate,
-        spend: isGoogle ? Number(r.spend ?? r.cost_micros ?? 0) : Number(r.spend || 0),
+        spend: isGoogle ? normalizeGoogleSpend(r) : Number(r.spend || 0),
         impressions: Number(r.impressions || 0), reach: Number(r.reach || 0),
         clicks: Number(r.clicks || 0), ctr: Number(r.ctr || 0) || null,
-        cpc: isGoogle ? Number(r.cpc ?? r.average_cpc ?? 0) || null : Number(r.cpc || 0) || null,
+        cpc: isGoogle ? normalizeGoogleCpc(r) : (Number(r.cpc || 0) || null),
         conversions: Number(r.conversions || 0) || null, source: 'oviond',
       }, { onConflict: 'location_id,channel,observation_date' });
       if (!error) { written++; if (!earliest || obsDate < earliest) earliest = obsDate; if (!latest || obsDate > latest) latest = obsDate; }

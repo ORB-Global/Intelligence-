@@ -19,6 +19,8 @@
 require('dotenv').config();
 const { createClient } = require('@supabase/supabase-js');
 
+const { normalizeGoogleSpend, normalizeGoogleCpc } = require('../src/utils/oviondUnits');
+
 const OVIOND_API_KEY = process.env.OVIOND_API_KEY;
 const OVIOND_BASE = 'https://api.oviond.com';
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
@@ -71,8 +73,8 @@ async function pullCurrentPeriod(location, oviondClientId, datasourceId, periodS
       // 'cost_micros' field name; dividing by 1e6 was a real bug that
       // produced spend values ~1,000,000x too small. Verified by hand:
       // the broken 0.000267674204 was exactly 267.674204 / 1e6.
-      const realSpend = Number(r.spend ?? r.cost_micros ?? 0);
-      const realCpc = Number(r.cpc ?? r.average_cpc ?? 0) || null;
+      const realSpend = isGoogle ? normalizeGoogleSpend(r) : Number(r.spend || 0);
+      const realCpc = isGoogle ? normalizeGoogleCpc(r) : (Number(r.cpc || 0) || null);
       const { error: dailyErr } = await supabase.from('daily_historical_metrics').upsert({
         location_id: location.id, channel, observation_date: obsDate,
         spend: realSpend, impressions: Number(r.impressions || 0), reach: Number(r.reach || 0),
@@ -86,7 +88,7 @@ async function pullCurrentPeriod(location, oviondClientId, datasourceId, periodS
     // Real, honest sum across the real real days fetched - not an estimate.
     let spend = 0, impressions = 0, reach = 0, clicks = 0, leads = 0, messaging = 0;
     for (const r of rows) {
-      spend += Number(isGoogle ? (r.spend ?? r.cost_micros ?? 0) : (r.spend || 0));
+      spend += isGoogle ? normalizeGoogleSpend(r) : Number(r.spend || 0);
       impressions += Number(r.impressions || 0);
       reach += Number(r.reach || 0);
       clicks += Number(r.clicks || 0);
@@ -104,7 +106,22 @@ async function pullCurrentPeriod(location, oviondClientId, datasourceId, periodS
     if (error) console.log(`  FAILED to save ${channel} MTD for ${location.name}: ${error.message}`);
     else console.log(`  OK ${channel} MTD: $${spend.toFixed(2)} spend, ${clicks} clicks through day ${daysElapsed}`);
   } catch (e) {
-    console.log(`  FAILED ${datasourceId} MTD for ${location.name}: ${e.message}`);
+    // Real classification, per explicit instruction to distinguish
+    // permission/access failures from missing-configuration ones -
+    // parses the real HTTP status Oviond returned rather than
+    // treating every failure identically.
+    const statusMatch = e.message.match(/returned (\d\d\d):/);
+    const realStatus = statusMatch ? parseInt(statusMatch[1], 10) : null;
+    const classification = realStatus === 403 ? 'permission_denied'
+      : realStatus === 404 ? 'not_configured'
+      : realStatus ? 'provider_error' : 'unknown_error';
+    console.log(`  FAILED ${datasourceId} MTD for ${location.name} [${classification}]: ${e.message}`);
+    try {
+      await supabase.from('connection_health').update({
+        status: classification, last_error: e.message, last_error_at: new Date().toISOString(),
+        last_attempted_sync_at: new Date().toISOString(),
+      }).eq('location_id', location.id).eq('channel', datasourceId);
+    } catch (healthErr) { console.log(`  (also failed to record connection_health: ${healthErr.message})`); }
   }
 }
 
