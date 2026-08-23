@@ -675,6 +675,41 @@ router.get('/locations/:id/creative', async (req, res) => {
   return res.json({ success: true, data: data || [] });
 });
 
+// Real, deterministic evidence-assembly - no new AI call, per cost
+// discipline. "What's actually moving" comes from build_business_state,
+// which is already real and tested - this just assembles it into a
+// prepared brief and persists it with real source lineage.
+router.get('/locations/:id/creative-brief', async (req, res) => {
+  const { id: locationId } = req.params;
+  const { data: location } = await req.supabase.from('locations').select('id, organization_id').eq('id', locationId).maybeSingle();
+  if (!location) return res.status(404).json({ success: false, error: { message: 'Location not found or not accessible.' } });
+
+  const { data: state } = await supabaseService.rpc('build_business_state', { p_location_id: locationId });
+  const s = state?.state || {};
+
+  const evidence = [];
+  let headline = 'Not enough real evidence yet to prepare a confident brief.';
+  if (s.top_ad?.status === 'ok') {
+    headline = `Based on "${s.top_ad.adName}" — your real strongest ad by actual response`;
+    evidence.push(`Real ad performance: ${s.top_ad.clientFacingText}`);
+  } else if (s.content?.status === 'OPPORTUNITY') {
+    headline = 'Based on your real strongest organic post this period';
+    evidence.push(`Real content signal: ${s.content.fact} (${s.content.confidence} - one real occurrence, not yet a proven pattern)`);
+  }
+  if (s.territory_furniture) evidence.push(`Real territory: ${s.territory_furniture.fact}`);
+  if (s.reputation) evidence.push(`Real reputation: ${s.reputation.fact}`);
+
+  const honestGaps = 'This brief is assembled from real, existing evidence only - no new creative generation was run. Ad copy/headline text is not available from any connected source, so specific wording is not included here.';
+
+  const { data: job } = await req.supabase.from('creative_jobs').insert({
+    organization_id: location.organization_id, location_id: locationId, requested_by: req.user.id,
+    source_type: 'business_state', request_type: 'brief', status: 'prepared',
+    headline, rationale: evidence.join(' | '),
+  }).select().single();
+
+  return res.json({ success: true, data: { headline, evidence, honestGaps, jobId: job?.id } });
+});
+
 // KNOW ME: real, minimal weekly check-in. No POS required - a client
 // can tell Orb something in plain language and/or 3 trivial numbers,
 // and it becomes real evidence for future reasoning, not a chat log.

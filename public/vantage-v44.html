@@ -1671,10 +1671,11 @@ body{
       <p>These are the fastest ways into the system. Ask what is happening, show Vantage something it cannot know from APIs, or turn what it knows into useful work.</p>
     </div>
     <div class="v30-doors">
-      <div class="v30-door" data-v30="ask"><small>Understand</small><h3>Ask Vantage</h3><p>“What changed?” “Who is gaining?” “What should I post?” “What should I do this weekend?”</p></div>
-      <div class="v30-door" data-v30="show"><small>Teach</small><h3>Show Vantage</h3><p>Product · competitor · local event · sales file · store photo · inventory · document · note.</p></div>
-      <div class="v30-door" data-v30="create"><small>Act</small><h3>Create with Vantage</h3><p>Post · creative · promotion · campaign brief · landing-page direction · weekend plan.</p></div>
+      <div class="v30-door" data-v30="ask" id="v44-door-ask"><small>Understand</small><h3>Ask Vantage</h3><p>“What changed?” “Who is gaining?” “What should I post?” “What should I do this weekend?”</p></div>
+      <div class="v30-door" data-v30="show" id="v44-door-show"><small>Teach</small><h3>Show Vantage</h3><p>Describe a product, competitor, local event, or anything the APIs can't know. <em>(Text works now — photo/file upload not yet available.)</em></p></div>
+      <div class="v30-door" data-v30="create" id="v44-door-create"><small>Act</small><h3>Create with Vantage</h3><p>Prepares a real evidence-based brief from what's actually working. <em>(Drafts a brief — does not publish or spend anything.)</em></p></div>
     </div>
+    <div id="v44-door-panel" style="display:none; margin-top:16px; padding:16px; border:1px solid rgba(37,43,49,.10); border-radius:14px; background:rgba(255,255,255,.4);"></div>
   </section>
 
   <div class="v32-divider"><span>What Vantage sees</span></div>
@@ -1897,8 +1898,50 @@ body{
 document.querySelectorAll('.v30-door').forEach(d=>{
  d.addEventListener('click',()=>{
    const t=d.dataset.v30;
-   const msg=t==='ask'?'Open the business-aware Vantage conversation.':t==='show'?'Open the upload/context workspace.':'Open context-aware creation.';
-   alert(msg);
+   const panel = document.getElementById('v44-door-panel');
+   panel.style.display = 'block';
+   if (t === 'ask') {
+     panel.innerHTML = '';
+     document.getElementById('v44-ask-input')?.scrollIntoView({behavior:'smooth', block:'center'});
+     document.getElementById('v44-ask-input')?.focus();
+     panel.style.display = 'none';
+     return;
+   }
+   if (t === 'show') {
+     panel.innerHTML = `
+       <div style="font-family:'Fraunces',serif; font-size:15px; margin-bottom:8px;">Tell Vantage something it can't see from the APIs</div>
+       <textarea id="v44-show-text" placeholder="e.g. I have 14 recliners I need gone by Sunday." style="width:100%; min-height:60px; border:1px solid rgba(37,43,49,.12); border-radius:8px; padding:8px; font:inherit;"></textarea>
+       <button id="v44-show-submit" style="margin-top:8px; border:1px solid rgba(37,43,49,.15); border-radius:999px; padding:8px 16px; background:rgba(37,43,49,.04); cursor:pointer; font:inherit;">Tell Vantage →</button>
+       <div id="v44-show-status" style="font-size:11px; color:#7a8690; margin-top:8px;"></div>`;
+     document.getElementById('v44-show-submit').addEventListener('click', async () => {
+       const text = document.getElementById('v44-show-text').value.trim();
+       if (!text) return;
+       const statusEl = document.getElementById('v44-show-status');
+       statusEl.textContent = 'Sending…';
+       try {
+         const res = await fetch(`/api/mc/locations/${window.__vantageLocationId}/tell`, {
+           method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${window.__vantageToken}` },
+           body: JSON.stringify({ text }),
+         });
+         const result = await res.json();
+         statusEl.textContent = result.success ? `Real, understood as: ${result.data.classified_type || 'context'}.` : `Could not save: ${result.error?.message}`;
+       } catch(e) { statusEl.textContent = 'Could not reach Vantage - try again.'; }
+     });
+     return;
+   }
+   if (t === 'create') {
+     panel.innerHTML = `<div style="font-family:'Fraunces',serif; font-size:15px;">Assembling a real evidence-based brief…</div>`;
+     fetch(`/api/mc/locations/${window.__vantageLocationId}/creative-brief`, { headers: { Authorization: `Bearer ${window.__vantageToken}` } })
+       .then(r => r.json()).then(result => {
+         if (!result.success) { panel.innerHTML = `<div>Could not assemble a brief: ${result.error?.message}</div>`; return; }
+         const b = result.data;
+         panel.innerHTML = `
+           <div style="font-family:'IBM Plex Mono',monospace; font-size:10px; letter-spacing:.1em; color:#8a7a4a; text-transform:uppercase;">Real, prepared brief - not published, not sent</div>
+           <div style="font-family:'Fraunces',serif; font-size:17px; margin:8px 0;">${b.headline}</div>
+           <div style="font-size:12px; color:#5a656e; line-height:1.6;">${b.evidence.join('<br>')}</div>
+           <div style="font-size:11px; color:#8a95a3; margin-top:10px; font-style:italic;">${b.honestGaps}</div>`;
+       }).catch(() => { panel.innerHTML = '<div>Could not reach Vantage - try again.</div>'; });
+   }
  });
 });
 </script>
@@ -2052,6 +2095,8 @@ document.querySelectorAll('.tab').forEach(btn=>{
   const orgs = await apiFetch('/api/mc/organizations');
   const { locations } = await apiFetch(`/api/mc/organizations/${orgs[0].id}`);
   const locationId = params.get('location') || locations[0]?.id;
+  window.__vantageLocationId = locationId;
+  window.__vantageToken = token;
   const payload = await apiFetch(`/api/mc/locations/${locationId}`);
 
   // Real position + greeting
