@@ -1,0 +1,37 @@
+REAL CRONTAB UPDATE - reuses the exact existing daily chain, same
+6am trigger, same log pattern. Appends the two new real scripts in
+logical order: current-period sync feeds Brain the same as the
+monthly sync always has, daily backfill runs last with a small
+overlapping window (--days=3) so it self-heals the last few real
+days without re-requesting the full historical window every day.
+
+Real, exact command to install this (run on the production server):
+
+crontab -l > /tmp/current-cron-backup.txt
+echo "Backed up existing crontab to /tmp/current-cron-backup.txt - verify it before proceeding."
+
+Then replace the single line with:
+
+0 6 * * * cd /home/ubuntu/orb-intelligence && node scripts/syncOviondClients.js >> logs/sync.log 2>&1 && node scripts/syncCurrentPeriod.js >> logs/mtd-sync.log 2>&1 && node scripts/backfillDailyMetrics.js --days=3 >> logs/daily-backfill.log 2>&1 && node scripts/runBrainForAllLocations.js >> logs/brain.log 2>&1
+
+Real reasoning for each addition, in order:
+1. syncOviondClients.js - unchanged, real, existing, runs first.
+2. syncCurrentPeriod.js - real, new tonight. Runs right after the
+   monthly sync so Brain (which runs last) has real current-month
+   data available the same day it's fetched.
+3. backfillDailyMetrics.js --days=3 - real, new tonight, small
+   OVERLAPPING window (not the full --days=60 initial catch-up,
+   which stays a one-time manual command). Idempotent upsert means
+   re-fetching the last 3 real days daily is safe and self-healing
+   if a prior day's data was incomplete when first written - it
+   simply re-confirms/corrects those rows, never duplicates them.
+4. runBrainForAllLocations.js - unchanged, real, existing, runs
+   last, now with current-period and fresh daily data available to
+   it that didn't exist before tonight.
+
+To install:
+crontab -e
+(replace the existing single line with the one above, save, exit)
+
+Verify with:
+crontab -l
