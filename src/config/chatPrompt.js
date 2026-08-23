@@ -86,6 +86,8 @@ function buildChatUserPrompt({
   anchoredInvestigation,
   goal,
   tellVantageEntries,
+  businessState,
+  keywordFocus,
 }) {
   let prompt = `SELECTED CLIENT
 ${JSON.stringify(client, null, 2)}`;
@@ -104,6 +106,9 @@ ${JSON.stringify(client, null, 2)}`;
   }
   if (businessState !== undefined && businessState) {
     prompt += fmtOptionalSection('REAL BUSINESS STATE (includes top_ad - the specific real ad winning on actual intent, not just clicks, with its real creative image URL - and meta_pacing - real ad-set budget consumption. Use these directly when asked "which ad is working," "show me my best ad," "is my budget being spent well," or "which creative is producing leads" - do not guess or reconstruct from raw historical_metrics when this object already has the answer)', businessState, null);
+  }
+  if (keywordFocus !== undefined && keywordFocus) {
+    prompt += fmtOptionalSection('REAL KEYWORD FOCUS DATA (real competitor keywords with real search volume - use this directly when asked "what keywords should I focus on," "what\'s trending," or "what search terms should I target" - realLocalIntentGap is real, high-volume terms competitors rank for with no local buying-intent language yet, the strongest real recommendation. Never invent a keyword or volume number not present here)', keywordFocus, '(no real keyword data exists yet for this business - say so plainly if asked)');
   }
   if (anchoredInvestigation) {
     prompt += fmtOptionalSection('THE INVESTIGATION THIS CONVERSATION IS ABOUT (answer in this specific context - the person is asking about THIS investigation, not investigations in general)', anchoredInvestigation, '');

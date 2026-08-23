@@ -104,6 +104,10 @@ async function buildTenantChatContext(supabase, locationId) {
 
   const { data: businessModel } = await supabaseService.rpc('get_business_model_context', { p_location_id: locationId });
   const { data: businessState } = await supabaseService.rpc('build_business_state', { p_location_id: locationId });
+  const { data: keywordFocus } = await supabaseService.rpc('get_keyword_focus_recommendations', { p_location_id: locationId });
+  const { data: vantageState } = await supabaseService.rpc('get_vantage_state', { p_location_id: locationId });
+  const { data: sourceCoverage } = await supabaseService.rpc('get_source_coverage', { p_location_id: locationId });
+  const { data: v44Points } = await supabaseService.rpc('get_v44_evidence_points', { p_location_id: locationId });
 
   let healthWithFactors = null;
   if (health) {
@@ -136,6 +140,10 @@ async function buildTenantChatContext(supabase, locationId) {
     activeBeliefs: businessModel?.activeBeliefs || [],
     currentJudgments: businessModel?.currentJudgments || [],
     businessState: businessState || null,
+    keywordFocus: keywordFocus || null,
+    vantageState: vantageState || null,
+    sourceCoverage: sourceCoverage || null,
+    v44Points: v44Points || null,
     investigations: investigations || [],
     businessMemory: memory || [],
     businessContext: businessContext || [],
