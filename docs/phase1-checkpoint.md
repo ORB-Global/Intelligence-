@@ -32,3 +32,12 @@ G. Today/What Changed/Activity - real signals/investigations tables exist - not 
 - Backend route: src/routes/missionControl.js
 - Canonical unit handling: src/utils/oviondUnits.js (USE THIS for any Google spend/CPC, never convert ad hoc)
 - Real business state: build_business_state() - the one object powering position/six-points/chat
+
+## PHASE 2 — Historical Analogues (core verified)
+All three honest states of find_historical_analogue() now proven with real data:
+- analogue_found: Easley (78.7%), Susanville (96.1%)
+- insufficient_current_data: MoreHead (zero real history)
+- novel_state: "Deana" location, real genuine daily volatility (stddev > avg), confirmed not a data artifact by inspecting real underlying daily rows
+Wired end-to-end into Deep Intelligence and Ask Vantage's real chat context (found and fixed a real gap: chatPrompt.js never destructured deepIntelligence despite the data already reaching the context object).
+
+Open: only Easley has deep daily-history backfill; portfolio-wide backfill still pending. is_novel_state flag not yet set to true on any persisted row (only tested via live query, not yet via record_historical_analogue()).
