@@ -1,0 +1,81 @@
+<details class="v29-implementation">
+  <summary>Implementation contract for Claude →</summary>
+  <div class="impl-inner">
+    <div class="impl-note"><b>This content is not part of the client experience.</b> It exists so Claude knows exactly how the design maps to real sources, persistence, Brain behavior, predictions, territory intelligence, and execution rules.</div>
+    <section class="v18-resource-band">
+  <div class="v18-resource-card">
+    <div class="v13-k">Resource orchestration · Claude must use what already exists</div>
+    <h3>Vantage should ask every available source before it says “I don’t know.”</h3>
+    <p>The system already has multiple working resources. Claude’s job is to orchestrate them, not keep rebuilding smaller substitutes. Every visible Vantage thought should carry a source lineage behind it.</p>
+    <div class="v18-sources">
+      <div class="v18-source"><div class="k">Tenant identity</div><b>Supabase Auth + memberships</b><span>Resolve the correct location before any analysis.</span><div class="state use">Use now</div></div>
+      <div class="v18-source"><div class="k">Marketing bridge</div><b>Oviond mapping + sync</b><span>dashboard_mappings → syncOviondClients.js.</span><div class="state use">Use now</div></div>
+      <div class="v18-source"><div class="k">Paid history</div><b>historical_metrics</b><span>Baseline, trends, anomalies and recurring behavior.</span><div class="state use">Use now</div></div>
+      <div class="v18-source"><div class="k">Organic</div><b>social_posts</b><span>Post-level response, content themes and outliers.</span><div class="state use">Use now</div></div>
+      <div class="v18-source"><div class="k">Local intent</div><b>GBP / local visibility</b><span>Directions, calls, Maps/search actions, site activity.</span><div class="state verify">Verify exact table</div></div>
+      <div class="v18-source"><div class="k">Meta creative</div><b>Ad/adset/creative upstream</b><span>Persist actual creative, objective and ad-level outcomes.</span><div class="state extend">Extend sync</div></div>
+      <div class="v18-source"><div class="k">Budget</div><b>campaign_budget + Meta budgets</b><span>Correct period-aware pacing.</span><div class="state extend">Use + extend</div></div>
+      <div class="v18-source"><div class="k">Source truth</div><b>connection_health</b><span>Distinguish missing, stale, disconnected and zero-data states.</span><div class="state use">Use now</div></div>
+      <div class="v18-source"><div class="k">Brain</div><b>runBrainForAllLocations.js</b><span>location_brain_state + existing signals/investigations.</span><div class="state use">Use now</div></div>
+    </div>
+  </div>
+
+  <div class="v18-resource-card">
+    <div class="v13-k">Claude preflight checklist</div>
+    <h3>Before Claude creates anything new:</h3>
+    <div class="v18-check"><b>1 · Search the codebase.</b><span>Find the exact existing script, table, function or connector that should answer the question.</span></div>
+    <div class="v18-check"><b>2 · Check the upstream source.</b><span>Supabase absence does not prove Oviond/Meta/Google absence.</span></div>
+    <div class="v18-check"><b>3 · Extend, don’t duplicate.</b><span>If the field exists upstream, add it to the existing ingestion path.</span></div>
+    <div class="v18-check"><b>4 · Prove the full path.</b><span>Source → ingest → persist → Brain → UI → Ask Vantage → real Easley test.</span></div>
+    <div class="v18-check"><b>5 · Label dependencies honestly.</b><span>If no real resource exists, say what must be added instead of mocking the result.</span></div>
+  </div>
+</section>
+
+<section class="v18-flow">
+  <div class="v13-k">Behavioral memory engine</div>
+  <h3>Past behavior becomes future judgment only through traceable patterns.</h3>
+  <div class="v18-memory-grid">
+    <div class="v18-memory"><div class="k">Sequence</div><b>What tends to happen first?</b><span>Search → content → calls → store.</span></div>
+    <div class="v18-memory"><div class="k">Lag</div><b>How long does it take?</b><span>Learn category- and store-specific timing.</span></div>
+    <div class="v18-memory"><div class="k">Threshold</div><b>When does movement matter?</b><span>Store-specific abnormality, not generic benchmarks.</span></div>
+    <div class="v18-memory"><div class="k">Recovery</div><b>What preceded recovery?</b><span>Use past downturn/intervention/outcome chains.</span></div>
+    <div class="v18-memory"><div class="k">Substitution</div><b>What rises when another thing falls?</b><span>Furniture vs mattress category shifts.</span></div>
+    <div class="v18-memory"><div class="k">Negative memory</div><b>What failed before?</b><span>Reduce confidence in repeating bad moves.</span></div>
+  </div>
+  <div class="v18-chain">
+    <div class="v18-step"><div class="k">Past</div><b>Learn normal</b><span>History, rhythm, failed moves.</span></div>
+    <div class="v18-step"><div class="k">Now</div><b>Detect deviation</b><span>What is unusual today?</span></div>
+    <div class="v18-step"><div class="k">Connect</div><b>Cross-source pattern</b><span>What moved together?</span></div>
+    <div class="v18-step"><div class="k">Hypothesis</div><b>What may explain it?</b><span>Include competing explanations.</span></div>
+    <div class="v18-step"><div class="k">Predict</div><b>What may happen next?</b><span>Timestamp + confidence + disproof.</span></div>
+    <div class="v18-step"><div class="k">Outcome</div><b>What actually happened?</b><span>Store Pulse / POS / journey.</span></div>
+    <div class="v18-step"><div class="k">Learn</div><b>Change future judgment</b><span>Strengthen, weaken or retire the pattern.</span></div>
+  </div>
+  <div class="v18-rule"><b>Hard rule for Claude:</b> no Vantage prediction should be created from a single isolated metric when the stack contains relevant historical or cross-source evidence that has not been checked.</div>
+</section>
+
+<details class="glass" style="margin-top:14px" open>
+    <summary style="cursor:pointer;font:400 18px Georgia,serif">Implementation Contract for Claude</summary>
+    <div style="margin-top:14px">
+      <div class="feature"><b>1. Resolve location first</b><span>Supabase Auth → organization_memberships / location_memberships → locations.id. Every downstream read/write must be tenant scoped.</span></div>
+      <div class="feature"><b>2. Resolve Oviond source</b><span>dashboard_mappings.oviond_client_id maps Vantage location to the correct Oviond client.</span></div>
+      <div class="feature"><b>3. Ingest through the existing sync</b><span>syncOviondClients.js remains the primary source-ingestion path. Do not create frontend-side source fetches for data that belongs in Supabase.</span></div>
+      <div class="feature"><b>4. Paid historical baseline</b><span>historical_metrics powers spend/click/CPC/CTR history and business-specific baselines.</span></div>
+      <div class="feature"><b>5. Organic content</b><span>social_posts powers post-level performance and content/theme intelligence.</span></div>
+      <div class="feature"><b>6. Budget / pacing</b><span>campaign_budget plus new Meta budget fields powers current pacing. Periods must match actual spend windows.</span></div>
+      <div class="feature"><b>7. Meta creative / best ad</b><span>Oviond ad/adset/ad_creative fields are available upstream but must be persisted before production. “Best” must be objective-aware, not CTR-only.</span></div>
+      <div class="feature"><b>8. Local intent / GBP</b><span>Use the existing local-visibility ingestion for directions, calls, Maps/search actions and website activity. Claude must verify exact persisted table names in code.</span></div>
+      <div class="feature"><b>9. Competitor / rank intelligence</b><span>Use the real existing competitor/rank-grid implementation already working in the codebase. Verify exact table/function names before wiring. Do not invent a duplicate system.</span></div>
+      <div class="feature"><b>10. Source health</b><span>connection_health must be checked before Vantage says data is missing, zero, or stale.</span></div>
+      <div class="feature"><b>11. Brain processing</b><span>runBrainForAllLocations.js + location_brain_state + current signal/investigation machinery remain the reasoning path. Improve this layer rather than creating a second analyzer in the UI.</span></div>
+      <div class="feature"><b>12. Historical → predictive logic</b><span>Current signals are compared against historical_metrics, social_posts, local-visibility history, rank/competitive history and later Store Pulse/POS. Predictions require a traceable evidence chain.</span></div>
+      <div class="feature"><b>13. Landing-page journey</b><span>Tagged landing pages → GA4 / Google tag events → Vantage ingestion. Track product/offer views, call/directions clicks, form/finance actions and campaign lineage where lawful.</span></div>
+      <div class="feature"><b>14. Store Pulse / local events / owner context</b><span>Persist owner-entered walk-ins, sales, revenue, products sold, inventory notes, promotions and local events in tenant-scoped Supabase tables with timestamps and provenance.</span></div>
+      <div class="feature"><b>15. POS</b><span>Supported POS integrations use secure authorization. Unsupported systems fall back to upload/report/manual Store Pulse. Never fabricate a direct connection.</span></div>
+      <div class="feature"><b>16. Prediction / experiment memory</b><span>Persist evidence refs, confidence, expected outcome, disproof condition, due date, decision, actual result and learning. This powers hindsight and future judgment.</span></div>
+      <div class="feature"><b>17. Ask Vantage</b><span>Chat retrieves the same current Brain state, active signals, investigations, history and owner/store context that power the visual experience. It must not independently invent a separate interpretation.</span></div>
+      <div class="feature"><b>18. Full Picture</b><span>Deep views resolve from the same evidence references used by the top-level thought. No disconnected calculations.</span></div>
+      <div class="feature"><b>19. Frontend rule</b><span>The UI renders intelligence. It does not decide business truth. Missing backend support should be surfaced as a dependency rather than mocked.</span></div>
+      <div class="feature"><b>20. Proof before production</b><span>For each feature: source confirmed → ingested → persisted → Brain uses it → frontend receives it → Ask Vantage can explain it → tested on Easley with real data.</span></div>
+    </div>
+  </details>
