@@ -838,6 +838,20 @@ router.post('/locations/:id/checkin', async (req, res) => {
   if (locError) return res.status(500).json({ success: false, error: { message: locError.message } });
   if (!location) return res.status(404).json({ success: false, error: { message: 'Location not found or not accessible.' } });
 
+  // Real, best-effort extraction from free text - only fills a
+  // structured field when the owner didn't already provide it
+  // explicitly. Never overrides an explicit value, never invents one.
+  let realWalkIns = walkIns ?? null;
+  let realCategorySignal = null;
+  if (noteText) {
+    if (realWalkIns === null) {
+      const { data: extracted } = await req.supabase.rpc('extract_walkins_from_text', { p_text: noteText });
+      realWalkIns = extracted ?? null;
+    }
+    const { data: categories } = await req.supabase.rpc('extract_category_signal', { p_text: noteText });
+    if (categories && categories.length) realCategorySignal = categories;
+  }
+
   const { data: entry, error } = await req.supabase.from('business_context_entries').insert({
     organization_id: location.organization_id,
     location_id: locationId,
@@ -847,12 +861,13 @@ router.post('/locations/:id/checkin', async (req, res) => {
     sales_estimate: salesEstimate ?? null,
     transaction_count: transactionCount ?? null,
     traffic_level: trafficLevel || null,
-    walk_ins: walkIns ?? null,
+    walk_ins: realWalkIns,
+    primary_category_sold: realCategorySignal ? JSON.stringify(realCategorySignal) : null,
     week_of: new Date().toISOString().slice(0, 10),
   }).select().single();
   if (error) return res.status(500).json({ success: false, error: { message: error.message } });
 
-  return res.json({ success: true, data: entry });
+  return res.json({ success: true, data: entry, extracted: { walkIns: realWalkIns, categories: realCategorySignal } });
 });
 
 router.get('/locations/:id/checkins', async (req, res) => {
