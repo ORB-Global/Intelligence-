@@ -1757,25 +1757,21 @@ body{
       <p>Keywords and competitors stay visible because they are core business state, not a hidden SEO report.</p>
     </div>
     <div class="v34-strip">
-      <div class="v34-stat"><small>Tracked terms</small><b>Live count</b></div>
-      <div class="v34-stat"><small>Improved</small><b>Daily delta</b></div>
-      <div class="v34-stat"><small>Lost ground</small><b>Daily delta</b></div>
-      <div class="v34-stat"><small>New competitors</small><b>Discovery</b></div>
-      <div class="v34-stat"><small>Trade area</small><b>10 mi bootstrap</b></div>
+      <div class="v34-stat"><small>Tracked terms</small><b id="v34-tracked-terms">—</b></div>
+      <div class="v34-stat"><small>Real competitors</small><b id="v34-competitor-count">—</b></div>
+      <div class="v34-stat"><small>Territory coverage</small><b id="v34-territory-status">—</b></div>
+      <div class="v34-stat"><small>Trade area</small><b id="v34-trade-area">10 mi bootstrap</b></div>
     </div>
     <div class="v34-grid">
       <div class="v34-card">
         <div class="v32-k">Keyword / product visibility</div><h3>What customers can actually find you for.</h3>
-        <div class="v34-row"><div><b>Mattress category + intent terms</b><br><span>Real business-specific query universe</span></div><span class="v34-up">↑ movement</span><span class="v34-rank">real rank</span></div>
-        <div class="v34-row"><div><b>Furniture category + intent terms</b><br><span>Historical core for Easley</span></div><span class="v34-watch">→ watch</span><span class="v34-rank">real rank</span></div>
-        <div class="v34-row"><div><b>Emerging searches</b><br><span>New terms discovered from the live market</span></div><span class="v34-up">NEW</span><span class="v34-rank">discover</span></div>
-        <div class="v34-add"><b>Production:</b> populate from the existing SEO/rank sources. Never hardcode these categories across tenants.</div>
+        <div class="v34-row" id="v34-kw-row-1"><div><b>—</b><br><span>—</span></div><span class="v34-watch">—</span><span class="v34-rank">—</span></div>
+        <div class="v34-row" id="v34-kw-row-2"><div><b>—</b><br><span>—</span></div><span class="v34-watch">—</span><span class="v34-rank">—</span></div>
+        <div class="v34-add" id="v34-kw-honest-note"><b>Production:</b> populate from the existing SEO/rank sources. Never hardcode these categories across tenants.</div>
       </div>
       <div class="v34-card">
         <div class="v32-k">Who we're watching</div><h3>Competitors are discovered, verified and remembered.</h3>
-        <div class="v34-comp"><div><b>Discovered competitor</b><small>Name · address · website · distance · overlapping terms · first/last seen</small></div><span>SEARCH</span></div>
-        <div class="v34-comp"><div><b>Known competitor</b><small>Owner/Orb-added businesses supplement discovery.</small></div><span>KNOWN</span></div>
-        <div class="v34-comp"><div><b>Competitor movement</b><small>Who gained/lost visibility, where, for what, and whether it persists.</small></div><span>DAILY</span></div>
+        <div id="v34-competitor-list"></div>
         <div class="v34-add"><b>+ Add competitor:</b> name · address · website · notes. Adding one never stops automatic discovery.</div>
       </div>
     </div>
@@ -2120,6 +2116,35 @@ document.querySelectorAll('.tab').forEach(btn=>{
   function timeOfDay(){
     const h = new Date().getHours();
     return h < 12 ? 'morning' : h < 18 ? 'afternoon' : 'evening';
+  }
+
+  // Real Territory Intelligence wiring
+  const terr = payload.v44Territory;
+  if (terr) {
+    if (el('v34-tracked-terms')) el('v34-tracked-terms').textContent = terr.trackedTerms ?? '0';
+    if (el('v34-competitor-count')) el('v34-competitor-count').textContent = terr.competitorCount ?? '0';
+    if (el('v34-territory-status')) el('v34-territory-status').textContent = terr.territoryStatus || 'unknown';
+
+    if (el('v34-kw-row-1')) {
+      const r = el('v34-kw-row-1');
+      r.querySelector('b').textContent = 'Mattress';
+      r.querySelector('span:not(.v34-watch):not(.v34-rank)') || null;
+      r.querySelectorAll('span')[0].textContent = terr.mattressRank ? `Real rank #${terr.mattressRank}` : 'no real grid data';
+      r.querySelectorAll('span')[1].textContent = terr.mattressRank ? `#${terr.mattressRank}` : '—';
+    }
+    if (el('v34-kw-row-2')) {
+      const r = el('v34-kw-row-2');
+      r.querySelector('b').textContent = 'Furniture';
+      r.querySelectorAll('span')[0].textContent = terr.furnitureRankBest ? `Real rank #${terr.furnitureRankBest}–#${terr.furnitureRankWorst}` : 'no real grid data';
+      r.querySelectorAll('span')[1].textContent = terr.furnitureRankBest ? `#${terr.furnitureRankBest}–#${terr.furnitureRankWorst}` : '—';
+    }
+
+    const compList = el('v34-competitor-list');
+    if (compList && terr.competitors) {
+      compList.innerHTML = terr.competitors.map(c => `
+        <div class="v34-comp"><div><b>${c.name}</b><small>${c.address || 'no real address on file'} ${c.sameBrand ? '· same-brand, excluded from competitive pressure' : ''}</small></div><span>${c.sameBrand ? 'SISTER' : 'REAL'}</span></div>
+      `).join('') || '<div class="v34-add">No real competitors discovered yet for this location.</div>';
+    }
   }
 })();
 </script>
