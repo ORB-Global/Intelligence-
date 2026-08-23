@@ -2207,7 +2207,7 @@ document.querySelectorAll('.tab').forEach(btn=>{
         <div><b>MTD normalized comparison:</b> ${mtdLine}</div>
         <div><b>Decision memory:</b> ${deep.decisionMemory.note}</div>
         <div><b>Business memory:</b> ${deep.businessMemory.note}</div>
-        <div style="margin-top:6px; font-style:italic; color:#8a95a3;"><b>Historical analogues:</b> ${deep.historicalAnalogues.note}</div>
+        <div style="margin-top:6px;"><b>Historical analogues:</b> ${deep.historicalAnalogues.status === 'analogue_found' ? deep.historicalAnalogues.clientFacingText : (deep.historicalAnalogues.note || 'Not enough real data yet.')}</div>
         <div style="font-style:italic; color:#8a95a3;"><b>Prediction ledger:</b> ${deep.predictionLedger.note}</div>
       </div>`;
   }
