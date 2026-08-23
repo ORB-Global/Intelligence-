@@ -37,7 +37,10 @@ async function main() {
   let discovered = 0, skippedHasCompetitors = 0, failed = 0;
 
   for (const loc of locations) {
-    const { count: existingCount } = await supabase.from('competitors').select('id', { count: 'exact', head: true }).eq('location_id', loc.id);
+    // Real fix: only skip if REAL radius-sourced competitors already
+    // exist - a location with only old, coarser keyword-based entries
+    // (or none) still genuinely needs the precise radius treatment.
+    const { count: existingCount } = await supabase.from('competitors').select('id', { count: 'exact', head: true }).eq('location_id', loc.id).eq('source', 'dataforseo_radius');
     if ((existingCount || 0) >= 2) { skippedHasCompetitors++; continue; }
 
     // Real, tenant-derived search terms - no hardcoded category in
