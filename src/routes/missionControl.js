@@ -112,6 +112,7 @@ async function buildTenantChatContext(supabase, locationId) {
   const { data: supportMode } = await supabaseService.rpc('get_real_support_mode', { p_location_id: locationId });
   const { data: deepIntelligence } = await supabaseService.rpc('get_deep_intelligence', { p_location_id: locationId });
   const { data: whatsNext } = await supabaseService.rpc('get_whats_next', { p_location_id: locationId });
+  const { data: recentActivity } = await supabaseService.rpc('get_recent_activity', { p_location_id: locationId });
 
   let healthWithFactors = null;
   if (health) {
@@ -152,6 +153,7 @@ async function buildTenantChatContext(supabase, locationId) {
     supportMode: supportMode || null,
     deepIntelligence: deepIntelligence || null,
     whatsNext: whatsNext || null,
+    recentActivity: recentActivity || null,
     investigations: investigations || [],
     businessMemory: memory || [],
     businessContext: businessContext || [],
@@ -709,7 +711,7 @@ router.get('/locations/:id/creative-brief', async (req, res) => {
 
   const { data: job } = await req.supabase.from('creative_jobs').insert({
     organization_id: location.organization_id, location_id: locationId, requested_by: req.user.id,
-    source_type: 'business_state', request_type: 'brief', status: 'prepared',
+    source_type: 'manual', request_type: 'ad_concept', status: 'ready',
     headline, rationale: evidence.join(' | '),
   }).select().single();
 

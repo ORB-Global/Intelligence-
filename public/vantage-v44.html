@@ -1851,7 +1851,12 @@ body{
  <div class="v37-posdata"><span>transactions</span><span>revenue</span><span>products/categories</span><span>quantity</span><span>ticket value</span><span>time/day</span><span>inventory when available</span></div>
 </div>
 
-<div class="v36-upload"><b>Add local reality</b><br>Football game · school event · road closure · weather issue · inventory shortage · staffing problem · anything the APIs could not know.</div>
+<div class="v36-upload" id="v44-local-reality-trigger" style="cursor:pointer;"><b>Add local reality</b><br>Football game · school event · road closure · weather issue · inventory shortage · staffing problem · anything the APIs could not know.</div>
+<div id="v44-local-reality-panel" style="display:none; margin-top:8px;">
+  <textarea id="v44-local-reality-text" placeholder="e.g. Road construction started outside the store this week." style="width:100%; min-height:50px; border:1px solid rgba(37,43,49,.12); border-radius:8px; padding:8px; font:inherit;"></textarea>
+  <button id="v44-local-reality-submit" style="margin-top:8px; border:1px solid rgba(37,43,49,.15); border-radius:999px; padding:8px 16px; background:rgba(37,43,49,.04); cursor:pointer; font:inherit;">Tell Vantage →</button>
+  <div id="v44-local-reality-status" style="font-size:11px; color:#7a8690; margin-top:6px;"></div>
+</div>
       </div>
     </div>
   </section>
@@ -2106,6 +2111,13 @@ document.querySelectorAll('.tab').forEach(btn=>{
   const el = (id) => document.getElementById(id);
   if (el('v41-greeting')) el('v41-greeting').textContent = payload.location?.name ? `Good ${timeOfDay()}, ${payload.location.name}.` : 'Vantage';
 
+  // Real activity - reuses the existing status line, no new visual
+  // chrome added to the frozen V44 design.
+  const activity = payload.recentActivity;
+  if (activity && el('v41-date')) {
+    el('v41-date').textContent = `${payload.location?.name?.toUpperCase() || ''} · ${activity.summary}`;
+  }
+
   // Real qualitative state - NEVER a numeric score, per explicit correction
   const state = payload.vantageState;
   if (state && el('v41-score-state')) {
@@ -2299,7 +2311,18 @@ document.querySelectorAll('.tab').forEach(btn=>{
     const planEl = el('v44-current-plan');
     if (planEl) {
       if (goalRes && goalRes.business_objective) {
-        planEl.innerHTML = `<b>Current real goal:</b> ${goalRes.business_objective}${goalRes.deadline ? ` (by ${goalRes.deadline})` : ''}${goalRes.constraints_text ? `<br><small>Constraints: ${goalRes.constraints_text}</small>` : ''}`;
+        // Real, honest heuristic: a genuine goal reads like a
+        // sentence. A single vague word (like the real 'people'
+        // value found in Easley's data, with no audit trail
+        // establishing its provenance) is flagged rather than
+        // presented as a confident, meaningful business goal.
+        const wordCount = goalRes.business_objective.trim().split(/\s+/).length;
+        const looksLikeRealGoal = wordCount >= 3;
+        if (looksLikeRealGoal) {
+          planEl.innerHTML = `<b>Current real goal:</b> ${goalRes.business_objective}${goalRes.deadline ? ` (by ${goalRes.deadline})` : ''}${goalRes.constraints_text ? `<br><small>Constraints: ${goalRes.constraints_text}</small>` : ''}`;
+        } else {
+          planEl.innerHTML = `<b>Current plan:</b> A short value ("${goalRes.business_objective}") exists on file, but it doesn't read like a real, deliberate goal statement - treating this as unset until a real goal is entered.`;
+        }
       } else {
         planEl.innerHTML = `<b>Current plan:</b> No real goal has been set yet for this business.`;
       }
@@ -2331,6 +2354,33 @@ document.querySelectorAll('.tab').forEach(btn=>{
         el('v44-goal-status').textContent = result.success ? 'Real goal saved.' : `Could not save: ${result.error?.message}`;
       } catch(e) { el('v44-goal-status').textContent = 'Could not reach Vantage.'; }
       goalSubmit.textContent = 'Save goal →';
+    });
+  }
+
+  // Real "Add local reality" - was purely decorative, now wired to
+  // the same real, already-tested /tell endpoint used by Show Vantage.
+  const localRealityTrigger = el('v44-local-reality-trigger');
+  if (localRealityTrigger) {
+    localRealityTrigger.addEventListener('click', () => {
+      const panel = el('v44-local-reality-panel');
+      panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+    });
+  }
+  const localRealitySubmit = el('v44-local-reality-submit');
+  if (localRealitySubmit) {
+    localRealitySubmit.addEventListener('click', async () => {
+      const text = el('v44-local-reality-text').value.trim();
+      if (!text) return;
+      const statusEl = el('v44-local-reality-status');
+      statusEl.textContent = 'Sending…';
+      try {
+        const res = await fetch(`/api/mc/locations/${locationId}/tell`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ text }),
+        });
+        const result = await res.json();
+        statusEl.textContent = result.success ? 'Real, saved.' : `Could not save: ${result.error?.message}`;
+      } catch(e) { statusEl.textContent = 'Could not reach Vantage.'; }
     });
   }
 })();
