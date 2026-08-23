@@ -761,20 +761,17 @@ router.get('/locations/:id/goal', async (req, res) => {
 
 router.post('/locations/:id/goal', async (req, res) => {
   const { id: locationId } = req.params;
-  const { goalText } = req.body || {};
+  const { goalText, deadline, constraintsText } = req.body || {};
   if (!goalText || !goalText.trim()) return res.status(400).json({ success: false, error: { message: 'Provide a goal.' } });
 
   const { data: location, error: locError } = await req.supabase.from('locations').select('id, organization_id').eq('id', locationId).maybeSingle();
   if (locError) return res.status(500).json({ success: false, error: { message: locError.message } });
   if (!location) return res.status(404).json({ success: false, error: { message: 'Location not found or not accessible.' } });
 
-  // location_goals RLS is admin-write-only by design - client goal
-  // changes route through the server, which already confirmed real
-  // location access above, matching the established authorization
-  // pattern used everywhere else tonight.
   const { data, error } = await supabaseService.from('location_goals').upsert({
     location_id: locationId, organization_id: location.organization_id,
-    business_objective: goalText.trim(), updated_at: new Date().toISOString(),
+    business_objective: goalText.trim(), deadline: deadline || null, constraints_text: constraintsText || null,
+    updated_at: new Date().toISOString(),
   }, { onConflict: 'location_id' }).select().single();
   if (error) return res.status(500).json({ success: false, error: { message: error.message } });
 

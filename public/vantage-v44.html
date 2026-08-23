@@ -1803,9 +1803,11 @@ body{
  <div class="v37-plangrid">
   <div class="v37-box">
    <div class="v32-k">Set the priority</div><h3>What matters most right now?</h3>
-   <div class="v37-goals"><span>More store traffic</span><span>Grow revenue</span><span>Move inventory</span><span>Improve a category</span><span>Lower acquisition cost</span><span>Custom goal</span></div>
-   <div class="v37-input"><b>Describe the goal:</b> “I want to increase furniture sales this month without increasing total ad spend.”</div>
-   <div class="v37-input"><b>Add constraints:</b> deadline · budget ceiling · inventory · margin · staffing · products to prioritize · things we should not change.</div>
+   <div class="v37-goals" id="v44-goal-chips"><span data-goal="More store traffic">More store traffic</span><span data-goal="Grow revenue">Grow revenue</span><span data-goal="Move inventory">Move inventory</span><span data-goal="Improve a category">Improve a category</span><span data-goal="Lower acquisition cost">Lower acquisition cost</span></div>
+   <div class="v37-input"><b>Describe the goal:</b> <textarea id="v44-goal-text" placeholder="I want to increase furniture sales this month without increasing total ad spend." style="width:100%; min-height:44px; border:1px solid rgba(37,43,49,.10); border-radius:8px; padding:6px; font:inherit; margin-top:6px;"></textarea></div>
+   <div class="v37-input"><b>Add constraints:</b> <input type="text" id="v44-goal-constraints" placeholder="deadline · budget ceiling · inventory · margin · staffing · things we should not change" style="width:100%; border:none; border-bottom:1px solid rgba(37,43,49,.12); background:transparent; font:inherit; padding:4px 0; margin-top:6px;"></div>
+   <button id="v44-goal-submit" style="margin-top:10px; border:1px solid rgba(37,43,49,.15); border-radius:999px; padding:8px 16px; background:rgba(37,43,49,.04); cursor:pointer; font:inherit;">Save goal →</button>
+   <div id="v44-goal-status" style="font-size:11px; color:#7a8690; margin-top:8px;"></div>
   </div>
   <div class="v37-box">
    <div class="v32-k">Vantage turns it into a living plan</div><h3>Goal → evidence → actions → outcome.</h3>
@@ -1815,8 +1817,7 @@ body{
     <div class="v37-step"><small>Plan</small><b>Choose actions</b></div>
     <div class="v37-step"><small>Learn</small><b>Adapt</b></div>
    </div>
-   <div class="v37-input"><b>Current plan:</b> production should show the real active objective, what Vantage believes, what happens this week, what it is waiting on, and the next decision date.</div>
-   <div class="v32-status"><span>Create / update plan</span><span>Ask Vantage to revise</span><span>See plan history</span></div>
+   <div class="v37-input" id="v44-current-plan"><b>Current plan:</b> loading…</div>
   </div>
  </div>
 </section>
@@ -1929,7 +1930,7 @@ document.querySelectorAll('.v30-door').forEach(d=>{
      });
      return;
    }
-   if (t === 'create') {
+ if (t === 'create') {
      panel.innerHTML = `<div style="font-family:'Fraunces',serif; font-size:15px;">Assembling a real evidence-based brief…</div>`;
      fetch(`/api/mc/locations/${window.__vantageLocationId}/creative-brief`, { headers: { Authorization: `Bearer ${window.__vantageToken}` } })
        .then(r => r.json()).then(result => {
@@ -2247,6 +2248,47 @@ document.querySelectorAll('.tab').forEach(btn=>{
 
   const posBtn = el('v44-pos-connect');
   if (posBtn) posBtn.addEventListener('click', () => { alert('POS integration is not built yet. Manual Store Pulse and uploads are the real way to share store outcomes right now.'); });
+
+  // Real Living Business Plan wiring
+  try {
+    const goalRes = await apiFetch(`/api/mc/locations/${locationId}/goal`);
+    const planEl = el('v44-current-plan');
+    if (planEl) {
+      if (goalRes && goalRes.business_objective) {
+        planEl.innerHTML = `<b>Current real goal:</b> ${goalRes.business_objective}${goalRes.deadline ? ` (by ${goalRes.deadline})` : ''}${goalRes.constraints_text ? `<br><small>Constraints: ${goalRes.constraints_text}</small>` : ''}`;
+      } else {
+        planEl.innerHTML = `<b>Current plan:</b> No real goal has been set yet for this business.`;
+      }
+    }
+  } catch(e) {}
+
+  let selectedGoalChip = null;
+  document.querySelectorAll('#v44-goal-chips span').forEach(chip => {
+    chip.addEventListener('click', () => {
+      document.querySelectorAll('#v44-goal-chips span').forEach(c => c.style.opacity = '0.5');
+      chip.style.opacity = '1';
+      selectedGoalChip = chip.dataset.goal;
+      if (!el('v44-goal-text').value) el('v44-goal-text').value = chip.dataset.goal;
+    });
+  });
+  const goalSubmit = el('v44-goal-submit');
+  if (goalSubmit) {
+    goalSubmit.addEventListener('click', async () => {
+      const goalText = el('v44-goal-text').value.trim();
+      const constraintsText = el('v44-goal-constraints').value.trim();
+      if (!goalText) { el('v44-goal-status').textContent = 'Describe a real goal first.'; return; }
+      goalSubmit.textContent = 'Saving…';
+      try {
+        const res = await fetch(`/api/mc/locations/${locationId}/goal`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ goalText, constraintsText: constraintsText || null }),
+        });
+        const result = await res.json();
+        el('v44-goal-status').textContent = result.success ? 'Real goal saved.' : `Could not save: ${result.error?.message}`;
+      } catch(e) { el('v44-goal-status').textContent = 'Could not reach Vantage.'; }
+      goalSubmit.textContent = 'Save goal →';
+    });
+  }
 })();
 </script>
 
