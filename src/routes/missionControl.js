@@ -109,6 +109,7 @@ async function buildTenantChatContext(supabase, locationId) {
   const { data: sourceCoverage } = await supabaseService.rpc('get_source_coverage', { p_location_id: locationId });
   const { data: v44Points } = await supabaseService.rpc('get_v44_evidence_points', { p_location_id: locationId });
   const { data: v44Territory } = await supabaseService.rpc('get_v44_territory', { p_location_id: locationId });
+  const { data: supportMode } = await supabaseService.rpc('get_real_support_mode', { p_location_id: locationId });
 
   let healthWithFactors = null;
   if (health) {
@@ -146,6 +147,7 @@ async function buildTenantChatContext(supabase, locationId) {
     sourceCoverage: sourceCoverage || null,
     v44Points: v44Points || null,
     v44Territory: v44Territory || null,
+    supportMode: supportMode || null,
     investigations: investigations || [],
     businessMemory: memory || [],
     businessContext: businessContext || [],

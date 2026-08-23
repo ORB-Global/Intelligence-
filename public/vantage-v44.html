@@ -1861,11 +1861,12 @@ body{
       <div><div class="v32-k">Vantage + Orb Support</div><h2>How much help do you want?</h2></div>
       <p>Only after Vantage has shown what it knows do we ask who should take the action.</p>
     </div>
-    <div class="v33-modes">
-      <div class="v33-mode guidance"><small>Guidance</small><h3>Vantage Guidance</h3><div class="v33-tagline">Vantage thinks. You act.</div><p>Business-specific recommendations, creation and planning. You execute the advertising changes.</p></div>
-      <div class="v33-mode managed"><small>Human Managed</small><h3>Vantage + Orb Managed</h3><div class="v33-tagline">Vantage thinks. Experienced humans act.</div><p>Orb personally manages and executes the advertising using Vantage as the intelligence layer. No automated ad changes.</p></div>
-      <div class="v33-mode auto"><small>Guardrailed Automation</small><h3>Vantage + Orb Automated</h3><div class="v33-tagline">Vantage acts within your rules. Humans remain in command.</div><p>Verified low-risk actions can execute inside explicit limits. Strategy, unusual conditions and major decisions escalate to people.</p></div>
+    <div class="v33-modes" id="v44-support-modes">
+      <div class="v33-mode guidance" data-mode="guidance"><small>Guidance</small><h3>Vantage Guidance</h3><div class="v33-tagline">Vantage thinks. You act.</div><p>Business-specific recommendations, creation and planning. You execute the advertising changes.</p></div>
+      <div class="v33-mode managed" data-mode="managed"><small>Human Managed</small><h3>Vantage + Orb Managed</h3><div class="v33-tagline">Vantage thinks. Experienced humans act.</div><p>Orb personally manages and executes the advertising using Vantage as the intelligence layer. No automated ad changes.</p></div>
+      <div class="v33-mode auto" data-mode="auto"><small>Guardrailed Automation</small><h3>Vantage + Orb Automated</h3><div class="v33-tagline">Vantage acts within your rules. Humans remain in command.</div><p>Verified low-risk actions can execute inside explicit limits. Strategy, unusual conditions and major decisions escalate to people.</p></div>
     </div>
+    <div id="v44-mode-status" style="font-size:11px; color:#7a8690; margin-top:10px;"></div>
     <div class="v36-automation-note"><b>Automation is a capability, not another giant section.</b> Competitor/keyword monitoring, prediction resolution, daily briefs and approved repetitive workflows can happen quietly in the background. Client-facing automation controls appear only when relevant to the selected support mode.</div>
   </section>
 
@@ -2248,6 +2249,20 @@ document.querySelectorAll('.tab').forEach(btn=>{
 
   const posBtn = el('v44-pos-connect');
   if (posBtn) posBtn.addEventListener('click', () => { alert('POS integration is not built yet. Manual Store Pulse and uploads are the real way to share store outcomes right now.'); });
+
+  // Real Support Mode - never let zero entitlement look automated
+  const support = payload.supportMode;
+  if (support) {
+    document.querySelectorAll('#v44-support-modes .v33-mode').forEach(m => {
+      if (m.dataset.mode === support.currentMode) { m.style.outline = '2px solid rgba(154,122,69,.5)'; m.style.background = 'rgba(154,122,69,.05)'; }
+      else { m.style.opacity = '0.55'; m.style.cursor = 'pointer'; }
+      m.addEventListener('click', () => {
+        if (m.dataset.mode === support.currentMode) return;
+        alert(`This business is not currently entitled or activated for "${m.querySelector('h3').textContent}". ${support.clientFacingNote} Contact Orb to change this.`);
+      });
+    });
+    el('v44-mode-status').textContent = support.clientFacingNote;
+  }
 
   // Real Living Business Plan wiring
   try {
