@@ -41,6 +41,7 @@ async function oviondFetch(path, options) {
 async function pullCurrentPeriod(location, oviondClientId, datasourceId, periodStart, periodEnd, daysElapsed) {
   try {
     const isGoogle = datasourceId === 'gadw';
+    const channel = isGoogle ? 'google' : 'meta';
     const result = await oviondFetch('/v1/data/query', {
       method: 'POST',
       body: JSON.stringify({
@@ -56,6 +57,26 @@ async function pullCurrentPeriod(location, oviondClientId, datasourceId, periodS
     const rows = result?.data?.current || [];
     if (!rows.length) { console.log(`  ${datasourceId}: no real rows returned for MTD period.`); return; }
 
+    // Real, additive: persist each real real daily row into
+    // daily_historical_metrics as part of this same call, since the
+    // DATE-granularity response is already being fetched here - no
+    // second ingestion system, no separate permanent backfill job.
+    let dailyWritten = 0;
+    for (const r of rows) {
+      const obsDate = r.date || r.DATE || r.day;
+      if (!obsDate) continue;
+      const { error: dailyErr } = await supabase.from('daily_historical_metrics').upsert({
+        location_id: location.id, channel, observation_date: obsDate,
+        spend: isGoogle ? (Number(r.cost_micros || 0) / 1e6) : Number(r.spend || 0),
+        impressions: Number(r.impressions || 0), reach: Number(r.reach || 0),
+        clicks: Number(r.clicks || 0), ctr: Number(r.ctr || 0) || null,
+        cpc: isGoogle ? Number(r.average_cpc || 0) || null : Number(r.cpc || 0) || null,
+        conversions: Number(r.conversions || 0) || null, source: 'oviond',
+      }, { onConflict: 'location_id,channel,observation_date' });
+      if (!dailyErr) dailyWritten++;
+    }
+    if (dailyWritten) console.log(`  ${channel}: ${dailyWritten} real daily row(s) written to daily_historical_metrics.`);
+
     // Real, honest sum across the real real days fetched - not an estimate.
     let spend = 0, impressions = 0, reach = 0, clicks = 0, leads = 0, messaging = 0;
     for (const r of rows) {
@@ -68,7 +89,6 @@ async function pullCurrentPeriod(location, oviondClientId, datasourceId, periodS
     }
     const ctr = impressions > 0 ? (clicks / impressions) * 100 : null;
     const cpc = clicks > 0 ? spend / clicks : null;
-    const channel = isGoogle ? 'google' : 'meta';
 
     const { error } = await supabase.from('current_period_metrics').upsert({
       location_id: location.id, channel, period_start: periodStart, as_of: new Date().toISOString(),
