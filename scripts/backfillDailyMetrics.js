@@ -65,10 +65,10 @@ async function backfillOne(location, oviondClientId, datasourceId, periodStart, 
       if (!obsDate) continue;
       const { error } = await supabase.from('daily_historical_metrics').upsert({
         location_id: location.id, channel, observation_date: obsDate,
-        spend: isGoogle ? (Number(r.cost_micros || 0) / 1e6) : Number(r.spend || 0),
+        spend: isGoogle ? Number(r.spend ?? r.cost_micros ?? 0) : Number(r.spend || 0),
         impressions: Number(r.impressions || 0), reach: Number(r.reach || 0),
         clicks: Number(r.clicks || 0), ctr: Number(r.ctr || 0) || null,
-        cpc: isGoogle ? Number(r.average_cpc || 0) || null : Number(r.cpc || 0) || null,
+        cpc: isGoogle ? Number(r.cpc ?? r.average_cpc ?? 0) || null : Number(r.cpc || 0) || null,
         conversions: Number(r.conversions || 0) || null, source: 'oviond',
       }, { onConflict: 'location_id,channel,observation_date' });
       if (!error) { written++; if (!earliest || obsDate < earliest) earliest = obsDate; if (!latest || obsDate > latest) latest = obsDate; }

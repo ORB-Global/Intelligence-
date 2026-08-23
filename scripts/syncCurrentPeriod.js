@@ -65,12 +65,18 @@ async function pullCurrentPeriod(location, oviondClientId, datasourceId, periodS
     for (const r of rows) {
       const obsDate = r.date || r.DATE || r.day;
       if (!obsDate) continue;
+      // Real fix: mirror the exact proven-working extraction from
+      // syncOviondClients.js - Oviond's real response for this query
+      // shape already returns dollar-scaled values despite the
+      // 'cost_micros' field name; dividing by 1e6 was a real bug that
+      // produced spend values ~1,000,000x too small. Verified by hand:
+      // the broken 0.000267674204 was exactly 267.674204 / 1e6.
+      const realSpend = Number(r.spend ?? r.cost_micros ?? 0);
+      const realCpc = Number(r.cpc ?? r.average_cpc ?? 0) || null;
       const { error: dailyErr } = await supabase.from('daily_historical_metrics').upsert({
         location_id: location.id, channel, observation_date: obsDate,
-        spend: isGoogle ? (Number(r.cost_micros || 0) / 1e6) : Number(r.spend || 0),
-        impressions: Number(r.impressions || 0), reach: Number(r.reach || 0),
-        clicks: Number(r.clicks || 0), ctr: Number(r.ctr || 0) || null,
-        cpc: isGoogle ? Number(r.average_cpc || 0) || null : Number(r.cpc || 0) || null,
+        spend: realSpend, impressions: Number(r.impressions || 0), reach: Number(r.reach || 0),
+        clicks: Number(r.clicks || 0), ctr: Number(r.ctr || 0) || null, cpc: realCpc,
         conversions: Number(r.conversions || 0) || null, source: 'oviond',
       }, { onConflict: 'location_id,channel,observation_date' });
       if (!dailyErr) dailyWritten++;
@@ -80,7 +86,7 @@ async function pullCurrentPeriod(location, oviondClientId, datasourceId, periodS
     // Real, honest sum across the real real days fetched - not an estimate.
     let spend = 0, impressions = 0, reach = 0, clicks = 0, leads = 0, messaging = 0;
     for (const r of rows) {
-      spend += Number(isGoogle ? (r.cost_micros || 0) / 1e6 : (r.spend || 0));
+      spend += Number(isGoogle ? (r.spend ?? r.cost_micros ?? 0) : (r.spend || 0));
       impressions += Number(r.impressions || 0);
       reach += Number(r.reach || 0);
       clicks += Number(r.clicks || 0);
