@@ -77,8 +77,14 @@ async function backfillOne(location, oviondClientId, datasourceId, periodStart, 
     }
     return { channel, realRowsWritten: written, earliestRealDate: earliest, latestRealDate: latest };
   } catch (e) {
-    return { channel, realRowsWritten: 0, error: e.message };
+    return { channel, realRowsWritten: 0, error: e.message, classification: classifyError(e.message) };
   }
+}
+
+function classifyError(message) {
+  const statusMatch = message.match(/returned (\d\d\d):/);
+  const realStatus = statusMatch ? parseInt(statusMatch[1], 10) : null;
+  return realStatus === 403 ? 'permission_denied' : realStatus === 404 ? 'not_configured' : realStatus ? 'provider_error' : 'unknown_error';
 }
 
 async function main() {
