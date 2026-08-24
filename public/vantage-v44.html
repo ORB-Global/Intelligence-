@@ -1956,10 +1956,10 @@ document.querySelectorAll('.v30-door').forEach(d=>{
 
 
   <div class="askdock">
-    <div class="askfield">Ask Vantage anything about this business…</div>
-    <div class="cmd">What should I post?</div>
-    <div class="cmd">Brief me</div>
-    <div class="cmd">Explore Full Picture</div>
+    <input class="askfield" id="v44-askdock-input" placeholder="Ask Vantage anything about this business…" />
+    <div class="cmd" data-q="What should I post?">What should I post?</div>
+    <div class="cmd" data-q="Brief me on where things stand today.">Brief me</div>
+    <div class="cmd" id="v44-askdock-explore">Explore Full Picture</div>
   </div>
 
   
@@ -2087,8 +2087,15 @@ document.querySelectorAll('.tab').forEach(btn=>{
           body: JSON.stringify({ question }),
         });
         const body = await res.json();
-        if (body.success) alert(body.data?.answer?.findings || 'No real answer returned.');
-      } catch(e) { console.error(e); }
+        if (body.success) {
+          alert(body.data?.answer?.findings || 'Real response received, but no findings field was present - check the raw response shape.');
+        } else {
+          alert(`Real error from server: ${body.error?.message || `HTTP ${res.status}`}`);
+        }
+      } catch(e) {
+        alert(`Could not reach Vantage: ${e.message}`);
+        console.error(e);
+      }
       askBtn.textContent = 'Ask →';
     });
   }
