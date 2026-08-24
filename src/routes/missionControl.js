@@ -156,7 +156,6 @@ async function buildTenantChatContext(supabase, locationId) {
     territoryEvidence: territoryEvidence || [],
     weatherEvidence: weatherEvidence || [],
     whatsNext: whatsNext || null,
-    recentActivity: recentActivity || null,
     investigations: investigations || [],
     businessMemory: memory || [],
     businessContext: businessContext || [],
