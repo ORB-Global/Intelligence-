@@ -63,7 +63,15 @@ function validateAnswerPayload(input) {
   // resolvable to a string.
   for (const field of ['recommended_actions', 'insufficient_data']) {
     const value = input[field];
-    if (value !== null && typeof value !== 'string') {
+    if (value === undefined) {
+      // Real, exact root cause found: JSON.stringify(undefined)
+      // returns the literal undefined value, not a string - so when
+      // the model omits this field entirely (undefined, not null),
+      // every previous fallback in this function silently failed to
+      // coerce it, and the strict check below still threw. undefined
+      // and omitted are the same real thing as "no data" - null.
+      input[field] = null;
+    } else if (value !== null && typeof value !== 'string') {
       input[field] = JSON.stringify(value);
     }
   }
