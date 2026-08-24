@@ -93,7 +93,7 @@ async function buildTenantChatContext(supabase, locationId) {
     supabase.from('open_questions').select('question, category').eq('location_id', locationId).eq('status', 'open'),
     supabase.from('orb_activity').select('activity_type, description, occurred_at').eq('location_id', locationId).eq('client_visible', true).order('occurred_at', { ascending: false }).limit(10),
     supabase.from('investigations').select('id, question, evidence_collected, possible_explanations, confidence, status, conclusion').eq('location_id', locationId).eq('client_visible', true),
-    supabase.from('business_memory').select('observation, confidence, supporting_evidence_count').eq('location_id', locationId),
+    supabase.from('business_memory').select('observation, status, confidence, supporting_evidence_count, contradicting_evidence_count').eq('location_id', locationId).neq('status', 'retired').order('supporting_evidence_count', { ascending: false }),
     supabase.from('business_context_entries').select('note_text, sales_estimate, transaction_count, traffic_level, primary_category_sold, promotion_running, created_at').eq('location_id', locationId).eq('excluded_from_evidence', false).order('created_at', { ascending: false }).limit(8),
     supabase.from('location_goals').select('business_objective, marketing_objective, lead_goal, conversion_goal, updated_at').eq('location_id', locationId).maybeSingle(),
     supabase.from('tell_vantage_entries').select('raw_text, classified_type, ai_summary, durability, author_type, created_at').eq('location_id', locationId).order('created_at', { ascending: false }).limit(10),
@@ -112,9 +112,8 @@ async function buildTenantChatContext(supabase, locationId) {
   const { data: supportMode } = await supabaseService.rpc('get_real_support_mode', { p_location_id: locationId });
   const { data: deepIntelligence } = await supabaseService.rpc('get_deep_intelligence', { p_location_id: locationId });
   const { data: whatsNext } = await supabaseService.rpc('get_whats_next', { p_location_id: locationId });
-  const { data: recentActivity } = await supabaseService.rpc('get_recent_activity', { p_location_id: locationId });
   const { data: territoryEvidence } = await supabase.from('local_rank_territory').select('keyword, point_label, own_rank, top_competitor_name, checked_at').eq('location_id', locationId).order('own_rank', { ascending: true }).limit(30);
-  const { data: weatherEvidence } = await supabase.from('daily_weather_observations').select('observation_date, temp_high_f, temp_low_f, precip_inches, conditions, is_forecast').eq('location_id', locationId).gte('observation_date', new Date(Date.now() - 3*86400000).toISOString().slice(0,10)).order('observation_date', { ascending: true });
+  const { data: weatherEvidence } = await supabase.from('daily_weather_observations').select('observation_date, temp_high_f, temp_low_f, precip_inches, snow_inches, conditions, is_severe, severe_reason, is_forecast').eq('location_id', locationId).gte('observation_date', new Date(Date.now() - 3*86400000).toISOString().slice(0,10)).order('observation_date', { ascending: true });
 
   let healthWithFactors = null;
   if (health) {

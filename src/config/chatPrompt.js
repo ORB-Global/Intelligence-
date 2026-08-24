@@ -98,9 +98,6 @@ ${JSON.stringify(client, null, 2)}`;
   if (goal !== undefined) {
     prompt += fmtOptionalSection('CURRENT BUSINESS GOAL (reason in relation to this - a technically interesting signal that does not affect this goal may not deserve attention)', goal, '(no goal set yet - if relevant, you may ask the owner what they are trying to accomplish right now)');
   }
-  if (activeBeliefs !== undefined) {
-    prompt += fmtOptionalSection('WHAT VANTAGE CURRENTLY BELIEVES ABOUT THIS BUSINESS (real, evidence-backed beliefs with their real status - emerging/supported/weakened. Use these to add depth, not to override current evidence)', activeBeliefs && activeBeliefs.length ? activeBeliefs : null, '(no confirmed beliefs yet for this business - say so plainly if asked, do not imply otherwise)');
-  }
   if (currentJudgments !== undefined) {
     prompt += fmtOptionalSection('CURRENT REAL JUDGMENTS (deterministically generated from real cross-source evidence - these are the strongest real findings right now, already scored by business value)', currentJudgments && currentJudgments.length ? currentJudgments : null, '(nothing currently meets the threshold for a real judgment - this is honest silence, not a gap)');
     if (currentJudgments && currentJudgments.length) {
@@ -170,7 +167,7 @@ ${snapshots && snapshots.length ? JSON.stringify(snapshots, null, 2) : '(none on
     prompt += fmtOptionalSection('ACTIVE INVESTIGATIONS (question/evidence/possible explanations/confidence/status - use this to answer "what are you investigating" or "why do you think that")', investigations && investigations.length ? investigations : null, '(no open investigations)');
   }
   if (businessMemory !== undefined) {
-    prompt += fmtOptionalSection('LEARNED PATTERNS (durable observations, only promoted after real repeated evidence - use this to answer "what have you learned")', businessMemory && businessMemory.length ? businessMemory : null, '(nothing confirmed as a pattern yet)');
+    prompt += fmtOptionalSection('LEARNED PATTERNS (durable observations, only promoted after real repeated evidence - use this to answer "what have you learned." Each has a real status - emerging/supported/weakened - and both supporting_evidence_count and contradicting_evidence_count; weigh confidence accordingly, and mention contradicting evidence honestly if it exists rather than only citing what supports a claim)', businessMemory && businessMemory.length ? businessMemory : null, '(nothing confirmed as a pattern yet)');
   }
   if (businessContext !== undefined) {
     prompt += fmtOptionalSection('WHAT THE BUSINESS OWNER HAS TOLD ORB (some entries are free-text notes in their own words - real quotes, weigh heavily. Others are tap-button selections like traffic_level with note_text: null - these are real structured data, NOT verbal statements. Never invent narrative words around a tap-button entry.)', businessContext && businessContext.length ? businessContext : null, '(nothing shared yet)');
