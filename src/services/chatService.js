@@ -45,7 +45,7 @@ function validateAnswerPayload(input) {
   // only) was tried first and the same failure recurred with a
   // different shape, so this covers arrays of any content and plain
   // objects by extracting/stringifying rather than hard-failing.
-  for (const field of ['recommended_actions', 'insufficient_data']) {
+  for (const field of ['recommended_actions', 'insufficient_data', 'evidence']) {
     const value = input[field];
     if (Array.isArray(value)) {
       input[field] = value.map((x) => (typeof x === 'string' ? x : JSON.stringify(x))).join(' ');
@@ -61,7 +61,7 @@ function validateAnswerPayload(input) {
   // field across tonight's testing, so the fix stops guessing at
   // specific shapes and instead guarantees the field is always
   // resolvable to a string.
-  for (const field of ['recommended_actions', 'insufficient_data']) {
+  for (const field of ['recommended_actions', 'insufficient_data', 'evidence']) {
     const value = input[field];
     if (value === undefined) {
       // Real, exact root cause found: JSON.stringify(undefined)
@@ -70,7 +70,9 @@ function validateAnswerPayload(input) {
       // every previous fallback in this function silently failed to
       // coerce it, and the strict check below still threw. undefined
       // and omitted are the same real thing as "no data" - null.
-      input[field] = null;
+      // evidence is REQUIRED (unlike the other two) so it falls back
+      // to an empty string, not null, to respect that constraint.
+      input[field] = field === 'evidence' ? '' : null;
     } else if (value !== null && typeof value !== 'string') {
       input[field] = JSON.stringify(value);
     }
