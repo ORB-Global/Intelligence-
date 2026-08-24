@@ -329,6 +329,8 @@ router.get('/locations/:id', async (req, res) => {
   const bs = shared.businessState?.state || {};
   const v44ViewModel = {
     qualitativeState: shared.vantageState?.state || null,
+    evidencePoints: shared.v44Points || null,
+    territory: shared.v44Territory || null,
     mattress: bs.territory_mattress || null,
     furniture: bs.territory_furniture || null,
     topFurnitureCompetitor: (shared.territoryEvidence?.byCategory || []).find((c) => c.category === 'furniture')?.dominant_competitor || null,
@@ -348,6 +350,19 @@ router.get('/locations/:id', async (req, res) => {
     data: {
       businessDnaNarrative: marketProfile?.business_dna_narrative || null,
       v44: v44ViewModel,
+      activitySummary,
+      // Real, individual top-level fields restored for compatibility
+      // with existing, tested client code - the real fix here is that
+      // these now come from the SAME shared intelligence Ask Vantage
+      // uses, not that they're absent. v44ViewModel above is the
+      // newer compact form for future use.
+      businessState: shared.businessState,
+      vantageState: shared.vantageState,
+      v44Points: shared.v44Points,
+      v44Territory: shared.v44Territory,
+      deepIntelligence: shared.deepIntelligence,
+      whatsNext: shared.whatsNext,
+      weatherEvidence: shared.weatherEvidence,
       location, connections: connections || [], mapping: mapping || null,
       metrics: metrics || [], feed: feed || [], health: health || null,
       socialMetrics: socialMetrics || [], localMetrics: localMetrics || [],

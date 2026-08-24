@@ -1947,10 +1947,12 @@ document.querySelectorAll('.tab').forEach(btn=>{
   if (el('v44-story-matters') && payload.whatsNext) el('v44-story-matters').textContent = payload.whatsNext.whatHappensNext;
 
   // Real activity - reuses the existing status line, no new visual
-  // chrome added to the frozen V44 design.
-  const activity = payload.recentActivity;
+  // chrome added to the frozen V44 design. Real fix: the field is
+  // activitySummary.headline, not recentActivity.summary (which was
+  // a pre-existing mismatch - recentActivity is a raw array).
+  const activity = payload.activitySummary;
   if (activity && el('v41-date')) {
-    el('v41-date').textContent = `${payload.location?.name?.toUpperCase() || ''} · ${activity.summary}`;
+    el('v41-date').textContent = `${payload.location?.name?.toUpperCase() || ''} · ${activity.headline}`;
   }
 
   // Real qualitative state - NEVER a numeric score, per explicit correction
