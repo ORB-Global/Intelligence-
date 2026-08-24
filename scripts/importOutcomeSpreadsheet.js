@@ -119,11 +119,12 @@ async function main() {
 
   let batchId = null;
   if (!DRY_RUN) {
-    const { data: batch } = await supabase.from('outcome_import_batches').insert({
+    const { data: batch, error: batchErr } = await supabase.from('outcome_import_batches').insert({
       location_id: LOCATION_ID, organization_id: location.organization_id,
-      uploaded_by: null, source_filename: FILE_PATH.split('/').pop(),
+      uploaded_by: get('uploaded-by') || null, source_filename: FILE_PATH.split('/').pop(),
       column_mapping: mapping, status: 'processing',
     }).select().single();
+    if (batchErr) console.log(`WARNING: could not create real batch/provenance record: ${batchErr.message} - rows will still be written, but without batch tracking.`);
     batchId = batch?.id;
   }
 
