@@ -1563,7 +1563,7 @@ body{
       </div>
 
       <h1 id="v41-headline">Your business is steady.<br><em id="v41-headline-em">But something is changing.</em></h1>
-      <p class="v41-lead" id="v41-lead">Furniture is usually your strongest seller. Right now, mattress attention is behaving differently across the market. Vantage is watching to see whether it becomes an opportunity.</p>
+      <p class="v41-lead" id="v41-lead">Loading real evidence…</p>
 
       <div class="v41-now">
         <div class="v41-score" id="v41-score">
@@ -1572,7 +1572,7 @@ body{
         </div>
         <div class="v41-thought">
           <small>WHAT VANTAGE BELIEVES NOW</small>
-          <b id="v41-thought-main">Hold budget. Prepare for mattress demand. Wait for store evidence.</b>
+          <b id="v41-thought-main">Loading real evidence…</b>
           <span id="v41-thought-sub">Developing confidence — not enough evidence to overreact.</span>
         </div>
       </div>
@@ -1892,8 +1892,8 @@ document.querySelectorAll('.tab').forEach(btn=>{
 </script>
 </div>
 <section class="v13-end">
-  <div class="close">I’m watching three things. Nothing else needs you right now.</div>
-  <div class="sub">If the mattress pattern changes, Vantage will tell you what changed, why it matters, and what would justify action.</div>
+  <div class="close" id="v44-end-close">Loading…</div>
+  <div class="sub" id="v44-end-sub"></div>
 </section>
 
 <script id="v41-time-aware">
@@ -1945,6 +1945,21 @@ document.querySelectorAll('.tab').forEach(btn=>{
 
   if (el('v44-story-position')) el('v44-story-position').textContent = payload.briefing || 'Not enough real evidence yet for a confident position.';
   if (el('v44-story-matters') && payload.whatsNext) el('v44-story-matters').textContent = payload.whatsNext.whatHappensNext;
+
+  // Real closing summary - was hardcoded to "three things"/"mattress
+  // pattern" regardless of tenant; now genuinely counts real open
+  // investigations and uses whatever category is actually relevant.
+  const realOpenCount = (payload.deepIntelligence?.decisionMemory?.realCount || 0);
+  if (el('v44-end-close')) {
+    el('v44-end-close').textContent = realOpenCount > 0
+      ? `Vantage is watching ${realOpenCount} real thing${realOpenCount === 1 ? '' : 's'}. Nothing else needs you right now.`
+      : 'Nothing currently needs you. Vantage will say so when that changes.';
+  }
+  if (el('v44-end-sub')) {
+    el('v44-end-sub').textContent = payload.whatsNext?.whatHappensNext
+      ? 'If this changes, Vantage will tell you what changed, why it matters, and what would justify action.'
+      : '';
+  }
 
   // Real activity - reuses the existing status line, no new visual
   // chrome added to the frozen V44 design. Real fix: the field is
