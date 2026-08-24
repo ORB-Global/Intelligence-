@@ -767,6 +767,34 @@ router.get('/locations/:id/goal', async (req, res) => {
   return res.json({ success: true, data: data || null });
 });
 
+router.post('/locations/:id/business-dna', async (req, res) => {
+  const { id: locationId } = req.params;
+  const { narrative } = req.body || {};
+  if (!narrative || !narrative.trim()) return res.status(400).json({ success: false, error: { message: 'Provide the narrative text.' } });
+
+  // Real, RLS-scoped ownership check first - same pattern as every
+  // other write endpoint tonight. A client-supplied location_id alone
+  // is never sufficient.
+  const { data: location, error: locError } = await req.supabase.from('locations').select('id, organization_id').eq('id', locationId).maybeSingle();
+  if (locError) return res.status(500).json({ success: false, error: { message: locError.message } });
+  if (!location) return res.status(404).json({ success: false, error: { message: 'Location not found or not accessible.' } });
+
+  const { data, error } = await supabaseService.from('market_profiles').upsert({
+    location_id: locationId, organization_id: location.organization_id,
+    business_dna_narrative: narrative.trim(), business_dna_updated_by: req.user.id, business_dna_updated_at: new Date().toISOString(),
+  }, { onConflict: 'location_id' }).select().single();
+  if (error) return res.status(500).json({ success: false, error: { message: error.message } });
+
+  return res.json({ success: true, data });
+});
+
+router.get('/locations/:id/business-dna', async (req, res) => {
+  const { id: locationId } = req.params;
+  const { data, error } = await req.supabase.from('market_profiles').select('business_dna_narrative, business_dna_updated_at').eq('location_id', locationId).maybeSingle();
+  if (error) return res.status(500).json({ success: false, error: { message: error.message } });
+  return res.json({ success: true, data: data || null });
+});
+
 router.post('/locations/:id/goal', async (req, res) => {
   const { id: locationId } = req.params;
   const { goalText, deadline, constraintsText } = req.body || {};
