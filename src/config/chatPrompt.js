@@ -89,6 +89,7 @@ function buildChatUserPrompt({
   businessState,
   keywordFocus,
   deepIntelligence,
+  territoryEvidence,
 }) {
   let prompt = `SELECTED CLIENT
 ${JSON.stringify(client, null, 2)}`;
@@ -113,6 +114,9 @@ ${JSON.stringify(client, null, 2)}`;
   }
   if (deepIntelligence !== undefined && deepIntelligence) {
     prompt += fmtOptionalSection('REAL DEEP INTELLIGENCE (includes historicalAnalogues - use this directly when asked "have we seen this before," "what happened last time," or "is this normal for us." If historicalAnalogues.status is "analogue_found", cite the real similarity percentage and the real clientFacingText. If status is "novel_state" or "insufficient_current_data", say plainly that this looks new / there is not enough data yet - never force a comparison. If a real known action exists near the analogue period, mention it as correlation only, never as proven causation)', deepIntelligence, null);
+  }
+  if (territoryEvidence !== undefined) {
+    prompt += fmtOptionalSection('REAL POINT-BY-POINT TERRITORY EVIDENCE (each row is one real search grid point: a keyword, a geographic point label, this business\'s real rank, and the real competitor name holding the top spot there. Use this directly when asked "who is beating us and where," "who ranks above us for X," or similar - name the real competitor from top_competitor_name, not a guess. This is per-point evidence, not a full keyword-by-competitor breakdown for every smaller competitor - if asked specifically what keywords a SPECIFIC smaller competitor targets beyond what appears here, say that data isn\'t available rather than inferring it)', territoryEvidence && territoryEvidence.length ? territoryEvidence : null, '(no real territory grid data exists yet for this location)');
   }
   if (anchoredInvestigation) {
     prompt += fmtOptionalSection('THE INVESTIGATION THIS CONVERSATION IS ABOUT (answer in this specific context - the person is asking about THIS investigation, not investigations in general)', anchoredInvestigation, '');

@@ -113,6 +113,7 @@ async function buildTenantChatContext(supabase, locationId) {
   const { data: deepIntelligence } = await supabaseService.rpc('get_deep_intelligence', { p_location_id: locationId });
   const { data: whatsNext } = await supabaseService.rpc('get_whats_next', { p_location_id: locationId });
   const { data: recentActivity } = await supabaseService.rpc('get_recent_activity', { p_location_id: locationId });
+  const { data: territoryEvidence } = await supabase.from('local_rank_territory').select('keyword, point_label, own_rank, top_competitor_name, checked_at').eq('location_id', locationId).order('own_rank', { ascending: true }).limit(30);
 
   let healthWithFactors = null;
   if (health) {
@@ -152,6 +153,7 @@ async function buildTenantChatContext(supabase, locationId) {
     v44Territory: v44Territory || null,
     supportMode: supportMode || null,
     deepIntelligence: deepIntelligence || null,
+    territoryEvidence: territoryEvidence || [],
     whatsNext: whatsNext || null,
     recentActivity: recentActivity || null,
     investigations: investigations || [],
