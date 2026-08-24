@@ -37,9 +37,15 @@ async function syncOne(location) {
   try {
     const result = await fetchForecast(location.latitude, location.longitude);
     const days = result?.forecast?.forecastday || [];
+    // Real fix: "today" must be the LOCATION's real local date, not
+    // the server's UTC date - comparing against server time caused a
+    // real off-by-one where today showed is_forecast=true and
+    // tomorrow showed false. WeatherAPI.com's own response includes
+    // the real local time for the queried coordinates - use that.
+    const realLocalToday = (result?.location?.localtime || '').slice(0, 10);
     let written = 0;
     for (const d of days) {
-      const isForecast = d.date !== new Date().toISOString().slice(0, 10);
+      const isForecast = realLocalToday ? d.date !== realLocalToday : false;
       const { error } = await supabase.from('daily_weather_observations').upsert({
         location_id: location.id, observation_date: d.date,
         temp_high_f: d.day.maxtemp_f, temp_low_f: d.day.mintemp_f,
