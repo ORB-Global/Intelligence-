@@ -1672,7 +1672,7 @@ body{
     </div>
     <div class="v30-doors">
       <div class="v30-door" data-v30="ask" id="v44-door-ask"><small>Understand</small><h3>Ask Vantage</h3><p>“What changed?” “Who is gaining?” “What should I post?” “What should I do this weekend?”</p></div>
-      <div class="v30-door" data-v30="show" id="v44-door-show"><small>Teach</small><h3>Show Vantage</h3><p>Describe a product, competitor, local event, or anything the APIs can't know. <em>(Text works now — photo/file upload not yet available.)</em></p></div>
+      <div class="v30-door" data-v30="show" id="v44-door-show"><small>Teach</small><h3>Show Vantage</h3><p>Describe a product, competitor, local event, or anything the APIs can't know.</p></div>
       <div class="v30-door" data-v30="create" id="v44-door-create"><small>Act</small><h3>Create with Vantage</h3><p>Prepares a real evidence-based brief from what's actually working. <em>(Drafts a brief — does not publish or spend anything.)</em></p></div>
     </div>
     <div id="v44-door-panel" style="display:none; margin-top:16px; padding:16px; border:1px solid rgba(37,43,49,.10); border-radius:14px; background:rgba(255,255,255,.4);"></div>
@@ -1682,75 +1682,13 @@ body{
 
   <section class="v36-story">
     <div class="v32-scene green">
-      <div class="v32-k">01 · Where am I?</div><h3>Easley is stable today.</h3>
-      <div class="v32-highlight">Furniture remains the historical core. Mattress attention is unusually strong, but not yet enough to justify a budget move.</div>
-      <div class="v32-status"><span>healthy overall</span><span>mattress developing</span><span>budget steady</span></div>
+      <div class="v32-k">01 · Where am I?</div><h3 id="v44-story-position">Loading real position…</h3>
     </div>
     <div class="v32-scene blue">
-      <div class="v32-k">02 · What changed?</div><h3>Mattress moved from interesting to developing.</h3>
-      <p>Search, organic and paid are beginning to agree. Vantage is also expanding the competitor universe rather than relying only on stored names.</p>
-      <div class="v32-action">Compare with previous state</div>
+      <div class="v32-k">02 · What matters most</div><h3 id="v44-story-matters">Loading…</h3>
     </div>
   </section>
 
-  
-<section class="v44-do">
-  <div class="v44-dohead">
-    <div><div class="v32-k">Vantage found things worth doing</div><h2>Don’t stop at insight. Turn the intelligence into action.</h2></div>
-    <p>Home should surface only actions that Vantage can justify from the business state, history, market and current plan. The owner should be able to ask Vantage to build the next move from that evidence.</p>
-  </div>
-
-  <div class="v44-found">
-    <div class="v44-action">
-      <small>Opportunity</small>
-      <h3>Build the next campaign</h3>
-      <p>Use what is moving product, what is producing sales, current territory shifts, winning ad/post evidence and the active business goal to prepare the recommended campaign.</p>
-      <button id="v44-build-campaign">Build this campaign →</button>
-    </div>
-    <div class="v44-action">
-      <small>Creative</small>
-      <h3>Create from what is actually working</h3>
-      <p>Identify the strongest phrases, offers, product themes, creative patterns and customer-language signals that correlate with better outcomes for this business, then create from those findings.</p>
-      <button id="v44-create-from-intelligence">Create from the intelligence →</button>
-    </div>
-    <div class="v44-action">
-      <small>Execution</small>
-      <h3>Put the plan into motion</h3>
-      <p>Route the prepared action according to the tenant support mode: guidance, Orb human-managed, or approved guardrailed automation.</p>
-      <button id="v44-choose-execution">Choose how to execute →</button>
-    </div>
-  </div>
-
-  <div class="v44-intelcreate">
-    <div class="v32-k">Create from intelligence</div>
-    <h3>Vantage should be able to answer: “What is actually moving product — and make me the next ad from that.”</h3>
-    <p>This is not generic creative generation. Before creating, Vantage must assemble the strongest real evidence it has about what is moving the business.</p>
-
-    <div class="v44-creategrid">
-      <div class="v44-createbox">
-        <b>What is moving product?</b>
-        <span>Use connected POS/Store Pulse/uploaded sales when available; otherwise clearly separate digital demand signals from actual sales. Compare products/categories, time periods, campaign/creative exposure, territory movement and customer intent.</span>
-      </div>
-      <div class="v44-createbox">
-        <b>What language is winning?</b>
-        <span>Extract top-performing phrases/themes from real ad names/copy when available, organic captions, offers, reviews, lead questions, landing-page behavior and uploaded business context. Do not invent “winning phrases” without evidence.</span>
-      </div>
-      <div class="v44-createbox">
-        <b>What creative pattern is winning?</b>
-        <span>Use real ad-level performance/creative thumbnails when ingested, plus top organic content and prior experiments. Preserve objective/context so Vantage does not compare incompatible campaigns as if they were equivalent.</span>
-      </div>
-      <div class="v44-createbox">
-        <b>Then build the next move.</b>
-        <span>Create the ad/post/offer/campaign brief using the strongest supported product, phrase, offer, format, timing, audience/territory and business constraint — and explain why each choice was made.</span>
-      </div>
-    </div>
-
-    <div class="v44-prompt">
-      <b>Example owner request:</b><br>
-      <code>“Tell me what is actually moving product right now, what phrases/offers are contributing to sales or qualified intent, what creative pattern is strongest, and then build me the next ad from that intelligence. Show me the evidence you used and what outcome you expect.”</code>
-    </div>
-  </div>
-</section>
 
 <section class="v34-territory">
     <div class="v34-top">
@@ -1768,7 +1706,6 @@ body{
         <div class="v32-k">Keyword / product visibility</div><h3>What customers can actually find you for.</h3>
         <div class="v34-row" id="v34-kw-row-1"><div><b>—</b><br><span>—</span></div><span class="v34-watch">—</span><span class="v34-rank">—</span></div>
         <div class="v34-row" id="v34-kw-row-2"><div><b>—</b><br><span>—</span></div><span class="v34-watch">—</span><span class="v34-rank">—</span></div>
-        <div class="v34-add" id="v34-kw-honest-note"><b>Production:</b> populate from the existing SEO/rank sources. Never hardcode these categories across tenants.</div>
       </div>
       <div class="v34-card">
         <div class="v32-k">Who we're watching</div><h3>Competitors are discovered, verified and remembered.</h3>
@@ -1841,16 +1778,6 @@ body{
         <div id="v44-store-status" style="font-size:11px; color:#7a8690; margin-top:8px;"></div>
       </div>
       <div class="v36-import">
-        <div class="v32-k">Bring the real outcome in</div><h3>Upload it or connect it.</h3>
-        <div class="v36-upload"><b>Upload sales / product data</b><br>CSV · spreadsheet · exported POS report · product list. <em id="v44-upload-status">Not yet available — requires a real ingestion path that doesn't exist yet.</em></div>
-        <div class="v32-status"><span style="opacity:.5;">Upload sales file (not available)</span><span style="opacity:.5;">Upload product list (not available)</span><span>Connect POS</span></div>
-        
-<div class="v37-pos">
- <div class="v37-poshead"><h4>Connect your POS</h4><button id="v44-pos-connect">Connect POS →</button></div>
- <p id="v44-pos-status">No POS is connected for this business. Manual Store Pulse and uploads remain the way to close this loop until a real integration exists.</p>
- <div class="v37-posdata"><span>transactions</span><span>revenue</span><span>products/categories</span><span>quantity</span><span>ticket value</span><span>time/day</span><span>inventory when available</span></div>
-</div>
-
 <div class="v36-upload" id="v44-local-reality-trigger" style="cursor:pointer;"><b>Add local reality</b><br>Football game · school event · road closure · weather issue · inventory shortage · staffing problem · anything the APIs could not know.</div>
 <div id="v44-local-reality-panel" style="display:none; margin-top:8px;">
   <textarea id="v44-local-reality-text" placeholder="e.g. Road construction started outside the store this week." style="width:100%; min-height:50px; border:1px solid rgba(37,43,49,.12); border-radius:8px; padding:8px; font:inherit;"></textarea>
@@ -1861,6 +1788,10 @@ body{
     </div>
   </section>
 
+  <!-- Support Mode: real logic/UI preserved intact, hidden from
+       client rendering until real entitlement exists for any tenant.
+       Remove this comment wrapper to re-enable. -->
+  <!--
   <section class="v33-help v36-support">
     <div class="v33-helphead">
       <div><div class="v32-k">Vantage + Orb Support</div><h2>How much help do you want?</h2></div>
@@ -1874,26 +1805,7 @@ body{
     <div id="v44-mode-status" style="font-size:11px; color:#7a8690; margin-top:10px;"></div>
     <div class="v36-automation-note"><b>Automation is a capability, not another giant section.</b> Competitor/keyword monitoring, prediction resolution, daily briefs and approved repetitive workflows can happen quietly in the background. Client-facing automation controls appear only when relevant to the selected support mode.</div>
   </section>
-
-  
-<section class="v42-integrity">
-  <div class="v32-k">Operational Integrity · must be real before pitch</div>
-  <h2>Vantage has to know when it is wrong, when data is missing, and when sources are stale.</h2>
-  <p>This layer should mostly stay invisible to the owner unless it changes the conclusion. It is included here so Claude implements the behavior instead of only the appearance.</p>
-  <div class="v42-integrity-grid">
-    <div class="v42-integrity-card"><small>Disproof + decay</small><b>Confidence must weaken when predicted outcomes fail.</b><span>Store prediction window, expected outcome, disproof condition and confidence-decay rule. Do not hardcode “14 days” globally; derive the observation window from the predicted signal lag, with configurable defaults until enough tenant history exists.</span></div>
-    <div class="v42-integrity-card"><small>Missing outcome fallback</small><b>No Store Pulse ≠ zero sales.</b><span>If POS is disconnected and Store Pulse is stale, show “store outcome unknown” plus last-known timestamp. Never synthesize walk-ins, sales or revenue. Reduce outcome coverage in Model Coverage and ask for the highest-value missing input.</span></div>
-    <div class="v42-integrity-card"><small>Execution latency</small><b>Every thought carries data freshness.</b><span>Source syncs run on their own cadence, then Brain runs only after required upstream refreshes complete. Persist source timestamps and expose stale-source warnings when freshness falls outside contract.</span></div>
-  </div>
-
-  <div class="v42-matrix">
-    <div class="v42-matrix-row"><div>UI</div><div>Source lineage</div><div>Dependency</div></div>
-    <div class="v42-matrix-row"><div>01–02 Status + Narrative</div><div>location_brain_state + historical_metrics</div><div>runBrainForAllLocations.js</div></div>
-    <div class="v42-matrix-row"><div>03 Territory</div><div>DataForSEO + verified BrightLocal capability</div><div>Dated rank/competitor observations in Supabase</div></div>
-    <div class="v42-matrix-row"><div>04–05 Prediction + Action</div><div>Prediction ledger + disproof conditions + historical analogues</div><div>Tenant-scoped decision/experiment memory</div></div>
-    <div class="v42-matrix-row"><div>06 Store Pulse + POS</div><div>Manual Store Pulse, upload, or authorized POS</div><div>Tenant-scoped Store Memory / POS ingestion</div></div>
-  </div>
-</section>
+  -->
 
 <details class="v32-deep v36-deep">
     <summary>Explore Deep Intelligence →</summary>
@@ -2030,6 +1942,9 @@ document.querySelectorAll('.tab').forEach(btn=>{
   const positionText = payload.businessState?.state ? (payload.briefing || null) : null;
   const el = (id) => document.getElementById(id);
   if (el('v41-greeting')) el('v41-greeting').textContent = payload.location?.name ? `Good ${timeOfDay()}, ${payload.location.name}.` : 'Vantage';
+
+  if (el('v44-story-position')) el('v44-story-position').textContent = payload.briefing || 'Not enough real evidence yet for a confident position.';
+  if (el('v44-story-matters') && payload.whatsNext) el('v44-story-matters').textContent = payload.whatsNext.whatHappensNext;
 
   // Real activity - reuses the existing status line, no new visual
   // chrome added to the frozen V44 design.

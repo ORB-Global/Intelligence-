@@ -62,6 +62,52 @@ const HISTORY_TURNS_INCLUDED = 6; // caps conversation replay - cost/scale contr
  * most recent 15 timeline items (oldest-first so the model reads them
  * in causal order), not the client's entire history.
  */
+// REAL, SHARED intelligence assembly - the single source of truth
+// both V44 page load and Ask Vantage must derive from, so Vantage
+// cannot tell the owner one thing on the page and reason from
+// something different in chat. Computes every real RPC-backed fact
+// once; callers extract what they need (compact view model for the
+// page, richer full objects for chat reasoning).
+async function assembleSharedIntelligence(supabase, locationId) {
+  const [
+    { data: businessModel },
+    { data: businessState },
+    { data: keywordFocus },
+    { data: vantageState },
+    { data: sourceCoverage },
+    { data: v44Points },
+    { data: v44Territory },
+    { data: supportMode },
+    { data: deepIntelligence },
+    { data: whatsNext },
+    { data: territoryEvidence },
+    { data: weatherRaw },
+  ] = await Promise.all([
+    supabaseService.rpc('get_business_model_context', { p_location_id: locationId }),
+    supabaseService.rpc('build_business_state', { p_location_id: locationId }),
+    supabaseService.rpc('get_keyword_focus_recommendations', { p_location_id: locationId }),
+    supabaseService.rpc('get_vantage_state', { p_location_id: locationId }),
+    supabaseService.rpc('get_source_coverage', { p_location_id: locationId }),
+    supabaseService.rpc('get_v44_evidence_points', { p_location_id: locationId }),
+    supabaseService.rpc('get_v44_territory', { p_location_id: locationId }),
+    supabaseService.rpc('get_real_support_mode', { p_location_id: locationId }),
+    supabaseService.rpc('get_deep_intelligence', { p_location_id: locationId }),
+    supabaseService.rpc('get_whats_next', { p_location_id: locationId }),
+    supabaseService.rpc('get_territory_summary', { p_location_id: locationId }),
+    supabase.from('daily_weather_observations').select('observation_date, temp_high_f, temp_low_f, precip_inches, snow_inches, conditions, is_severe, severe_reason, is_forecast').eq('location_id', locationId).gte('observation_date', new Date(Date.now() - 3*86400000).toISOString().slice(0,10)).order('observation_date', { ascending: true }),
+  ]);
+
+  // Real conditional weather - shared by both callers so the page
+  // and chat never disagree about whether weather is relevant.
+  const weatherEvidence = (weatherRaw || []).some((d) => d.is_severe) ? weatherRaw : null;
+
+  return {
+    businessModel, businessState, keywordFocus, vantageState, sourceCoverage,
+    v44Points, v44Territory, supportMode, deepIntelligence, whatsNext,
+    territoryEvidence, weatherEvidence,
+  };
+}
+
 async function buildTenantChatContext(supabase, locationId) {
   const [
     { data: location },
@@ -99,26 +145,10 @@ async function buildTenantChatContext(supabase, locationId) {
     supabase.from('tell_vantage_entries').select('raw_text, classified_type, ai_summary, durability, author_type, created_at').eq('location_id', locationId).order('created_at', { ascending: false }).limit(10),
   ]);
 
+  const shared = await assembleSharedIntelligence(supabase, locationId);
+  const { businessModel, businessState, keywordFocus, vantageState, sourceCoverage, v44Points, v44Territory, supportMode, deepIntelligence, whatsNext, territoryEvidence, weatherEvidence } = shared;
   const { data: oversightResult } = await supabaseService.rpc('get_oversight_status', { p_location_id: locationId });
   const oversightCadence = oversightResult?.oversightCadence || null;
-
-  const { data: businessModel } = await supabaseService.rpc('get_business_model_context', { p_location_id: locationId });
-  const { data: businessState } = await supabaseService.rpc('build_business_state', { p_location_id: locationId });
-  const { data: keywordFocus } = await supabaseService.rpc('get_keyword_focus_recommendations', { p_location_id: locationId });
-  const { data: vantageState } = await supabaseService.rpc('get_vantage_state', { p_location_id: locationId });
-  const { data: sourceCoverage } = await supabaseService.rpc('get_source_coverage', { p_location_id: locationId });
-  const { data: v44Points } = await supabaseService.rpc('get_v44_evidence_points', { p_location_id: locationId });
-  const { data: v44Territory } = await supabaseService.rpc('get_v44_territory', { p_location_id: locationId });
-  const { data: supportMode } = await supabaseService.rpc('get_real_support_mode', { p_location_id: locationId });
-  const { data: deepIntelligence } = await supabaseService.rpc('get_deep_intelligence', { p_location_id: locationId });
-  const { data: whatsNext } = await supabaseService.rpc('get_whats_next', { p_location_id: locationId });
-  const { data: territoryEvidence } = await supabaseService.rpc('get_territory_summary', { p_location_id: locationId });
-  const { data: weatherRaw } = await supabase.from('daily_weather_observations').select('observation_date, temp_high_f, temp_low_f, precip_inches, snow_inches, conditions, is_severe, severe_reason, is_forecast').eq('location_id', locationId).gte('observation_date', new Date(Date.now() - 3*86400000).toISOString().slice(0,10)).order('observation_date', { ascending: true });
-  // Real conditional inclusion: only send weather when something is
-  // genuinely anomalous - routine "Sunny, 91F" every day is noise,
-  // not evidence, per explicit instruction not to send a routine
-  // history dump.
-  const weatherEvidence = (weatherRaw || []).some((d) => d.is_severe) ? weatherRaw : null;
 
   let healthWithFactors = null;
   if (health) {
@@ -292,9 +322,32 @@ router.get('/locations/:id', async (req, res) => {
     } catch (e) { /* non-fatal */ }
   }
 
+  // Real fix for the confirmed two-brains defect: page load now
+  // derives from the exact same shared intelligence Ask Vantage uses,
+  // so the page and chat cannot contradict each other.
+  const shared = await assembleSharedIntelligence(req.supabase, id);
+  const bs = shared.businessState?.state || {};
+  const v44ViewModel = {
+    qualitativeState: shared.vantageState?.state || null,
+    mattress: bs.territory_mattress || null,
+    furniture: bs.territory_furniture || null,
+    topFurnitureCompetitor: (shared.territoryEvidence?.byCategory || []).find((c) => c.category === 'furniture')?.dominant_competitor || null,
+    customerIntent: bs.customer_intent || null,
+    money: bs.money || null,
+    topAd: bs.top_ad || null,
+    reputation: bs.reputation || null,
+    whatHappensNext: shared.whatsNext?.whatHappensNext || null,
+    whatToDo: shared.whatsNext?.whatToDo || null,
+    sourceCoverage: shared.sourceCoverage?.byChannel || [],
+    weather: shared.weatherEvidence,
+    deepIntelligence: shared.deepIntelligence,
+  };
+
   return res.json({
     success: true,
     data: {
+      businessDnaNarrative: marketProfile?.business_dna_narrative || null,
+      v44: v44ViewModel,
       location, connections: connections || [], mapping: mapping || null,
       metrics: metrics || [], feed: feed || [], health: health || null,
       socialMetrics: socialMetrics || [], localMetrics: localMetrics || [],
