@@ -90,6 +90,7 @@ function buildChatUserPrompt({
   keywordFocus,
   deepIntelligence,
   territoryEvidence,
+  weatherEvidence,
 }) {
   let prompt = `SELECTED CLIENT
 ${JSON.stringify(client, null, 2)}`;
@@ -117,6 +118,9 @@ ${JSON.stringify(client, null, 2)}`;
   }
   if (territoryEvidence !== undefined) {
     prompt += fmtOptionalSection('REAL POINT-BY-POINT TERRITORY EVIDENCE (each row is one real search grid point: a keyword, a geographic point label, this business\'s real rank, and the real competitor name holding the top spot there. Use this directly when asked "who is beating us and where," "who ranks above us for X," or similar - name the real competitor from top_competitor_name, not a guess. This is per-point evidence, not a full keyword-by-competitor breakdown for every smaller competitor - if asked specifically what keywords a SPECIFIC smaller competitor targets beyond what appears here, say that data isn\'t available rather than inferring it)', territoryEvidence && territoryEvidence.length ? territoryEvidence : null, '(no real territory grid data exists yet for this location)');
+  }
+  if (weatherEvidence !== undefined) {
+    prompt += fmtOptionalSection('REAL WEATHER (is_forecast=false is today\'s real observed weather; is_forecast=true is a real forecast for upcoming days. This is context, not causation - never claim weather caused a change in traffic, sales, or ad performance merely because both occurred. Only mention weather as a plausible factor if the person asks about it directly or if there is a genuinely extreme, real condition worth noting - do not volunteer routine weather unprompted)', weatherEvidence && weatherEvidence.length ? weatherEvidence : null, '(no real weather data connected yet for this location)');
   }
   if (anchoredInvestigation) {
     prompt += fmtOptionalSection('THE INVESTIGATION THIS CONVERSATION IS ABOUT (answer in this specific context - the person is asking about THIS investigation, not investigations in general)', anchoredInvestigation, '');

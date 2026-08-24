@@ -114,6 +114,7 @@ async function buildTenantChatContext(supabase, locationId) {
   const { data: whatsNext } = await supabaseService.rpc('get_whats_next', { p_location_id: locationId });
   const { data: recentActivity } = await supabaseService.rpc('get_recent_activity', { p_location_id: locationId });
   const { data: territoryEvidence } = await supabase.from('local_rank_territory').select('keyword, point_label, own_rank, top_competitor_name, checked_at').eq('location_id', locationId).order('own_rank', { ascending: true }).limit(30);
+  const { data: weatherEvidence } = await supabase.from('daily_weather_observations').select('observation_date, temp_high_f, temp_low_f, precip_inches, conditions, is_forecast').eq('location_id', locationId).gte('observation_date', new Date(Date.now() - 3*86400000).toISOString().slice(0,10)).order('observation_date', { ascending: true });
 
   let healthWithFactors = null;
   if (health) {
@@ -154,6 +155,7 @@ async function buildTenantChatContext(supabase, locationId) {
     supportMode: supportMode || null,
     deepIntelligence: deepIntelligence || null,
     territoryEvidence: territoryEvidence || [],
+    weatherEvidence: weatherEvidence || [],
     whatsNext: whatsNext || null,
     recentActivity: recentActivity || null,
     investigations: investigations || [],
