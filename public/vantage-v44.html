@@ -1578,10 +1578,10 @@ body{
       </div>
 
       <div class="v41-context">
-        <span><small>NEXT</small> Labor Day lead-in</span>
-        <span><small>LOCAL</small> Weather normal</span>
+        <span><small>NEXT</small> <span id="v41-ctx-next">Not yet tracked</span></span>
+        <span><small>LOCAL</small> <span id="v41-ctx-weather">No real weather source connected</span></span>
         <span><small>STORE</small> Outcome needed</span>
-        <button>+ Add local reality</button>
+        <button id="v44-context-add-local-reality-2">+ Add local reality</button>
       </div>
     </div>
 
@@ -1643,14 +1643,14 @@ body{
         <small>VANTAGE · EASLEY NOW</small>
         <b>Watching<br>a shift.</b>
         <span>Evidence is converging.<br>The store outcome is still unresolved.</span>
-        <button>Open thought →</button>
+        <button id="v44-open-thought">Open thought →</button>
       </div>
     </div>
   </div>
 
   <div class="v41-bottom">
     <span>Vantage is comparing <b>today</b> with your history, market, media, local visibility and store outcomes.</span>
-    <button>Why does Vantage think this? →</button>
+    <button id="v44-why-thinks">Why does Vantage think this? →</button>
   </div>
 </section>
 
@@ -1705,19 +1705,19 @@ body{
       <small>Opportunity</small>
       <h3>Build the next campaign</h3>
       <p>Use what is moving product, what is producing sales, current territory shifts, winning ad/post evidence and the active business goal to prepare the recommended campaign.</p>
-      <button>Build this campaign →</button>
+      <button id="v44-build-campaign">Build this campaign →</button>
     </div>
     <div class="v44-action">
       <small>Creative</small>
       <h3>Create from what is actually working</h3>
       <p>Identify the strongest phrases, offers, product themes, creative patterns and customer-language signals that correlate with better outcomes for this business, then create from those findings.</p>
-      <button>Create from the intelligence →</button>
+      <button id="v44-create-from-intelligence">Create from the intelligence →</button>
     </div>
     <div class="v44-action">
       <small>Execution</small>
       <h3>Put the plan into motion</h3>
       <p>Route the prepared action according to the tenant support mode: guidance, Orb human-managed, or approved guardrailed automation.</p>
-      <button>Choose how to execute →</button>
+      <button id="v44-choose-execution">Choose how to execute →</button>
     </div>
   </div>
 
@@ -2309,6 +2309,39 @@ document.querySelectorAll('.tab').forEach(btn=>{
       } catch(e) { statusEl.textContent = 'Could not reach Vantage.'; }
     });
   }
+
+  // Real wiring for six previously-fake buttons found tonight - zero
+  // ids, zero handlers before this. Honest behavior only, no fake
+  // execution.
+  const openThoughtBtn = el('v44-open-thought');
+  if (openThoughtBtn) openThoughtBtn.addEventListener('click', () => {
+    document.getElementById('v44-deep-intelligence')?.closest('details')?.setAttribute('open', '');
+    document.getElementById('v44-deep-intelligence')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  });
+  const whyThinksBtn = el('v44-why-thinks');
+  if (whyThinksBtn) whyThinksBtn.addEventListener('click', () => {
+    const deep = payload.deepIntelligence;
+    if (!deep) { alert('Real evidence is still loading - try again in a moment.'); return; }
+    alert(`Why Vantage thinks this:\n\nSource coverage: ${deep.sourceCoverage.byChannel.map(c=>`${c.channel} ${c.realMonths}mo`).join(', ') || 'none'}\nDecision memory: ${deep.decisionMemory.note}\nBusiness memory: ${deep.businessMemory.note}`);
+  });
+  const buildCampaignBtn = el('v44-build-campaign');
+  if (buildCampaignBtn) buildCampaignBtn.addEventListener('click', () => {
+    alert('Campaign building is not available yet - real evidence exists, but this action isn\'t built. Use Ask Vantage or the Create door for what is real today. No fake execution here.');
+  });
+  const createFromIntelBtn = el('v44-create-from-intelligence');
+  if (createFromIntelBtn) createFromIntelBtn.addEventListener('click', () => {
+    document.getElementById('v44-door-create')?.click();
+    document.getElementById('v44-door-create')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  });
+  const chooseExecBtn = el('v44-choose-execution');
+  if (chooseExecBtn) chooseExecBtn.addEventListener('click', () => {
+    document.getElementById('v44-support-modes')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  });
+  const ctxAddLocal2 = el('v44-context-add-local-reality-2');
+  if (ctxAddLocal2) ctxAddLocal2.addEventListener('click', () => {
+    document.getElementById('v44-local-reality-trigger')?.click();
+    document.getElementById('v44-local-reality-trigger')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  });
 })();
 </script>
 

@@ -98,6 +98,7 @@ async function askQuestion(context, options = {}) {
 
   const userPrompt = buildChatUserPrompt(context);
   const systemPrompt = getSystemPrompt(Boolean(options.tenantMode));
+  console.log(`[ASK TIMING] real prompt size: ${userPrompt.length} chars, system: ${systemPrompt.length} chars`);
 
   // conversationHistory: prior turns from a persisted conversation
   // (tenant mode only - the old admin path has none). Kept small by
@@ -107,6 +108,7 @@ async function askQuestion(context, options = {}) {
     content: m.role === 'assistant' ? m.content : m.content,
   }));
 
+  const anthropicCallStart = Date.now();
   const res = await fetch(API_URL, {
     method: 'POST',
     headers: {
@@ -125,6 +127,7 @@ async function askQuestion(context, options = {}) {
   });
 
   const rawBody = await res.text();
+  console.log(`[ASK TIMING] real Anthropic fetch duration: ${Date.now() - anthropicCallStart}ms`);
   if (!res.ok) {
     console.error('chat: Anthropic API error', { status: res.status });
     throw new Error(`Anthropic API error ${res.status}: ${rawBody}`);

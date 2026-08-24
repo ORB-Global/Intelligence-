@@ -432,7 +432,12 @@ router.post('/locations/:id/ask', async (req, res) => {
 
     await req.supabase.from('ai_messages').insert({ conversation_id: convoId, role: 'user', content: question });
 
+    // Real timing instrumentation - measuring before touching any
+    // timeout value, per explicit instruction.
+    const t0 = Date.now();
     const context = await buildTenantChatContext(req.supabase, locationId);
+    const t1 = Date.now();
+    console.log(`[ASK TIMING] buildTenantChatContext: ${t1 - t0}ms`);
 
     // If this conversation is anchored to a specific investigation,
     // put that investigation's real evidence first and explicitly -
@@ -450,8 +455,12 @@ router.post('/locations/:id/ask', async (req, res) => {
 
     let result;
     try {
+      const t2 = Date.now();
       result = await chatService.askQuestion({ ...context, question }, { tenantMode: true, conversationHistory: history });
+      const t3 = Date.now();
+      console.log(`[ASK TIMING] chatService.askQuestion (prompt build + real Anthropic call): ${t3 - t2}ms`);
     } catch (aiErr) {
+      console.log(`[ASK TIMING] askQuestion threw after error: ${aiErr.message}`);
       return res.status(502).json({ success: false, error: { message: `Could not generate an answer: ${aiErr.message}` } });
     }
 
