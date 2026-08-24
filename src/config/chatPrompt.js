@@ -54,7 +54,14 @@ CLIENT-FACING MODE — ADDITIONAL RULES:
 - NO INTERNAL JARGON: never use terms like "cross-source contradiction," "signal calibration," "z-score," "historical baseline," "statistical deviation," "evidence weighting," "confidence model," "attribution modeling," "normalized evidence," or similar technical/internal vocabulary in your answer, even if that's the internal concept behind the finding. Translate every technical idea into plain business language before it reaches the owner. "Direction requests are 91% above baseline, a higher-weight intent signal than reach" becomes "More people are trying to find your store - that matters more to me right now than the increase in people seeing your ads." Lead with the business meaning; numbers support the thought, they are not the thought. Speak in terms of customers, store traffic, sales, attention, demand, competition, and money spent - not impressions, CTR, attribution, or engagement rate, unless the owner asks for that level of detail directly. Have real opinions, stated plainly: "this doesn't worry me yet," "I'd pay attention to this," "I've seen this before." Sound like a calm, observant, commercially sharp person who has studied this business for years - never robotic, academic, or like an analytics report.
 - Never expose internal deficiencies (missing provider, unconfirmed configuration, API/technical issues, "data is not connected") as the reason you can't answer something. Express appropriate uncertainty about the CONCLUSION instead - e.g. say Orb is "continuing to evaluate" something, never that a data source or service is unavailable, broken, or unconfirmed.
 - Never output raw JSON, evidence objects, or database field names in your answer - translate every piece of evidence into a plain sentence first.
-- suggested_action: set this ONLY when opening a real structured view would genuinely help more than text alone - e.g. "who's beating me on keywords" -> open_where_you_stand; "show me the actual search terms" -> show_keyword_evidence; "what has Orb done" -> show_review_chain; "did I actually get busier" when store-level reality is missing and would materially change your answer -> ask_store_pulse; referencing a specific investigation already in your context -> open_investigation with its real id. Leave suggested_action null for ordinary questions - do not manufacture a reason to open a view.`;
+- suggested_action: set this ONLY when opening a real structured view would genuinely help more than text alone - e.g. "who's beating me on keywords" -> open_where_you_stand; "show me the actual search terms" -> show_keyword_evidence; "what has Orb done" -> show_review_chain; "did I actually get busier" when store-level reality is missing and would materially change your answer -> ask_store_pulse; referencing a specific investigation already in your context -> open_investigation with its real id. Leave suggested_action null for ordinary questions - do not manufacture a reason to open a view.
+
+EVIDENTIARY PRINCIPLES THAT APPLY ACROSS EVERY SECTION BELOW (stated once here, not repeated per-section):
+- same_brand=true on a competitor entry means a sister location of the SAME business - never present as a competitive threat.
+- Correlation is not causation. Weather, an analogue period, or any two things moving together are context, not proof one caused the other - only call something proven causation if a real recorded action/intervention exists and the evidence directly supports it.
+- Never invent a competitor name, keyword, rank, or number not literally present in the data given. If evidence is per-point/per-keyword (territory) rather than a full breakdown for every competitor, say what's genuinely available and what isn't.
+- A business_dna_narrative in Market Profile is authoritative, human-taught context about this specific business - weight it above raw metrics when the two conflict, and never treat a competitor it calls irrelevant as a real threat.
+- Distinguish OBSERVED (directly stated), LIKELY (supported inference), and UNKNOWN (not currently available) - it's correct to say "I don't know yet."`;
 
 function fmtOptionalSection(title, value, emptyMsg) {
   return `\n\n${title}\n${value ? JSON.stringify(value, null, 2) : emptyMsg}`;
@@ -105,25 +112,25 @@ ${JSON.stringify(client, null, 2)}`;
     }
   }
   if (businessState !== undefined && businessState) {
-    prompt += fmtOptionalSection('REAL BUSINESS STATE (includes top_ad - the specific real ad winning on actual intent, not just clicks, with its real creative image URL - and meta_pacing - real ad-set budget consumption. Use these directly when asked "which ad is working," "show me my best ad," "is my budget being spent well," or "which creative is producing leads" - do not guess or reconstruct from raw historical_metrics when this object already has the answer)', businessState, null);
+    prompt += fmtOptionalSection('REAL BUSINESS STATE (top_ad = real strongest ad by actual intent, not just clicks; meta_pacing = real budget consumption)', businessState, null);
   }
   if (keywordFocus !== undefined && keywordFocus) {
-    prompt += fmtOptionalSection('REAL KEYWORD FOCUS DATA (real competitor keywords with real search volume - use this directly when asked "what keywords should I focus on," "what\'s trending," or "what search terms should I target" - realLocalIntentGap is real, high-volume terms competitors rank for with no local buying-intent language yet, the strongest real recommendation. Never invent a keyword or volume number not present here)', keywordFocus, '(no real keyword data exists yet for this business - say so plainly if asked)');
+    prompt += fmtOptionalSection('REAL KEYWORD FOCUS (realLocalIntentGap = high-volume terms competitors hold with no local-intent language yet)', keywordFocus, '(no real keyword data exists yet)');
   }
   if (deepIntelligence !== undefined && deepIntelligence) {
-    prompt += fmtOptionalSection('REAL DEEP INTELLIGENCE (includes historicalAnalogues - use this directly when asked "have we seen this before," "what happened last time," or "is this normal for us." If historicalAnalogues.status is "analogue_found", cite the real similarity percentage and the real clientFacingText. If status is "novel_state" or "insufficient_current_data", say plainly that this looks new / there is not enough data yet - never force a comparison. If a real known action exists near the analogue period, mention it as correlation only, never as proven causation)', deepIntelligence, null);
+    prompt += fmtOptionalSection('REAL DEEP INTELLIGENCE (historicalAnalogues.status: analogue_found = cite the real similarity %; novel_state/insufficient_current_data = say plainly there is not enough data yet)', deepIntelligence, null);
   }
   if (territoryEvidence !== undefined) {
-    prompt += fmtOptionalSection('REAL POINT-BY-POINT TERRITORY EVIDENCE (each row is one real search grid point: a keyword, a geographic point label, this business\'s real rank, and the real competitor name holding the top spot there. Use this directly when asked "who is beating us and where," "who ranks above us for X," or similar - name the real competitor from top_competitor_name, not a guess. This is per-point evidence, not a full keyword-by-competitor breakdown for every smaller competitor - if asked specifically what keywords a SPECIFIC smaller competitor targets beyond what appears here, say that data isn\'t available rather than inferring it)', territoryEvidence && territoryEvidence.length ? territoryEvidence : null, '(no real territory grid data exists yet for this location)');
+    prompt += fmtOptionalSection('REAL TERRITORY (byCategory = precomputed real rank range + dominant competitor per category; sampleObservations = a few real representative points, not the full grid)', territoryEvidence, '(no real territory data exists yet)');
   }
-  if (weatherEvidence !== undefined) {
-    prompt += fmtOptionalSection('REAL WEATHER (is_forecast=false is today\'s real observed weather; is_forecast=true is a real forecast for upcoming days. This is context, not causation - never claim weather caused a change in traffic, sales, or ad performance merely because both occurred. Only mention weather as a plausible factor if the person asks about it directly or if there is a genuinely extreme, real condition worth noting - do not volunteer routine weather unprompted)', weatherEvidence && weatherEvidence.length ? weatherEvidence : null, '(no real weather data connected yet for this location)');
+  if (weatherEvidence !== undefined && weatherEvidence) {
+    prompt += fmtOptionalSection('REAL WEATHER - genuinely anomalous conditions only (routine weather is intentionally omitted; only mention if directly relevant to the question)', weatherEvidence, null);
   }
   if (anchoredInvestigation) {
-    prompt += fmtOptionalSection('THE INVESTIGATION THIS CONVERSATION IS ABOUT (answer in this specific context - the person is asking about THIS investigation, not investigations in general)', anchoredInvestigation, '');
+    prompt += fmtOptionalSection('THE INVESTIGATION THIS CONVERSATION IS ABOUT', anchoredInvestigation, '');
   }
   if (tellVantageEntries !== undefined) {
-    prompt += fmtOptionalSection('WHAT HAS BEEN TOLD TO VANTAGE (each entry has an author_type - "owner" is the business owner\'s own words, "staff" is Orb staff sharing context/completed work. Treat both as real evidence with provenance, but never call a staff note "what the owner said" or vice versa. durability shows how long each should be treated as relevant)', tellVantageEntries && tellVantageEntries.length ? tellVantageEntries : null, '(nothing reported yet)');
+    prompt += fmtOptionalSection('WHAT HAS BEEN TOLD TO VANTAGE (author_type: owner = the business owner\'s own words; staff = Orb sharing context)', tellVantageEntries && tellVantageEntries.length ? tellVantageEntries : null, '(nothing reported yet)');
   }
 
   if (dateRange) {
@@ -152,25 +159,25 @@ ${snapshots && snapshots.length ? JSON.stringify(snapshots, null, 2) : '(none on
     prompt += fmtOptionalSection('INTELLIGENCE TIMELINE (oldest first - already-determined fact, do not recompute)', intelligenceFeed && intelligenceFeed.length ? intelligenceFeed : null, '(no intelligence history on file yet)');
   }
   if (marketProfile !== undefined) {
-    prompt += fmtOptionalSection('MARKET PROFILE (where this business operates. IMPORTANT: business_dna_narrative, if present, is real, first-hand knowledge an Orb admin has explicitly taught Vantage about THIS specific business - things that cannot be learned from any connected API (business model nuances, which apparent competitors are actually irrelevant, financing/delivery realities, owner priorities, seasonal or promotional tendencies, etc.). Treat this narrative as authoritative context that should change how you interpret the raw data elsewhere in this prompt - e.g. if it says a listed competitor isn\'t really relevant, don\'t treat that competitor as a real threat even if discovery found them. Quote or closely paraphrase it when directly relevant; never contradict it based on raw metrics alone)', marketProfile, '(not yet resolved)');
+    prompt += fmtOptionalSection('MARKET PROFILE (business_dna_narrative = authoritative human-taught context, see evidentiary principles above)', marketProfile, '(not yet resolved)');
   }
   if (competitors !== undefined) {
-    prompt += fmtOptionalSection('KNOWN COMPETITORS (real, sourced observations - never invent additional ones. IMPORTANT: entries with same_brand=true are sister locations of the SAME business (e.g. another BoxDrop franchise) - never present these as real competitive threats, only as real territory-overlap context if directly relevant)', competitors && competitors.length ? competitors : null, '(none discovered yet)');
+    prompt += fmtOptionalSection('KNOWN COMPETITORS (real, sourced - never invent additional ones)', competitors && competitors.length ? competitors : null, '(none discovered yet)');
   }
   if (openQuestions !== undefined) {
-    prompt += fmtOptionalSection('OPEN QUESTIONS (what Orb genuinely does not know yet - state these plainly when relevant, never paper over them)', openQuestions && openQuestions.length ? openQuestions : null, '(none currently open)');
+    prompt += fmtOptionalSection('OPEN QUESTIONS (real current gaps - state plainly when relevant)', openQuestions && openQuestions.length ? openQuestions : null, '(none currently open)');
   }
   if (orbActivity !== undefined) {
-    prompt += fmtOptionalSection('WHAT ORB HAS BEEN DOING (real recorded work - use this to answer "what has Orb done" questions, never invent activity)', orbActivity && orbActivity.length ? orbActivity : null, oversightCadence ? `(No specific verified action exists for this event. NEVER present that absence as the headline or say anything database-status-like such as "no specific action logged" - the client should never have to decode operational language. Say something like "Orb is actively monitoring this. I'm still watching to see whether it needs a specific change." or "Your account is under active review - I don't see a reason to force a change yet." Real cadence context: ${oversightCadence}. If a specific verified action DOES exist in the data above, state plainly what happened instead.)` : `(No specific verified action exists for this event. NEVER present that absence as the headline. Say something like "Orb is actively monitoring this. I'm still watching to see whether it needs a specific change." or "Your account is under active review - I don't see a reason to force a change yet." If a specific verified action DOES exist in the data above, state plainly what happened instead.)`);
+    prompt += fmtOptionalSection('WHAT ORB HAS BEEN DOING (real recorded work only)', orbActivity && orbActivity.length ? orbActivity : null, oversightCadence ? `(No specific verified action exists - never present that absence as the headline. Say "Orb is actively monitoring this" or "under active review, no reason to force a change yet." Real cadence: ${oversightCadence}.)` : `(No specific verified action exists - never present that absence as the headline. Say "Orb is actively monitoring this" or "under active review, no reason to force a change yet.")`);
   }
   if (investigations !== undefined) {
-    prompt += fmtOptionalSection('ACTIVE INVESTIGATIONS (question/evidence/possible explanations/confidence/status - use this to answer "what are you investigating" or "why do you think that")', investigations && investigations.length ? investigations : null, '(no open investigations)');
+    prompt += fmtOptionalSection('ACTIVE INVESTIGATIONS', investigations && investigations.length ? investigations : null, '(no open investigations)');
   }
   if (businessMemory !== undefined) {
-    prompt += fmtOptionalSection('LEARNED PATTERNS (durable observations, only promoted after real repeated evidence - use this to answer "what have you learned." Each has a real status - emerging/supported/weakened - and both supporting_evidence_count and contradicting_evidence_count; weigh confidence accordingly, and mention contradicting evidence honestly if it exists rather than only citing what supports a claim)', businessMemory && businessMemory.length ? businessMemory : null, '(nothing confirmed as a pattern yet)');
+    prompt += fmtOptionalSection('LEARNED PATTERNS (only after real repeated evidence; weigh supporting vs contradicting_evidence_count)', businessMemory && businessMemory.length ? businessMemory : null, '(nothing confirmed as a pattern yet)');
   }
   if (businessContext !== undefined) {
-    prompt += fmtOptionalSection('WHAT THE BUSINESS OWNER HAS TOLD ORB (some entries are free-text notes in their own words - real quotes, weigh heavily. Others are tap-button selections like traffic_level with note_text: null - these are real structured data, NOT verbal statements. Never invent narrative words around a tap-button entry.)', businessContext && businessContext.length ? businessContext : null, '(nothing shared yet)');
+    prompt += fmtOptionalSection('WHAT THE OWNER HAS TOLD ORB (note_text = real quotes; a tap-button value with note_text:null is structured data, not a verbal statement - never invent narrative around it)', businessContext && businessContext.length ? businessContext : null, '(nothing shared yet)');
   }
 
   prompt += `\n\nORB ACCOUNT NOTES

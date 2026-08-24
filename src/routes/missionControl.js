@@ -84,7 +84,7 @@ async function buildTenantChatContext(supabase, locationId) {
     supabase.from('locations').select('id, name, organizations(name)').eq('id', locationId).maybeSingle(),
     supabase.from('historical_metrics').select('*').eq('location_id', locationId).order('period_start', { ascending: false }).limit(4),
     supabase.from('health_scores').select('*').eq('location_id', locationId).order('calculated_at', { ascending: false }).limit(1).maybeSingle(),
-    supabase.from('intelligence_feed').select('*').eq('location_id', locationId).order('occurred_at', { ascending: false }).limit(15),
+    supabase.from('intelligence_feed').select('item_type, subtype, description, priority, confidence, occurred_at').eq('location_id', locationId).order('occurred_at', { ascending: false }).limit(6),
     supabase.from('services_managed').select('service, status').eq('location_id', locationId),
     supabase.from('social_content_metrics').select('*').eq('location_id', locationId).order('period_start', { ascending: false }).limit(4),
     supabase.from('local_visibility_metrics').select('*').eq('location_id', locationId).order('period_start', { ascending: false }).limit(4),
@@ -112,8 +112,13 @@ async function buildTenantChatContext(supabase, locationId) {
   const { data: supportMode } = await supabaseService.rpc('get_real_support_mode', { p_location_id: locationId });
   const { data: deepIntelligence } = await supabaseService.rpc('get_deep_intelligence', { p_location_id: locationId });
   const { data: whatsNext } = await supabaseService.rpc('get_whats_next', { p_location_id: locationId });
-  const { data: territoryEvidence } = await supabase.from('local_rank_territory').select('keyword, point_label, own_rank, top_competitor_name, checked_at').eq('location_id', locationId).order('own_rank', { ascending: true }).limit(30);
-  const { data: weatherEvidence } = await supabase.from('daily_weather_observations').select('observation_date, temp_high_f, temp_low_f, precip_inches, snow_inches, conditions, is_severe, severe_reason, is_forecast').eq('location_id', locationId).gte('observation_date', new Date(Date.now() - 3*86400000).toISOString().slice(0,10)).order('observation_date', { ascending: true });
+  const { data: territoryEvidence } = await supabaseService.rpc('get_territory_summary', { p_location_id: locationId });
+  const { data: weatherRaw } = await supabase.from('daily_weather_observations').select('observation_date, temp_high_f, temp_low_f, precip_inches, snow_inches, conditions, is_severe, severe_reason, is_forecast').eq('location_id', locationId).gte('observation_date', new Date(Date.now() - 3*86400000).toISOString().slice(0,10)).order('observation_date', { ascending: true });
+  // Real conditional inclusion: only send weather when something is
+  // genuinely anomalous - routine "Sunny, 91F" every day is noise,
+  // not evidence, per explicit instruction not to send a routine
+  // history dump.
+  const weatherEvidence = (weatherRaw || []).some((d) => d.is_severe) ? weatherRaw : null;
 
   let healthWithFactors = null;
   if (health) {
