@@ -98,6 +98,10 @@ function buildChatUserPrompt({
   deepIntelligence,
   territoryEvidence,
   topPosts,
+  opportunities,
+  conversionDetail,
+  signalProfile,
+  businessExpectation,
   weatherEvidence,
 }) {
   let prompt = `SELECTED CLIENT
@@ -129,6 +133,18 @@ ${JSON.stringify(client, null, 2)}`;
   }
   if (topPosts !== undefined) {
     prompt += fmtOptionalSection('REAL TOP ORGANIC POSTS (this business\'s own real Facebook posts, ranked by real clicks - each has a real caption, real likes/comments/shares/clicks/engagement_rate, and a real permalink URL. Use this directly when asked "which post did best," "what content works," or similar - cite the real caption and real numbers. IMPORTANT: no post image is available - if the person wants to see the actual post/image, give them the real permalink URL to click, and say plainly that the image itself cannot be shown here rather than implying it can)', topPosts && topPosts.length ? topPosts : null, '(no real post data connected yet)');
+  }
+  if (opportunities !== undefined) {
+    prompt += fmtOptionalSection('REAL DETECTED OPPORTUNITIES (real, system-detected - each has a real description, potential_impact, and supporting evidence)', opportunities && opportunities.length ? opportunities : null, '(none currently detected)');
+  }
+  if (conversionDetail !== undefined) {
+    prompt += fmtOptionalSection('REAL CONVERSION ACTION DETAIL (granular real conversion events by channel/category, e.g. real phone calls vs real form fills vs real store visits - use this for questions asking specifically HOW people are converting, not just whether they are)', conversionDetail && conversionDetail.length ? conversionDetail : null, '(no real conversion-action breakdown available)');
+  }
+  if (signalProfile !== undefined) {
+    prompt += fmtOptionalSection('REAL LEARNED SIGNAL CALIBRATION (this specific business\'s own real learned normal range per channel/metric - learned_mean/learned_stddev, plus calibration_confidence and months_of_evidence. Use this to answer "is this normal for us" with genuinely tenant-specific calibration rather than a generic industry assumption. positive_outcome_count/contradicting_outcome_count show how often this learned pattern has actually held up)', signalProfile && signalProfile.length ? signalProfile : null, '(no real learned calibration exists yet for this business)');
+  }
+  if (businessExpectation !== undefined) {
+    prompt += fmtOptionalSection('REAL STATED EXPECTATIONS (a real expected_value/range that was set for a channel/metric, with its real basis - use this to answer "are we on track" by comparing real current performance against what was genuinely expected, not an assumption)', businessExpectation && businessExpectation.length ? businessExpectation : null, '(no real expectations currently set)');
   }
   if (anchoredInvestigation) {
     prompt += fmtOptionalSection('THE INVESTIGATION THIS CONVERSATION IS ABOUT', anchoredInvestigation, '');

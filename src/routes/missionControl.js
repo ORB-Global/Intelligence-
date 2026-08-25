@@ -83,6 +83,10 @@ async function assembleSharedIntelligence(supabase, locationId) {
     { data: territoryEvidence },
     { data: weatherRaw },
     { data: topPosts },
+    { data: opportunities },
+    { data: conversionDetail },
+    { data: signalProfile },
+    { data: businessExpectation },
   ] = await Promise.all([
     supabaseService.rpc('get_business_model_context', { p_location_id: locationId }),
     supabaseService.rpc('build_business_state', { p_location_id: locationId }),
@@ -97,6 +101,10 @@ async function assembleSharedIntelligence(supabase, locationId) {
     supabaseService.rpc('get_territory_summary', { p_location_id: locationId }),
     supabase.from('daily_weather_observations').select('observation_date, temp_high_f, temp_low_f, precip_inches, snow_inches, conditions, is_severe, severe_reason, is_forecast').eq('location_id', locationId).gte('observation_date', new Date(Date.now() - 3*86400000).toISOString().slice(0,10)).order('observation_date', { ascending: true }),
     supabase.from('social_posts').select('caption, permalink, likes, comments, shares, clicks, engagement_rate, created_at').eq('location_id', locationId).order('clicks', { ascending: false }).limit(5),
+    supabase.from('opportunities').select('description, potential_impact, evidence, status, detected_at').eq('location_id', locationId).eq('client_visible', true).order('detected_at', { ascending: false }).limit(5),
+    supabase.from('conversion_action_detail').select('channel, conversion_action_name, conversion_action_category, conversions, conversions_value, period_start').eq('location_id', locationId).order('period_start', { ascending: false }).limit(10),
+    supabase.from('location_signal_profile').select('channel, metric, learned_mean, learned_stddev, calibration_confidence, months_of_evidence, positive_outcome_count, contradicting_outcome_count').eq('location_id', locationId),
+    supabase.from('business_expectation').select('channel, metric, expected_value, expected_range_low, expected_range_high, basis, set_at').eq('location_id', locationId).order('set_at', { ascending: false }).limit(5),
   ]);
 
   // Real conditional weather - shared by both callers so the page
@@ -106,7 +114,7 @@ async function assembleSharedIntelligence(supabase, locationId) {
   return {
     businessModel, businessState, keywordFocus, vantageState, sourceCoverage,
     v44Points, v44Territory, supportMode, deepIntelligence, whatsNext,
-    territoryEvidence, weatherEvidence, topPosts,
+    territoryEvidence, weatherEvidence, topPosts, opportunities, conversionDetail, signalProfile, businessExpectation,
   };
 }
 
@@ -148,7 +156,7 @@ async function buildTenantChatContext(supabase, locationId) {
   ]);
 
   const shared = await assembleSharedIntelligence(supabase, locationId);
-  const { businessModel, businessState, keywordFocus, vantageState, sourceCoverage, v44Points, v44Territory, supportMode, deepIntelligence, whatsNext, territoryEvidence, weatherEvidence, topPosts } = shared;
+  const { businessModel, businessState, keywordFocus, vantageState, sourceCoverage, v44Points, v44Territory, supportMode, deepIntelligence, whatsNext, territoryEvidence, weatherEvidence, topPosts, opportunities, conversionDetail, signalProfile, businessExpectation } = shared;
   const { data: oversightResult } = await supabaseService.rpc('get_oversight_status', { p_location_id: locationId });
   const oversightCadence = oversightResult?.oversightCadence || null;
 
@@ -192,6 +200,10 @@ async function buildTenantChatContext(supabase, locationId) {
     deepIntelligence: deepIntelligence || null,
     territoryEvidence: territoryEvidence || [],
     topPosts: topPosts || [],
+    opportunities: opportunities || [],
+    conversionDetail: conversionDetail || [],
+    signalProfile: signalProfile || [],
+    businessExpectation: businessExpectation || [],
     weatherEvidence: weatherEvidence || [],
     whatsNext: whatsNext || null,
     investigations: investigations || [],
