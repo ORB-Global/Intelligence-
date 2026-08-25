@@ -104,6 +104,7 @@ function buildChatUserPrompt({
   businessExpectation,
   whatChanged,
   recommendationTrackRecord,
+  sourceInventory,
   weatherEvidence,
 }) {
   let prompt = `SELECTED CLIENT
@@ -153,6 +154,9 @@ ${JSON.stringify(client, null, 2)}`;
   }
   if (recommendationTrackRecord !== undefined) {
     prompt += fmtOptionalSection('REAL RECOMMENDATION TRACK RECORD (this business\'s own real history of past recommendations and their real verdicts - validated/not_validated/inconclusive, with real reasoning and source: "client" means the owner directly confirmed the outcome, "algorithmic" means Vantage judged it from data. Note: the same real recommendation can have multiple real verdicts over time as understanding evolves - always weight the most recent judged_at as current truth, and if a verdict was later corrected, that correction itself is real information worth mentioning if directly relevant. CRITICAL: before making a new recommendation similar to a past one, check this record - if a similar past recommendation was not_validated, say so honestly rather than repeat it uncritically; if validated, that real track record is genuine support worth citing. This is what makes Vantage a learning system rather than a generator with no memory)', recommendationTrackRecord && recommendationTrackRecord.length ? recommendationTrackRecord : null, '(no real recommendation track record exists yet for this business)');
+  }
+  if (sourceInventory) {
+    prompt += fmtOptionalSection('REAL SOURCE INVENTORY (exactly what real data this specific business has connected vs missing, and whether each connected source is genuinely fresh or stale right now. CRITICAL: adapt your answers to this - if asked about organic content and Facebook Page shows connected:false, say plainly that source isn\'t connected rather than reasoning as if it exists; if a source shows stale:true, say the data may be out of date before drawing a conclusion from it. For any missing source, ifConnectedWouldProve (when present) tells you what to say if asked "what would connecting X let you know" - use that real, honest framing rather than a generic sales pitch)', sourceInventory, null);
   }
   if (anchoredInvestigation) {
     prompt += fmtOptionalSection('THE INVESTIGATION THIS CONVERSATION IS ABOUT', anchoredInvestigation, '');
