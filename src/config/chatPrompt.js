@@ -102,6 +102,7 @@ function buildChatUserPrompt({
   conversionDetail,
   signalProfile,
   businessExpectation,
+  whatChanged,
   weatherEvidence,
 }) {
   let prompt = `SELECTED CLIENT
@@ -145,6 +146,9 @@ ${JSON.stringify(client, null, 2)}`;
   }
   if (businessExpectation !== undefined) {
     prompt += fmtOptionalSection('REAL STATED EXPECTATIONS (a real expected_value/range that was set for a channel/metric, with its real basis - use this to answer "are we on track" by comparing real current performance against what was genuinely expected, not an assumption)', businessExpectation && businessExpectation.length ? businessExpectation : null, '(no real expectations currently set)');
+  }
+  if (whatChanged !== undefined) {
+    prompt += fmtOptionalSection('REAL "WHAT CHANGED" ANALYSIS (deterministic, real statistical comparison against this business\'s own real recent history - use this directly when asked "what changed," "what\'s different," or similar. territoryChangeNote is honest about whether real territory rank trend detection is even possible yet - only one real grid run existing means no real trend can be claimed, say so plainly rather than imply movement)', whatChanged, null);
   }
   if (anchoredInvestigation) {
     prompt += fmtOptionalSection('THE INVESTIGATION THIS CONVERSATION IS ABOUT', anchoredInvestigation, '');
