@@ -97,6 +97,7 @@ function buildChatUserPrompt({
   keywordFocus,
   deepIntelligence,
   territoryEvidence,
+  topPosts,
   weatherEvidence,
 }) {
   let prompt = `SELECTED CLIENT
@@ -125,6 +126,9 @@ ${JSON.stringify(client, null, 2)}`;
   }
   if (weatherEvidence !== undefined && weatherEvidence) {
     prompt += fmtOptionalSection('REAL WEATHER - genuinely anomalous conditions only (routine weather is intentionally omitted; only mention if directly relevant to the question)', weatherEvidence, null);
+  }
+  if (topPosts !== undefined) {
+    prompt += fmtOptionalSection('REAL TOP ORGANIC POSTS (this business\'s own real Facebook posts, ranked by real clicks - each has a real caption, real likes/comments/shares/clicks/engagement_rate, and a real permalink URL. Use this directly when asked "which post did best," "what content works," or similar - cite the real caption and real numbers. IMPORTANT: no post image is available - if the person wants to see the actual post/image, give them the real permalink URL to click, and say plainly that the image itself cannot be shown here rather than implying it can)', topPosts && topPosts.length ? topPosts : null, '(no real post data connected yet)');
   }
   if (anchoredInvestigation) {
     prompt += fmtOptionalSection('THE INVESTIGATION THIS CONVERSATION IS ABOUT', anchoredInvestigation, '');

@@ -82,6 +82,7 @@ async function assembleSharedIntelligence(supabase, locationId) {
     { data: whatsNext },
     { data: territoryEvidence },
     { data: weatherRaw },
+    { data: topPosts },
   ] = await Promise.all([
     supabaseService.rpc('get_business_model_context', { p_location_id: locationId }),
     supabaseService.rpc('build_business_state', { p_location_id: locationId }),
@@ -95,6 +96,7 @@ async function assembleSharedIntelligence(supabase, locationId) {
     supabaseService.rpc('get_whats_next', { p_location_id: locationId }),
     supabaseService.rpc('get_territory_summary', { p_location_id: locationId }),
     supabase.from('daily_weather_observations').select('observation_date, temp_high_f, temp_low_f, precip_inches, snow_inches, conditions, is_severe, severe_reason, is_forecast').eq('location_id', locationId).gte('observation_date', new Date(Date.now() - 3*86400000).toISOString().slice(0,10)).order('observation_date', { ascending: true }),
+    supabase.from('social_posts').select('caption, permalink, likes, comments, shares, clicks, engagement_rate, created_at').eq('location_id', locationId).order('clicks', { ascending: false }).limit(5),
   ]);
 
   // Real conditional weather - shared by both callers so the page
@@ -104,7 +106,7 @@ async function assembleSharedIntelligence(supabase, locationId) {
   return {
     businessModel, businessState, keywordFocus, vantageState, sourceCoverage,
     v44Points, v44Territory, supportMode, deepIntelligence, whatsNext,
-    territoryEvidence, weatherEvidence,
+    territoryEvidence, weatherEvidence, topPosts,
   };
 }
 
@@ -146,7 +148,7 @@ async function buildTenantChatContext(supabase, locationId) {
   ]);
 
   const shared = await assembleSharedIntelligence(supabase, locationId);
-  const { businessModel, businessState, keywordFocus, vantageState, sourceCoverage, v44Points, v44Territory, supportMode, deepIntelligence, whatsNext, territoryEvidence, weatherEvidence } = shared;
+  const { businessModel, businessState, keywordFocus, vantageState, sourceCoverage, v44Points, v44Territory, supportMode, deepIntelligence, whatsNext, territoryEvidence, weatherEvidence, topPosts } = shared;
   const { data: oversightResult } = await supabaseService.rpc('get_oversight_status', { p_location_id: locationId });
   const oversightCadence = oversightResult?.oversightCadence || null;
 
@@ -189,6 +191,7 @@ async function buildTenantChatContext(supabase, locationId) {
     supportMode: supportMode || null,
     deepIntelligence: deepIntelligence || null,
     territoryEvidence: territoryEvidence || [],
+    topPosts: topPosts || [],
     weatherEvidence: weatherEvidence || [],
     whatsNext: whatsNext || null,
     investigations: investigations || [],
