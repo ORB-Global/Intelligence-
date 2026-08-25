@@ -1807,6 +1807,11 @@ body{
   </section>
   -->
 
+<div id="v44-investigations-section" style="width:min(1360px,96vw);margin:14px auto; display:none;">
+  <div class="v32-k">What Vantage is investigating</div>
+  <div id="v44-investigations-list"></div>
+</div>
+
 <details class="v32-deep v36-deep">
     <summary>Explore Deep Intelligence →</summary>
     <div class="inside" id="v44-deep-intelligence"><p style="font-size:11px;line-height:1.55;color:#66727b">Loading real evidence…</p></div>
@@ -2155,6 +2160,31 @@ document.querySelectorAll('.tab').forEach(btn=>{
         <div style="margin-top:6px;"><b>Historical analogues:</b> ${deep.historicalAnalogues.status === 'analogue_found' ? deep.historicalAnalogues.clientFacingText : (deep.historicalAnalogues.note || 'Not enough real data yet.')}</div>
         <div style="font-style:italic; color:#8a95a3;"><b>Prediction ledger:</b> ${deep.predictionLedger.note}</div>
       </div>`;
+  }
+
+  // Real Proactive Investigations - only real, currently-open
+  // investigations shown. Hidden entirely (not a fake "all clear"
+  // message) when there are none, per the productionization rule:
+  // hide unfinished/empty rather than apologize for it.
+  const realInvestigations = (payload.investigations || []).filter((inv) => inv.status === 'open' || inv.status === 'investigating');
+  const invSection = el('v44-investigations-section');
+  const invList = el('v44-investigations-list');
+  if (invSection && invList && realInvestigations.length) {
+    invSection.style.display = 'block';
+    invList.innerHTML = realInvestigations.map((inv) => {
+      const explanations = (inv.possible_explanations || []).map((e) => `<div style="margin-top:4px;">• ${e.explanation}${e.supported_by ? ` <span style="color:#8a95a3;">(${e.supported_by})</span>` : ''}</div>`).join('');
+      const confColor = inv.confidence === 'high' ? '#9a7a45' : inv.confidence === 'medium' ? '#6e8298' : '#8a95a3';
+      return `
+        <div style="border:1px solid rgba(37,43,49,.10); border-radius:14px; padding:16px; margin-top:10px; background:rgba(255,255,255,.4);">
+          <div style="display:flex; justify-content:space-between; align-items:baseline;">
+            <b style="font-size:13px;">${inv.question}</b>
+            <span style="font-size:9px; text-transform:uppercase; letter-spacing:.08em; color:${confColor};">${inv.confidence} confidence · ${inv.status}</span>
+          </div>
+          <div style="font-size:11px; color:#66727b; margin-top:8px;"><b>Possible explanations:</b>${explanations}</div>
+          ${inv.evidence_against?.length ? `<div style="font-size:11px; color:#8a95a3; margin-top:8px; font-style:italic;"><b>Still unknown:</b> ${inv.evidence_against.map((u) => u.unknown).join('; ')}</div>` : ''}
+          <div style="font-size:10px; color:#a0abb3; margin-top:8px;">Next check: ${inv.next_check_at ? new Date(inv.next_check_at).toLocaleDateString() : 'not scheduled'}</div>
+        </div>`;
+    }).join('');
   }
 
   // Real "What happens next / What should I do" - replaces the
