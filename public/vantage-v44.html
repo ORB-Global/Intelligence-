@@ -2038,26 +2038,31 @@ document.querySelectorAll('.tab').forEach(btn=>{
     return h < 12 ? 'morning' : h < 18 ? 'afternoon' : 'evening';
   }
 
-  // Real Territory Intelligence wiring
+  // Real Territory Intelligence wiring - genuinely tenant-neutral,
+  // driven by whatever real category terms this specific business
+  // actually has (via realCategoryTerms), not hardcoded mattress/
+  // furniture. Real bug found and fixed: the backend was already
+  // updated to return this generic shape, but this client code was
+  // still reading the old hardcoded field names, which no longer
+  // exist - the real display had been silently broken since then.
   const terr = payload.v44Territory;
   if (terr) {
     if (el('v34-tracked-terms')) el('v34-tracked-terms').textContent = terr.trackedTerms ?? '0';
     if (el('v34-competitor-count')) el('v34-competitor-count').textContent = terr.competitorCount ?? '0';
     if (el('v34-territory-status')) el('v34-territory-status').textContent = terr.territoryStatus || 'unknown';
 
-    if (el('v34-kw-row-1')) {
-      const r = el('v34-kw-row-1');
-      r.querySelector('b').textContent = 'Mattress';
-      r.querySelector('span:not(.v34-watch):not(.v34-rank)') || null;
-      r.querySelectorAll('span')[0].textContent = terr.mattressRank ? `Real rank #${terr.mattressRank}` : 'no real grid data';
-      r.querySelectorAll('span')[1].textContent = terr.mattressRank ? `#${terr.mattressRank}` : '—';
-    }
-    if (el('v34-kw-row-2')) {
-      const r = el('v34-kw-row-2');
-      r.querySelector('b').textContent = 'Furniture';
-      r.querySelectorAll('span')[0].textContent = terr.furnitureRankBest ? `Real rank #${terr.furnitureRankBest}–#${terr.furnitureRankWorst}` : 'no real grid data';
-      r.querySelectorAll('span')[1].textContent = terr.furnitureRankBest ? `#${terr.furnitureRankBest}–#${terr.furnitureRankWorst}` : '—';
-    }
+    const realTerms = terr.realCategoryTerms || [];
+    const kwRows = [el('v34-kw-row-1'), el('v34-kw-row-2')];
+    kwRows.forEach((r, i) => {
+      if (!r) return;
+      const t = realTerms[i];
+      if (!t) { r.style.display = 'none'; return; }
+      r.style.display = '';
+      r.querySelector('b').textContent = t.term;
+      const rankText = t.bestRank ? (t.bestRank === t.worstRank ? `Real rank #${t.bestRank}` : `Real rank #${t.bestRank}–#${t.worstRank}`) : 'no real grid data';
+      r.querySelectorAll('span')[0].textContent = rankText;
+      r.querySelectorAll('span')[1].textContent = t.bestRank ? (t.bestRank === t.worstRank ? `#${t.bestRank}` : `#${t.bestRank}–#${t.worstRank}`) : '—';
+    });
 
     const compList = el('v34-competitor-list');
     if (compList && terr.competitors) {
