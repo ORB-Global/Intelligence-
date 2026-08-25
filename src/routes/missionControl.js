@@ -252,6 +252,73 @@ router.get('/organizations/:id', async (req, res) => {
   return res.json({ success: true, data: { organization: org, locations: locations || [] } });
 });
 
+// Real, app-ready API layer - focused endpoints for future mobile
+// consumption, reusing the same shared intelligence as everything
+// else (one Vantage brain), never the full raw page-load payload.
+
+router.get('/locations/:id/brief', async (req, res) => {
+  const { id: locationId } = req.params;
+  const { data: location } = await req.supabase.from('locations').select('id, organization_id, name').eq('id', locationId).maybeSingle();
+  if (!location) return res.status(404).json({ success: false, error: { message: 'Location not found or not accessible.' } });
+
+  const shared = await assembleSharedIntelligence(req.supabase, locationId);
+  const bs = shared.businessState?.state || {};
+  return res.json({ success: true, data: {
+    locationName: location.name,
+    qualitativeState: shared.vantageState?.state || null,
+    money: bs.money || null,
+    customerIntent: bs.customer_intent || null,
+    mattress: bs.territory_mattress || null,
+    furniture: bs.territory_furniture || null,
+    whatChanged: shared.whatChanged || null,
+    whatHappensNext: shared.whatsNext?.whatHappensNext || null,
+    openInvestigationCount: (shared.deepIntelligence?.decisionMemory?.realCount || 0),
+    sourceHealth: shared.sourceInventory ? { connected: shared.sourceInventory.connectedCount, total: shared.sourceInventory.totalPossible } : null,
+  }});
+});
+
+router.get('/locations/:id/investigations-feed', async (req, res) => {
+  const { id: locationId } = req.params;
+  const { data: location } = await req.supabase.from('locations').select('id').eq('id', locationId).maybeSingle();
+  if (!location) return res.status(404).json({ success: false, error: { message: 'Location not found or not accessible.' } });
+
+  const { data: investigations, error } = await req.supabase.from('investigations')
+    .select('id, question, evidence_collected, possible_explanations, evidence_against, confidence, status, next_check_at, created_at')
+    .eq('location_id', locationId).eq('client_visible', true).in('status', ['open', 'investigating'])
+    .order('created_at', { ascending: false });
+  if (error) return res.status(500).json({ success: false, error: { message: error.message } });
+  return res.json({ success: true, data: investigations || [] });
+});
+
+router.get('/locations/:id/recommendations-feed', async (req, res) => {
+  const { id: locationId } = req.params;
+  const { data: location } = await req.supabase.from('locations').select('id').eq('id', locationId).maybeSingle();
+  if (!location) return res.status(404).json({ success: false, error: { message: 'Location not found or not accessible.' } });
+
+  const { data: recs, error } = await req.supabase.from('recommendations')
+    .select('id, recommendation_text, why, priority, confidence, status, approved_at, executed_at, created_at')
+    .eq('location_id', locationId).eq('client_visible', true).order('created_at', { ascending: false }).limit(20);
+  if (error) return res.status(500).json({ success: false, error: { message: error.message } });
+
+  // Real, actual lifecycle stage per recommendation, not just the
+  // raw status column - reuses the real function already built.
+  const withLifecycle = await Promise.all((recs || []).map(async (r) => {
+    const { data: lifecycle } = await req.supabase.rpc('get_recommendation_lifecycle', { p_recommendation_id: r.id });
+    return { ...r, realStage: lifecycle?.stage || r.status };
+  }));
+  return res.json({ success: true, data: withLifecycle });
+});
+
+router.get('/locations/:id/sources-feed', async (req, res) => {
+  const { id: locationId } = req.params;
+  const { data: location } = await req.supabase.from('locations').select('id').eq('id', locationId).maybeSingle();
+  if (!location) return res.status(404).json({ success: false, error: { message: 'Location not found or not accessible.' } });
+
+  const { data: inventory, error } = await req.supabase.rpc('get_source_inventory', { p_location_id: locationId });
+  if (error) return res.status(500).json({ success: false, error: { message: error.message } });
+  return res.json({ success: true, data: inventory });
+});
+
 router.get('/locations/:id', async (req, res) => {
   const { id } = req.params;
   try {
