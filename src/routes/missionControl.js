@@ -1058,7 +1058,7 @@ router.post('/investigations/:id/seen', asyncHandler(async (req, res) => {
   return res.json({ success: true, data });
 }));
 
-router.get('/locations/:id/brief', asyncHandler(async (req, res) => {
+router.get('/locations/:id/position-brief', asyncHandler(async (req, res) => {
   const { id: locationId } = req.params;
   const { data: location, error: locError } = await req.supabase.from('locations').select('id').eq('id', locationId).maybeSingle();
   if (locError) return res.status(500).json({ success: false, error: { message: locError.message } });
