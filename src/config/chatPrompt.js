@@ -103,6 +103,7 @@ function buildChatUserPrompt({
   signalProfile,
   businessExpectation,
   whatChanged,
+  recommendationTrackRecord,
   weatherEvidence,
 }) {
   let prompt = `SELECTED CLIENT
@@ -149,6 +150,9 @@ ${JSON.stringify(client, null, 2)}`;
   }
   if (whatChanged !== undefined) {
     prompt += fmtOptionalSection('REAL "WHAT CHANGED" ANALYSIS (deterministic, real statistical comparison against this business\'s own real recent history - use this directly when asked "what changed," "what\'s different," or similar. territoryChangeNote is honest about whether real territory rank trend detection is even possible yet - only one real grid run existing means no real trend can be claimed, say so plainly rather than imply movement)', whatChanged, null);
+  }
+  if (recommendationTrackRecord !== undefined) {
+    prompt += fmtOptionalSection('REAL RECOMMENDATION TRACK RECORD (this business\'s own real history of past recommendations and their real verdicts - validated/not_validated/inconclusive, with real reasoning and source: "client" means the owner directly confirmed the outcome, "algorithmic" means Vantage judged it from data. Note: the same real recommendation can have multiple real verdicts over time as understanding evolves - always weight the most recent judged_at as current truth, and if a verdict was later corrected, that correction itself is real information worth mentioning if directly relevant. CRITICAL: before making a new recommendation similar to a past one, check this record - if a similar past recommendation was not_validated, say so honestly rather than repeat it uncritically; if validated, that real track record is genuine support worth citing. This is what makes Vantage a learning system rather than a generator with no memory)', recommendationTrackRecord && recommendationTrackRecord.length ? recommendationTrackRecord : null, '(no real recommendation track record exists yet for this business)');
   }
   if (anchoredInvestigation) {
     prompt += fmtOptionalSection('THE INVESTIGATION THIS CONVERSATION IS ABOUT', anchoredInvestigation, '');
