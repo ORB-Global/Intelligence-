@@ -120,7 +120,7 @@ ${JSON.stringify(client, null, 2)}`;
     }
   }
   if (businessState !== undefined && businessState) {
-    prompt += fmtOptionalSection('REAL BUSINESS STATE (top_ad = real strongest ad by actual intent, not just clicks; meta_pacing = real budget consumption)', businessState, null);
+    prompt += fmtOptionalSection('REAL BUSINESS STATE (top_ad = real strongest ad by actual intent, not just clicks; meta_pacing = real budget consumption. Some facts include a real confidence field - high/medium/low/stale/insufficient - based on real evidence volume and freshness. Weight your certainty accordingly: never state a low-confidence or stale-confidence fact as flatly as a high-confidence one - say so plainly, e.g. "based on limited/possibly outdated data")', businessState, null);
   }
   if (keywordFocus !== undefined && keywordFocus) {
     prompt += fmtOptionalSection('REAL KEYWORD FOCUS (realLocalIntentGap = high-volume terms competitors hold with no local-intent language yet)', keywordFocus, '(no real keyword data exists yet)');
