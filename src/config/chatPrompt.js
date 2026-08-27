@@ -105,6 +105,7 @@ function buildChatUserPrompt({
   whatChanged,
   recommendationTrackRecord,
   sourceInventory,
+  contradictions,
   weatherEvidence,
 }) {
   let prompt = `SELECTED CLIENT
@@ -157,6 +158,9 @@ ${JSON.stringify(client, null, 2)}`;
   }
   if (sourceInventory) {
     prompt += fmtOptionalSection('REAL SOURCE INVENTORY (exactly what real data this specific business has connected vs missing, and whether each connected source is genuinely fresh or stale right now. CRITICAL: adapt your answers to this - if asked about organic content and Facebook Page shows connected:false, say plainly that source isn\'t connected rather than reasoning as if it exists; if a source shows stale:true, say the data may be out of date before drawing a conclusion from it. For any missing source, ifConnectedWouldProve (when present) tells you what to say if asked "what would connecting X let you know" - use that real, honest framing rather than a generic sales pitch)', sourceInventory, null);
+  }
+  if (contradictions) {
+    prompt += fmtOptionalSection('REAL CROSS-SOURCE CONTRADICTIONS (deterministic, real statistical check for genuine disagreement between sources - e.g. one channel improving while another declines, or real attention rising while real local intent falls. CRITICAL: if realContradictionCount > 0, you must NOT declare uniform success or failure - acknowledge the real mixed picture explicitly and investigate rather than average it away. If realContradictionCount is 0, that itself is worth knowing: sources are directionally consistent, so a confident unified read is more justified)', contradictions, null);
   }
   if (anchoredInvestigation) {
     prompt += fmtOptionalSection('THE INVESTIGATION THIS CONVERSATION IS ABOUT', anchoredInvestigation, '');

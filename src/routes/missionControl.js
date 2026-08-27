@@ -90,6 +90,7 @@ async function assembleSharedIntelligence(supabase, locationId) {
     { data: whatChanged },
     { data: recommendationTrackRecord },
     { data: sourceInventory },
+    { data: contradictions },
   ] = await Promise.all([
     supabaseService.rpc('get_business_model_context', { p_location_id: locationId }),
     supabaseService.rpc('build_business_state', { p_location_id: locationId }),
@@ -111,6 +112,7 @@ async function assembleSharedIntelligence(supabase, locationId) {
     supabaseService.rpc('get_what_changed', { p_location_id: locationId }),
     supabase.from('recommendation_verdicts').select('verdict, reasoning, source, judged_at, recommendations(recommendation_text)').eq('location_id', locationId).order('judged_at', { ascending: false }).limit(10),
     supabaseService.rpc('get_source_inventory', { p_location_id: locationId }),
+    supabaseService.rpc('detect_contradictions', { p_location_id: locationId }),
   ]);
 
   // Real conditional weather - shared by both callers so the page
@@ -162,7 +164,7 @@ async function buildTenantChatContext(supabase, locationId) {
   ]);
 
   const shared = await assembleSharedIntelligence(supabase, locationId);
-  const { businessModel, businessState, keywordFocus, vantageState, sourceCoverage, v44Points, v44Territory, supportMode, deepIntelligence, whatsNext, territoryEvidence, weatherEvidence, topPosts, opportunities, conversionDetail, signalProfile, businessExpectation, whatChanged, recommendationTrackRecord, sourceInventory } = shared;
+  const { businessModel, businessState, keywordFocus, vantageState, sourceCoverage, v44Points, v44Territory, supportMode, deepIntelligence, whatsNext, territoryEvidence, weatherEvidence, topPosts, opportunities, conversionDetail, signalProfile, businessExpectation, whatChanged, recommendationTrackRecord, sourceInventory, contradictions } = shared;
   const { data: oversightResult } = await supabaseService.rpc('get_oversight_status', { p_location_id: locationId });
   const oversightCadence = oversightResult?.oversightCadence || null;
 
@@ -213,6 +215,7 @@ async function buildTenantChatContext(supabase, locationId) {
     whatChanged: whatChanged || null,
     recommendationTrackRecord: recommendationTrackRecord || [],
     sourceInventory: sourceInventory || null,
+    contradictions: contradictions || null,
     weatherEvidence: weatherEvidence || [],
     whatsNext: whatsNext || null,
     investigations: investigations || [],
