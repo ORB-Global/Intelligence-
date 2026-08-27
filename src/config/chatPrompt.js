@@ -107,6 +107,7 @@ function buildChatUserPrompt({
   sourceInventory,
   contradictions,
   dataQuality,
+  priorityItems,
   weatherEvidence,
 }) {
   let prompt = `SELECTED CLIENT
@@ -165,6 +166,9 @@ ${JSON.stringify(client, null, 2)}`;
   }
   if (dataQuality && dataQuality.realIssueCount > 0) {
     prompt += fmtOptionalSection('REAL DATA-QUALITY ISSUES DETECTED (deterministic checks found real anomalies in the underlying data - impossible values, sync gaps, or a known bad-data pattern. CRITICAL: do not reason confidently from metrics affected by a flagged issue - mention the real data-quality concern honestly if it is relevant to your answer, rather than silently trusting a number that may be wrong)', dataQuality, null);
+  }
+  if (priorityItems && priorityItems.topPriority) {
+    prompt += fmtOptionalSection('REAL PRIORITY RANKING (the top real signals across every source - data quality, contradictions, the identified constraint, open investigations, and what changed - deterministically ranked by real severity, not all 15+ possible signals dumped at once. Use this when asked "what should I know" or "what matters right now" to lead with the highest-priority real item first, rather than listing everything with equal weight)', priorityItems.topPriority, null);
   }
   if (anchoredInvestigation) {
     prompt += fmtOptionalSection('THE INVESTIGATION THIS CONVERSATION IS ABOUT', anchoredInvestigation, '');
