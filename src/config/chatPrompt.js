@@ -106,6 +106,7 @@ function buildChatUserPrompt({
   recommendationTrackRecord,
   sourceInventory,
   contradictions,
+  dataQuality,
   weatherEvidence,
 }) {
   let prompt = `SELECTED CLIENT
@@ -161,6 +162,9 @@ ${JSON.stringify(client, null, 2)}`;
   }
   if (contradictions) {
     prompt += fmtOptionalSection('REAL CROSS-SOURCE CONTRADICTIONS (deterministic, real statistical check for genuine disagreement between sources - e.g. one channel improving while another declines, or real attention rising while real local intent falls. CRITICAL: if realContradictionCount > 0, you must NOT declare uniform success or failure - acknowledge the real mixed picture explicitly and investigate rather than average it away. If realContradictionCount is 0, that itself is worth knowing: sources are directionally consistent, so a confident unified read is more justified)', contradictions, null);
+  }
+  if (dataQuality && dataQuality.realIssueCount > 0) {
+    prompt += fmtOptionalSection('REAL DATA-QUALITY ISSUES DETECTED (deterministic checks found real anomalies in the underlying data - impossible values, sync gaps, or a known bad-data pattern. CRITICAL: do not reason confidently from metrics affected by a flagged issue - mention the real data-quality concern honestly if it is relevant to your answer, rather than silently trusting a number that may be wrong)', dataQuality, null);
   }
   if (anchoredInvestigation) {
     prompt += fmtOptionalSection('THE INVESTIGATION THIS CONVERSATION IS ABOUT', anchoredInvestigation, '');
