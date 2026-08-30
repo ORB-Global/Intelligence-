@@ -93,6 +93,7 @@ async function assembleSharedIntelligence(supabase, locationId) {
     { data: contradictions },
     { data: dataQuality },
     { data: priorityItems },
+    { data: realOutcomes },
   ] = await Promise.all([
     supabaseService.rpc('get_business_model_context', { p_location_id: locationId }),
     supabaseService.rpc('build_business_state', { p_location_id: locationId }),
@@ -112,11 +113,12 @@ async function assembleSharedIntelligence(supabase, locationId) {
     supabase.from('location_signal_profile').select('channel, metric, learned_mean, learned_stddev, calibration_confidence, months_of_evidence, positive_outcome_count, contradicting_outcome_count').eq('location_id', locationId),
     supabase.from('business_expectation').select('channel, metric, expected_value, expected_range_low, expected_range_high, basis, set_at').eq('location_id', locationId).order('set_at', { ascending: false }).limit(5),
     supabaseService.rpc('get_what_changed', { p_location_id: locationId }),
-    supabase.from('recommendation_verdicts').select('verdict, reasoning, source, judged_at, recommendations(recommendation_text)').eq('location_id', locationId).order('judged_at', { ascending: false }).limit(10),
+    supabase.from('recommendation_verdicts').select('recommendation_id, verdict, reasoning, source, judged_at, recommendations(recommendation_text)').eq('location_id', locationId).order('judged_at', { ascending: false }).limit(10),
     supabaseService.rpc('get_source_inventory', { p_location_id: locationId }),
     supabaseService.rpc('detect_contradictions', { p_location_id: locationId }),
     supabaseService.rpc('check_data_quality', { p_location_id: locationId }),
     supabaseService.rpc('get_priority_items', { p_location_id: locationId }),
+    supabase.from('outcome_observations').select('observation_date, walk_ins, transactions, revenue, primary_category, source').eq('location_id', locationId).order('observation_date', { ascending: false }).limit(30),
   ]);
 
   // Real conditional weather - shared by both callers so the page
@@ -168,7 +170,20 @@ async function buildTenantChatContext(supabase, locationId) {
   ]);
 
   const shared = await assembleSharedIntelligence(supabase, locationId);
-  const { businessModel, businessState, keywordFocus, vantageState, sourceCoverage, v44Points, v44Territory, supportMode, deepIntelligence, whatsNext, territoryEvidence, weatherEvidence, topPosts, opportunities, conversionDetail, signalProfile, businessExpectation, whatChanged, recommendationTrackRecord, sourceInventory, contradictions, dataQuality, priorityItems } = shared;
+  const { businessModel, businessState, keywordFocus, vantageState, sourceCoverage, v44Points, v44Territory, supportMode, deepIntelligence, whatsNext, territoryEvidence, weatherEvidence, topPosts, opportunities, conversionDetail, signalProfile, businessExpectation, whatChanged, recommendationTrackRecord, sourceInventory, contradictions, dataQuality, priorityItems, realOutcomes } = shared;
+
+  // Real fix for the confirmed Phase 1 gap: recommendation_verdicts
+  // reached chat as raw rows, but the derived TRUE lifecycle stage
+  // (get_recommendation_lifecycle - already proven correct against
+  // the real contradictory-verdict case) was only ever called from
+  // the separate /recommendations-feed endpoint, never here.
+  const recommendationTrackRecordWithStage = await Promise.all(
+    (recommendationTrackRecord || []).map(async (r) => {
+      if (!r.recommendation_id) return r;
+      const { data: lifecycle } = await supabase.rpc('get_recommendation_lifecycle', { p_recommendation_id: r.recommendation_id });
+      return { ...r, realStage: lifecycle?.stage || null };
+    })
+  );
   const { data: oversightResult } = await supabaseService.rpc('get_oversight_status', { p_location_id: locationId });
   const oversightCadence = oversightResult?.oversightCadence || null;
 
@@ -217,11 +232,12 @@ async function buildTenantChatContext(supabase, locationId) {
     signalProfile: signalProfile || [],
     businessExpectation: businessExpectation || [],
     whatChanged: whatChanged || null,
-    recommendationTrackRecord: recommendationTrackRecord || [],
+    recommendationTrackRecord: recommendationTrackRecordWithStage,
     sourceInventory: sourceInventory || null,
     contradictions: contradictions || null,
     dataQuality: dataQuality || null,
     priorityItems: priorityItems || null,
+    realOutcomes: realOutcomes || [],
     weatherEvidence: weatherEvidence || [],
     whatsNext: whatsNext || null,
     investigations: investigations || [],
