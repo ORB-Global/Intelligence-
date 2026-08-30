@@ -129,6 +129,7 @@ async function assembleSharedIntelligence(supabase, locationId) {
     businessModel, businessState, keywordFocus, vantageState, sourceCoverage,
     v44Points, v44Territory, supportMode, deepIntelligence, whatsNext,
     territoryEvidence, weatherEvidence, topPosts, opportunities, conversionDetail, signalProfile, businessExpectation,
+    whatChanged, recommendationTrackRecord, sourceInventory, contradictions, dataQuality, priorityItems, realOutcomes,
   };
 }
 
@@ -171,11 +172,6 @@ async function buildTenantChatContext(supabase, locationId) {
 
   const shared = await assembleSharedIntelligence(supabase, locationId);
   const { businessModel, businessState, keywordFocus, vantageState, sourceCoverage, v44Points, v44Territory, supportMode, deepIntelligence, whatsNext, territoryEvidence, weatherEvidence, topPosts, opportunities, conversionDetail, signalProfile, businessExpectation, whatChanged, recommendationTrackRecord, sourceInventory, contradictions, dataQuality, priorityItems, realOutcomes } = shared;
-
-  // TEMPORARY REAL DIAGNOSTIC - investigating why recommendation_verdicts
-  // returns real data via service-role but empty via req.supabase (RLS)
-  // in the live /ask path. Remove once resolved.
-  console.log('[REC_DIAG] raw recommendationTrackRecord from shared:', JSON.stringify(recommendationTrackRecord), 'locationId:', locationId);
 
   // Real fix for the confirmed Phase 1 gap: recommendation_verdicts
   // reached chat as raw rows, but the derived TRUE lifecycle stage
