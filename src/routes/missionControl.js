@@ -107,7 +107,7 @@ async function assembleSharedIntelligence(supabase, locationId) {
     supabaseService.rpc('get_whats_next', { p_location_id: locationId }),
     supabaseService.rpc('get_territory_summary', { p_location_id: locationId }),
     supabase.from('daily_weather_observations').select('observation_date, temp_high_f, temp_low_f, precip_inches, snow_inches, conditions, is_severe, severe_reason, is_forecast').eq('location_id', locationId).gte('observation_date', new Date(Date.now() - 3*86400000).toISOString().slice(0,10)).order('observation_date', { ascending: true }),
-    supabase.from('social_posts').select('caption, permalink, likes, comments, shares, clicks, engagement_rate, created_at').eq('location_id', locationId).order('clicks', { ascending: false }).limit(5),
+    supabase.from('social_posts').select('caption, permalink, image_url, likes, comments, shares, clicks, engagement_rate, created_at').eq('location_id', locationId).order('clicks', { ascending: false }).limit(5),
     supabase.from('opportunities').select('description, potential_impact, evidence, status, detected_at').eq('location_id', locationId).eq('client_visible', true).order('detected_at', { ascending: false }).limit(5),
     supabase.from('conversion_action_detail').select('channel, conversion_action_name, conversion_action_category, conversions, conversions_value, period_start').eq('location_id', locationId).order('period_start', { ascending: false }).limit(10),
     supabase.from('location_signal_profile').select('channel, metric, learned_mean, learned_stddev, calibration_confidence, months_of_evidence, positive_outcome_count, contradicting_outcome_count').eq('location_id', locationId),
