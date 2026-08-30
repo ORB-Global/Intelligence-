@@ -12,6 +12,15 @@
  * 'created_time', 'message'] with data_view 'POSTS' returns real,
  * working image URLs for all 27 real posts, no permission gap exists.
  *
+ * CRITICAL, REAL FINDING: full_picture URLs are signed Facebook CDN
+ * links with an embedded expiry (the oe= hex parameter is a real Unix
+ * timestamp) - decoded and confirmed these expire in ~5 DAYS, not
+ * months. image_url is NOT safe to treat as permanent. This script
+ * must run on a real, recurring schedule (daily, alongside the
+ * existing brain cron) - a one-time backfill will silently go stale
+ * within a week. image_url_synced_at tracks exactly when each URL
+ * was last confirmed fresh, so reasoning never trusts a stale one.
+ *
  * HONEST GAP: this exact query has been verified through Oviond's
  * dashboard/MCP tool (confirmed working), but NOT yet directly against
  * the raw /v1/data/query REST endpoint this script calls, since the
@@ -70,6 +79,7 @@ async function main() {
           post_id: row.permalink_url || `${loc.id}-${row.created_time}`,
           caption: row.message || null, permalink: row.permalink_url || null,
           image_url: row.full_picture || null,
+          image_url_synced_at: row.full_picture ? new Date().toISOString() : null,
           likes: row.post_likes || 0, comments: row.post_comments || 0,
           shares: row.post_shares || 0, clicks: row.post_clicks || 0,
           engagement_rate: row.post_engagement_rate || null,
