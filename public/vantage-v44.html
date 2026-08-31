@@ -1565,7 +1565,7 @@ body{
 
 </head>
 <body><div class="page">
-<div class="top"><div class="brand">ORB GLOBAL <span>VANTAGE</span></div><div class="muted">Business decision intelligence</div></div>
+<div class="top"><div><div class="brand">ORB GLOBAL <span>VANTAGE</span></div><div class="muted">Business decision intelligence</div></div><button id="v44-logout" style="background:transparent; border:1px solid rgba(37,43,49,.18); border-radius:8px; padding:6px 14px; font-size:12px; letter-spacing:normal; text-transform:none; color:#5a656d; cursor:pointer; align-self:flex-start;">Log out</button></div>
 
 
 
@@ -2356,6 +2356,17 @@ document.querySelectorAll('.tab').forEach(btn=>{
   // Real wiring for six previously-fake buttons found tonight - zero
   // ids, zero handlers before this. Honest behavior only, no fake
   // execution.
+  // Real logout - same proven client.auth.signOut() pattern used on
+  // mission-control.html. The existing SIGNED_OUT listener above
+  // already redirects to /login.html when this fires, so no separate
+  // redirect needed here.
+  const logoutBtn = el('v44-logout');
+  if (logoutBtn) logoutBtn.addEventListener('click', async () => {
+    logoutBtn.disabled = true;
+    logoutBtn.textContent = 'Signing out…';
+    await client.auth.signOut();
+  });
+
   const openThoughtBtn = el('v44-open-thought');
   if (openThoughtBtn) openThoughtBtn.addEventListener('click', () => {
     document.getElementById('v44-deep-intelligence')?.closest('details')?.setAttribute('open', '');
