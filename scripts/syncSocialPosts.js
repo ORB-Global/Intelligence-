@@ -90,6 +90,15 @@ async function main() {
         data_view: 'POSTS',
       });
 
+      // TEMPORARY REAL DIAGNOSTIC: dump the raw response for Easley
+      // specifically, since it's a known-good location that returned
+      // "0 real posts synced" after the dimension-ID fix - something
+      // beyond the dimension names may still be wrong, and this shows
+      // exactly what the real API actually returned rather than
+      // guessing further. Remove once resolved.
+      if (loc.name === 'Easley') {
+        console.log('[REAL DIAG] Raw Oviond response for Easley:', JSON.stringify(result).slice(0, 3000));
+      }
       const rows = result?.rows || result?.data?.rows || [];
       for (const row of rows) {
         await supabase.from('social_posts').upsert({
