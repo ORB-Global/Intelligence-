@@ -2317,16 +2317,27 @@ document.querySelectorAll('.tab').forEach(btn=>{
   const deepEl = el('v44-deep-intelligence');
   if (deep && deepEl) {
     const mtd = deep.mtdNormalizedComparison;
-    const mtdLine = mtd?.status === 'sufficient_daily_comparison' ? mtd.clientFacingText : (mtd?.note || 'MTD comparison not yet available.');
-    deepEl.innerHTML = `
-      <div style="font-size:11px; line-height:1.7; color:#66727b;">
-        <div><b>Source coverage:</b> ${deep.sourceCoverage.byChannel.map(c => `${c.channel}: ${c.realMonths}mo (${c.depthState})`).join(' · ') || 'none'}</div>
-        <div><b>MTD normalized comparison:</b> ${mtdLine}</div>
-        <div><b>Decision memory:</b> ${deep.decisionMemory.note}</div>
-        <div><b>Business memory:</b> ${deep.businessMemory.note}</div>
-        <div style="margin-top:6px;"><b>Historical analogues:</b> ${deep.historicalAnalogues.status === 'analogue_found' ? deep.historicalAnalogues.clientFacingText : (deep.historicalAnalogues.note || 'Not enough real data yet.')}</div>
-        <div style="font-style:italic; color:#8a95a3;"><b>Prediction ledger:</b> ${deep.predictionLedger.note}</div>
-      </div>`;
+    const hasRealMtd = mtd?.status === 'sufficient_daily_comparison';
+    const hasRealAnalogue = deep.historicalAnalogues?.status === 'analogue_found';
+    const hasRealDecisions = (deep.decisionMemory?.realCount || 0) > 0;
+    const hasRealBeliefs = (deep.businessMemory?.realActiveBeliefs || 0) > 0;
+    const hasRealCoverage = deep.sourceCoverage?.byChannel?.length > 0;
+    // REAL FIX: only render sections with genuinely useful content -
+    // predictionLedger is PERMANENTLY hardcoded to "Phase 3 capability
+    // - not built yet" for every real tenant (confirmed directly in
+    // the real backend function - not a per-client empty state, the
+    // feature was never built at all), so it is never rendered here,
+    // full stop. Every other section only appears when its real
+    // status genuinely indicates useful content exists.
+    const sections = [];
+    if (hasRealCoverage) sections.push(`<div><b>Performance</b><br>${deep.sourceCoverage.byChannel.map(c => `${c.channel}: ${c.realMonths}mo`).join(' · ')}</div>`);
+    if (hasRealMtd) sections.push(`<div><b>Month-to-date comparison</b><br>${mtd.clientFacingText}</div>`);
+    if (hasRealAnalogue) sections.push(`<div><b>Historical pattern</b><br>${deep.historicalAnalogues.clientFacingText}</div>`);
+    if (hasRealDecisions) sections.push(`<div><b>Decision memory</b><br>${deep.decisionMemory.realCount} real decision(s) on file.</div>`);
+    if (hasRealBeliefs) sections.push(`<div><b>Business memory</b><br>${deep.businessMemory.realActiveBeliefs} real active belief(s).</div>`);
+    deepEl.innerHTML = sections.length
+      ? `<div style="font-size:12px; line-height:1.8; color:#5a656e; display:grid; gap:12px;">${sections.join('')}</div>`
+      : `<div style="font-size:12px; color:#8a95a3; font-style:italic;">Deep Intelligence will populate here as more real evidence accumulates for this account.</div>`;
   }
 
   // Real Proactive Investigations - only real, currently-open
