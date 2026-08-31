@@ -345,6 +345,32 @@ router.get('/locations/:id/sources-feed', async (req, res) => {
   return res.json({ success: true, data: inventory });
 });
 
+// Real "Since You Last Looked" - GET compares against the real last
+// recorded visit; POST records a new one. Kept as two separate calls
+// deliberately so the client controls exactly when a "visit" counts
+// (e.g. real page mount), not every incidental API call/refresh.
+router.get('/locations/:id/since-last-looked', async (req, res) => {
+  const { id: locationId } = req.params;
+  const { data: location } = await req.supabase.from('locations').select('id').eq('id', locationId).maybeSingle();
+  if (!location) return res.status(404).json({ success: false, error: { message: 'Location not found or not accessible.' } });
+  const { data: userData } = await req.supabase.auth.getUser();
+  if (!userData?.user?.id) return res.status(401).json({ success: false, error: { message: 'Not authenticated.' } });
+
+  const { data: result, error } = await req.supabase.rpc('get_since_last_looked', { p_location_id: locationId, p_user_id: userData.user.id });
+  if (error) return res.status(500).json({ success: false, error: { message: error.message } });
+  return res.json({ success: true, data: result });
+});
+
+router.post('/locations/:id/record-visit', async (req, res) => {
+  const { id: locationId } = req.params;
+  const { data: location } = await req.supabase.from('locations').select('id').eq('id', locationId).maybeSingle();
+  if (!location) return res.status(404).json({ success: false, error: { message: 'Location not found or not accessible.' } });
+
+  const { error } = await req.supabase.rpc('record_meaningful_visit', { p_location_id: locationId });
+  if (error) return res.status(500).json({ success: false, error: { message: error.message } });
+  return res.json({ success: true });
+});
+
 router.get('/locations/:id', async (req, res) => {
   const { id } = req.params;
   try {
