@@ -1872,17 +1872,9 @@ document.querySelectorAll('.v30-door').forEach(d=>{
 
 
 
-  <div class="askdock">
-    <input class="askfield" id="v44-askdock-input" placeholder="Ask Vantage anything about this business…" />
-    <div class="cmd" data-q="What should I post?">What should I post?</div>
-    <div class="cmd" data-q="Brief me on where things stand today.">Brief me</div>
-    <div class="cmd" id="v44-askdock-explore">Explore Full Picture</div>
-  </div>
-
-  
   </div>
 </details>
-<div class="footer">Vantage v44 · All v8 intelligence preserved, reformatted as a calm interactive system rather than a long page. Demo values are illustrative.</div>
+<div class="footer">© Orb Global · Vantage</div>
 </section>
 
 <script>
@@ -1954,7 +1946,13 @@ document.querySelectorAll('.tab').forEach(btn=>{
   // Real closing summary - was hardcoded to "three things"/"mattress
   // pattern" regardless of tenant; now genuinely counts real open
   // investigations and uses whatever category is actually relevant.
-  const realOpenCount = (payload.deepIntelligence?.decisionMemory?.realCount || 0);
+  // REAL FIX: this was reading decisionMemory.realCount, which tracks
+  // a genuinely different concept (recorded decisions) and was found
+  // to be 0 even when 2 real open investigations existed for Easley -
+  // a confirmed, live, incorrect "nothing needs you" message. The
+  // correct real source for "how many things is Vantage watching" is
+  // the real investigations array itself.
+  const realOpenCount = (payload.investigations || []).filter((inv) => inv.status === 'open' || inv.status === 'investigating').length;
   if (el('v44-end-close')) {
     el('v44-end-close').textContent = realOpenCount > 0
       ? `Vantage is watching ${realOpenCount} real thing${realOpenCount === 1 ? '' : 's'}. Nothing else needs you right now.`
@@ -2192,11 +2190,17 @@ document.querySelectorAll('.tab').forEach(btn=>{
   // demand strengthening", "keep budget steady")
   const next = payload.whatsNext;
   if (next) {
-    if (el('v44-whats-next-headline')) el('v44-whats-next-headline').textContent = next.whatHappensNext;
-    if (el('v44-whattodo-headline')) el('v44-whattodo-headline').textContent = next.whatToDo.focus;
-    if (el('v44-wtd-budget')) el('v44-wtd-budget').textContent = next.whatToDo.budget;
-    if (el('v44-wtd-focus')) el('v44-wtd-focus').textContent = next.whatToDo.focus;
-    if (el('v44-wtd-evidence')) el('v44-wtd-evidence').textContent = next.whatToDo.evidence;
+    if (el('v44-whats-next-headline')) el('v44-whats-next-headline').textContent = next.whatHappensNext || 'Not enough real evidence yet for a confident forecast.';
+    // Real defensive fix: whatToDo is a real, populated sub-object for
+    // most current cases, but is not structurally guaranteed by every
+    // real backend branch - a stress test with it absent crashed this
+    // entire function and silently stalled the "What Should I Do"
+    // section at "Loading...". Never assume a sub-object exists.
+    const wtd = next.whatToDo || null;
+    if (el('v44-whattodo-headline')) el('v44-whattodo-headline').textContent = wtd?.focus || 'Vantage needs more evidence before recommending a specific action.';
+    if (el('v44-wtd-budget')) el('v44-wtd-budget').textContent = wtd?.budget || '—';
+    if (el('v44-wtd-focus')) el('v44-wtd-focus').textContent = wtd?.focus || '—';
+    if (el('v44-wtd-evidence')) el('v44-wtd-evidence').textContent = wtd?.evidence || '—';
   }
 
   // Real Living Business Plan wiring
