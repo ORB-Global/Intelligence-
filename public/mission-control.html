@@ -784,7 +784,21 @@
       // ---------- Layer 2: Explore My Business - all detail lives here ----------
       const whatChangedCard = `<div class="brain-card"><h3>Orb Is Investigating</h3>
         ${activeInvestigations.length ? activeInvestigations.slice(0,3).map(inv => {
-          const evidenceLines = (inv.evidence_collected || []).map(e => e.summary).filter(Boolean);
+          // REAL FIX for a genuine live crash: evidence_collected has
+          // two real, different shapes depending on which real
+          // investigation-creation path produced it - a real array of
+          // {source, summary} objects (older path), or a real object
+          // keyed by concept (e.g. {conversion:{...}, acquisition:{...}})
+          // from check_and_open_investigation(). The crash
+          // ((inv.evidence_collected || []).map is not a function)
+          // happened because only the array shape was handled.
+          const rawEvidence = inv.evidence_collected;
+          let evidenceLines = [];
+          if (Array.isArray(rawEvidence)) {
+            evidenceLines = rawEvidence.map(e => e && e.summary).filter(Boolean);
+          } else if (rawEvidence && typeof rawEvidence === 'object') {
+            evidenceLines = Object.keys(rawEvidence).map(concept => `real ${concept} evidence on file`);
+          }
           return `<div style="margin-bottom:1rem; padding-bottom:1rem; border-bottom:1px solid var(--line);">
             <div style="font-weight:600; font-size:0.88rem; margin-bottom:0.4rem;">${escapeHtml(inv.question)}</div>
             ${evidenceLines.length ? `<div style="font-size:0.82rem; color:var(--ink-soft); margin-bottom:0.3rem;">Orb has found: ${evidenceLines.map(escapeHtml).join(' · ')}</div>` : ''}
