@@ -1136,6 +1136,7 @@ button{
         <div class="eyebrow" id="v45-eyebrow">Loading…</div>
         <h1 id="v45-hero-h1">Loading real evidence…</h1>
         <p class="hero-copy" id="v45-hero-copy">Loading real evidence…</p>
+        <p style="margin:8px 0 0; font-size:11px; color:var(--muted);" id="v45-freshness-line"></p>
         <div class="hero-actions">
             <button class="btn primary" onclick="openAsk()">Ask Vantage</button>
             <button class="btn soft" onclick="openCreate()">Create with Vantage</button>
@@ -1144,12 +1145,12 @@ button{
 
     <div class="shift">
         <div class="ring"></div>
-        <div class="signal ad" id="v45-sig-ad"><small>Advertising</small><strong>Loading…</strong></div>
-        <div class="signal weather" id="v45-sig-weather"><small>Weather</small><strong>Loading…</strong></div>
-        <div class="signal search" id="v45-sig-search"><small>Search visibility</small><strong>Loading…</strong></div>
-        <div class="signal local" id="v45-sig-local"><small>Local intent</small><strong>Loading…</strong></div>
-        <div class="signal competition" id="v45-sig-competition"><small>Competition</small><strong>Loading…</strong></div>
-        <div class="signal store" id="v45-sig-store"><small>Store reality</small><strong id="storeSignal">Loading…</strong></div>
+        <div class="signal ad" id="v45-sig-ad" onclick="document.getElementById('v45-your-business-section').scrollIntoView({behavior:'smooth'})"><small>Advertising</small><strong>Loading…</strong></div>
+        <div class="signal weather" id="v45-sig-weather" onclick="document.getElementById('v45-your-business-section').scrollIntoView({behavior:'smooth'})"><small>Weather</small><strong>Loading…</strong></div>
+        <div class="signal search" id="v45-sig-search" onclick="document.getElementById('v45-territory-section').scrollIntoView({behavior:'smooth'})"><small>Search visibility</small><strong>Loading…</strong></div>
+        <div class="signal local" id="v45-sig-local" onclick="document.getElementById('v45-your-business-section').scrollIntoView({behavior:'smooth'})"><small>Local intent</small><strong>Loading…</strong></div>
+        <div class="signal competition" id="v45-sig-competition" onclick="document.getElementById('v45-territory-section').scrollIntoView({behavior:'smooth'})"><small>Competition</small><strong>Loading…</strong></div>
+        <div class="signal store" id="v45-sig-store" onclick="document.getElementById('storePulse').scrollIntoView({behavior:'smooth'})"><small>Store reality</small><strong id="storeSignal">Loading…</strong></div>
         <div class="shift-center" id="v45-shift-center" onclick="openBelief()">
             <small>Vantage now</small>
             <strong id="v45-shift-headline">Watching<br>a shift.</strong>
@@ -1290,7 +1291,7 @@ button{
 </section>
 
 
-<section class="section">
+<section class="section" id="v45-your-business-section">
     <div class="section-head">
         <h2>Your business</h2>
         <p>The current picture without the full report.</p>
@@ -1585,6 +1586,18 @@ button{
   el('v45-hero-h1').innerHTML = positionText;
   el('v45-hero-copy').textContent = payload.whatsNext?.whatHappensNext || 'Vantage is comparing today with your history, market, media, local visibility and store outcomes.';
 
+  // Real freshness line - directly addresses "no way to see what
+  // dates you're referencing." Uses the real sourceInventory dates
+  // already built earlier, never a vague "today."
+  (function renderFreshness() {
+    const sources = payload.sourceInventory?.sources || [];
+    const dated = sources.filter(s => s.dataThrough).sort((a, b) => new Date(b.dataThrough) - new Date(a.dataThrough));
+    if (!dated.length) { el('v45-freshness-line').textContent = ''; return; }
+    const mostRecent = dated[0];
+    const fmt = (d) => new Date(d).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+    el('v45-freshness-line').textContent = `Data through ${fmt(mostRecent.dataThrough)}${dated.length > 1 ? ` (${dated.map(s => `${s.source}: ${fmt(s.dataThrough)}`).join(', ')})` : ''}`;
+  })();
+
   // ---------- RADAR SIGNALS ----------
   if (el('v45-sig-ad')) el('v45-sig-ad').querySelector('strong').textContent = bstate.money?.fact || 'No real data yet';
   if (el('v45-sig-search')) el('v45-sig-search').querySelector('strong').textContent = bstate.territory_mattress?.fact || bstate.territory_furniture?.fact || 'Not yet established';
@@ -1647,17 +1660,25 @@ button{
     el('v45-territory-headline').textContent = terr.competitorCount > 0 ? `${terr.competitorCount} nearby competitors being watched` : 'Territory evidence is being established.';
     el('v45-territory-summary-h4').textContent = terr.competitorCount > 0 ? `You have ${terr.competitorCount} real, tracked competitors.` : 'No real competitors on file yet.';
     if (terr.realCategoryTerms && terr.realCategoryTerms.length) {
+      // REAL FIX: now shows every real tracked keyword (was silently
+      // capped to whatever the backend returned - the backend fix
+      // itself is what actually surfaces the real, full set now),
+      // real rank range when it varies, and the real top competitor
+      // at the best-ranked point for that specific term.
       el('v45-rank-rows').innerHTML = terr.realCategoryTerms.map((t) => `
         <div class="rank-row">
-          <div class="rank-keyword"><strong>${t.term}</strong></div>
-          <div class="rank-number">${t.bestRank || '—'}</div>
-          <div class="competitors">${terr.territoryStatus && terr.territoryStatus.startsWith('unknown') ? 'Search visibility is being established.' : ''}</div>
+          <div class="rank-keyword"><strong>${t.term}</strong>${t.bestRank && t.worstRank && t.bestRank !== t.worstRank ? `<span>Varies #${t.bestRank}\u2013#${t.worstRank} across your territory</span>` : ''}</div>
+          <div class="rank-number">${t.bestRank ? '#' + t.bestRank : '—'}</div>
+          <div class="competitors">${t.topCompetitorAtBest ? (t.topCompetitorAtBest === payload.location?.name ? 'You lead here' : t.topCompetitorAtBest) : (terr.territoryStatus && terr.territoryStatus.startsWith('unknown') ? 'Search visibility is being established.' : '—')}</div>
         </div>`).join('');
     } else {
       el('v45-rank-rows').innerHTML = '<div class="rank-row"><div class="rank-keyword"><strong>Search visibility is being established.</strong></div><div class="rank-number">—</div><div class="competitors">—</div></div>';
     }
     if (terr.competitors && terr.competitors.length) {
-      el('v45-competitor-focus').innerHTML = terr.competitors.slice(0, 4).map((c) => `
+      // REAL FIX: was silently truncated to 4 while the real headline
+      // correctly said 7 - showed a confusing, direct mismatch. Now
+      // shows every real tracked competitor.
+      el('v45-competitor-focus').innerHTML = terr.competitors.map((c) => `
         <div class="competitor-card"><strong>${c.name}</strong><span>${c.address || ''}</span></div>`).join('');
     }
   }
@@ -1733,11 +1754,20 @@ button{
     try {
       await apiFetch(`/api/mc/locations/${locationId}/checkin`, { method: 'POST', body: JSON.stringify(body) });
       el('pulseResult').classList.add('visible');
-      el('pulseResultTitle').textContent = `Business felt ${selectedFeel}. Vantage will remember that.`;
-      el('pulseResultText').textContent = 'This becomes part of Vantage\'s real understanding of this business and will be used when comparing marketing activity with real business outcomes.';
+      const now = new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' });
+      el('pulseResultTitle').textContent = `Business felt ${selectedFeel} - ${now}. Vantage will remember that.`;
+      // Real, direct answer to "how do we know we're tracking
+      // patterns" - shows the real, actual cumulative count, not
+      // just a generic promise.
+      let historyNote = 'This becomes part of Vantage\'s real understanding of this business.';
+      try {
+        const history = await apiFetch(`/api/mc/locations/${locationId}/checkins`);
+        historyNote = `This is your ${history.length}${history.length === 1 ? 'st' : (history.length === 2 ? 'nd' : (history.length === 3 ? 'rd' : 'th'))} real check-in on file. Vantage compares these over time against advertising, search, and local intent to see what patterns actually hold up.`;
+      } catch (e) {}
+      el('pulseResultText').textContent = historyNote;
       el('storeSignal').textContent = `${selectedFeel} reported`;
       el('businessStoreOutcome').textContent = selectedFeel;
-      el('deepLatestPulse').textContent = selectedFeel;
+      el('deepLatestPulse').textContent = `${selectedFeel} (${now})`;
       el('deepWalkins').textContent = walkinsVal || 'Not entered';
       el('deepSales').textContent = salesVal || 'Not entered';
       el('deepRevenue').textContent = revenueVal ? `$${Number(revenueVal).toLocaleString()}` : 'Not entered';
