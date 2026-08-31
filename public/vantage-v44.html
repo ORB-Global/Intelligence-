@@ -1949,6 +1949,22 @@ document.querySelectorAll('.tab').forEach(btn=>{
    possibility of a subtle difference between the two ever existing
    again. */
 (async function wireRealVantage(){
+  // TEMPORARY REAL DIAGNOSTIC BANNER - shows the exact, raw result of
+  // the real session check directly on the page, in plain sight, no
+  // DevTools needed. Remove once this investigation concludes.
+  const debugBanner = document.createElement('div');
+  debugBanner.style.cssText = 'position:fixed; top:0; left:0; right:0; z-index:99999; background:#c0392b; color:white; font-family:monospace; font-size:13px; padding:10px; white-space:pre-wrap;';
+  debugBanner.textContent = 'REAL DEBUG: checking session...';
+  document.body.prepend(debugBanner);
+
+  const rawCheck = await window.realAuthGuard.client.auth.getSession();
+  debugBanner.textContent = 'REAL DEBUG getSession() result: ' + JSON.stringify({
+    hasSession: !!rawCheck.data.session,
+    userEmail: rawCheck.data.session?.user?.email || null,
+    expiresAt: rawCheck.data.session?.expires_at || null,
+    localStorageKeys: Object.keys(localStorage).filter(k => k.includes('supabase') || k.includes('auth')),
+  }, null, 2);
+
   const initialSession = await window.realAuthGuard.requireSession();
   const apiFetch = window.realAuthGuard.apiFetch;
 
