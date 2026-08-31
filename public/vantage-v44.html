@@ -1935,52 +1935,22 @@ document.querySelectorAll('.tab').forEach(btn=>{
 </script>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="/js/real-auth-guard.js"></script>
 <script>
 /* Real Phase 1 data wiring - fills the exact existing V44 DOM hooks
    with real Easley data. No visual/CSS changes. Every value is real
    or an honest unknown/stale/disconnected state - never invented. */
 
-/* CRITICAL, REAL SECURITY FIX #3 - the actual, definitive root cause:
-   this page (and mission-control.html) used client.auth.getSession(),
-   which per Supabase's own documentation returns a real, LOCALLY
-   CACHED session WITHOUT validating it against the real Auth server.
-   The server-side requireSupabaseAuth.js middleware (verified correct
-   earlier this session) correctly uses getUser() instead, which makes
-   a real, live network call to Supabase to verify the token every
-   time - the two real checks were never equivalent. Switched to
-   getUser() for a definitive, real, server-verified answer instead of
-   trusting local client state that can be wrong. */
+/* CRITICAL, REAL SECURITY FIX #5: four separate hand-ported attempts
+   at reproducing mission-control.html's proven-working auth check in
+   this file all failed for reasons never fully isolated remotely.
+   Replaced entirely with /js/real-auth-guard.js - the exact same real
+   file mission-control.html now also uses - eliminating any
+   possibility of a subtle difference between the two ever existing
+   again. */
 (async function wireRealVantage(){
-  const SUPABASE_URL = 'https://vdhsvasxccdrashmvvdk.supabase.co';
-  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZkaHN2YXN4Y2NkcmFzaG12dmRrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUzNDMyMDUsImV4cCI6MjEwMDkxOTIwNX0.rZvlbqrdYXlIeAKou-dllsO6MQr3ehzm7h3FBK2sZ6o';
-  const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { auth: { autoRefreshToken: true, persistSession: true, detectSessionInUrl: true } });
-
-  async function getRealVerifiedSession() {
-    const { data: userData, error: userError } = await client.auth.getUser();
-    if (userError || !userData?.user) return null;
-    // getUser() confirms a real, valid user exists server-side, but
-    // does not itself return the access_token - getSession() is safe
-    // to read the token FROM once we already know via getUser() that
-    // a real, genuinely valid session exists.
-    const { data: sessionData } = await client.auth.getSession();
-    return sessionData?.session || null;
-  }
-
-  async function apiFetch(path){
-    const session = await getRealVerifiedSession();
-    if (!session) { window.location.href = '/login.html'; throw new Error('No real, verified session'); }
-    const res = await fetch(path, { headers: { Authorization: `Bearer ${session.access_token}` } });
-    if (res.status === 401) { window.location.href = '/login.html'; throw new Error('Session expired'); }
-    const body = await res.json();
-    if (!res.ok || !body.success) throw new Error(body.error?.message || 'fetch failed');
-    return body.data;
-  }
-
-  // Real, explicit gate before anything else in this page runs - the
-  // real, initial check that actually stops rendering, not just the
-  // per-call checks inside apiFetch above.
-  const initialSession = await getRealVerifiedSession();
-  if (!initialSession) { window.location.href = '/login.html'; return; }
+  const initialSession = await window.realAuthGuard.requireSession();
+  const apiFetch = window.realAuthGuard.apiFetch;
 
   const params = new URLSearchParams(window.location.search);
   const orgs = await apiFetch('/api/mc/organizations');
