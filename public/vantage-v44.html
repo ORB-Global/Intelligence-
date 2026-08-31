@@ -1955,7 +1955,7 @@ document.querySelectorAll('.tab').forEach(btn=>{
   const SUPABASE_URL = 'https://vdhsvasxccdrashmvvdk.supabase.co';
   const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZkaHN2YXN4Y2NkcmFzaG12dmRrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUzNDMyMDUsImV4cCI6MjEwMDkxOTIwNX0.rZvlbqrdYXlIeAKou-dllsO6MQr3ehzm7h3FBK2sZ6o';
   const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-    auth: { persistSession: true, autoRefreshToken: true },
+    auth: { persistSession: false, autoRefreshToken: true },
   });
 
   client.auth.onAuthStateChange((event) => {
