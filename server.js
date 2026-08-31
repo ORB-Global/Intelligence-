@@ -42,6 +42,26 @@ const app = express();
 
 app.use(cors());
 app.use(express.json());
+
+// REAL, CRITICAL FIX: express.static's default headers (ETag/
+// Last-Modified, no explicit Cache-Control) let browsers serve a
+// stale, cached copy of these security-critical auth-gated pages via
+// heuristic caching or a 304 response - directly confirmed live: a
+// real, fixed security bug kept reappearing in a real user's browser
+// even after the server was correctly updated and verified serving
+// the new file via curl. These two routes force browsers to always
+// fetch a fresh copy, never reuse a cached one, and must be
+// registered BEFORE the generic static middleware below so they take
+// precedence for these two specific real, sensitive files.
+['/vantage-v44.html', '/mission-control.html'].forEach((route) => {
+  app.get(route, (req, res) => {
+    res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    res.set('Pragma', 'no-cache');
+    res.set('Expires', '0');
+    res.sendFile(path.join(__dirname, 'public', route));
+  });
+});
+
 app.use(express.static(path.join(__dirname, 'public')));
 
 function sendError(res, error, status = 500) {
