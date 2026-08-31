@@ -1,0 +1,45 @@
+REAL CRONTAB UPDATE #2 - adds scripts/syncWeather.js for ALL real
+locations, not just Easley.
+
+REAL, CONFIRMED ROOT CAUSE (found during the Leitchfield audit):
+syncWeather.js is correctly built to loop over every real location
+with valid coordinates, but was NEVER added to the real, scheduled
+production cron. Direct check: only 1 of 56 real locations with
+valid coordinates had any weather data at all - almost certainly
+Easley, from manual testing, never run broadly. This is why every
+other tenant correctly, honestly shows "no real weather source
+connected" - the data genuinely never existed for them.
+
+Real, exact command to install this (run on the production server):
+
+crontab -l > /tmp/current-cron-backup-2.txt
+echo "Backed up existing crontab - verify before proceeding."
+
+Then replace the single existing line with:
+
+0 6 * * * cd /home/ubuntu/orb-intelligence && node scripts/syncOviondClients.js >> logs/sync.log 2>&1 && node scripts/syncCurrentPeriod.js >> logs/mtd-sync.log 2>&1 && node scripts/backfillDailyMetrics.js --days=3 >> logs/daily-backfill.log 2>&1 && node scripts/syncWeather.js >> logs/weather-sync.log 2>&1 && node scripts/runBrainForAllLocations.js >> logs/brain.log 2>&1
+
+Real reasoning for the addition:
+syncWeather.js runs AFTER the daily metrics backfill and BEFORE
+runBrainForAllLocations.js, so weather data is genuinely fresh and
+available the same day it's fetched, for every location, not just
+whichever one was last manually tested.
+
+To install:
+crontab -e
+(replace the existing single line with the one above, save, exit)
+
+Verify with:
+crontab -l
+
+Real, honest first-run note: this daily 6am job only fetches
+TODAY + forecast (WeatherAPI.com's free tier does not include
+historical data). Real historical weather backfill for any location
+that wants past data requires scripts/backfillWeatherHistory.js
+run manually and separately - not part of this daily cron.
+
+Manual, one-time real catch-up (run once, immediately, so today's
+run doesn't have to wait until tomorrow's 6am for the first real
+data to appear for every location):
+
+cd /home/ubuntu/orb-intelligence && node scripts/syncWeather.js >> logs/weather-sync.log 2>&1
