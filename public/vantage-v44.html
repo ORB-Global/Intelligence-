@@ -2110,7 +2110,7 @@ document.querySelectorAll('.tab').forEach(btn=>{
       askBtn.textContent = '…';
       try {
         const res = await fetch(`/api/mc/locations/${locationId}/ask`, {
-          method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${window.__vantageToken}` },
           body: JSON.stringify({ question }),
         });
         const body = await res.json();
@@ -2215,7 +2215,7 @@ document.querySelectorAll('.tab').forEach(btn=>{
       storeSubmit.textContent = 'Sending…';
       try {
         const res = await fetch(`/api/mc/locations/${locationId}/checkin`, {
-          method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${window.__vantageToken}` },
           body: JSON.stringify(body),
         });
         const result = await res.json();
@@ -2357,7 +2357,7 @@ document.querySelectorAll('.tab').forEach(btn=>{
       goalSubmit.textContent = 'Saving…';
       try {
         const res = await fetch(`/api/mc/locations/${locationId}/goal`, {
-          method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${window.__vantageToken}` },
           body: JSON.stringify({ goalText, constraintsText: constraintsText || null }),
         });
         const result = await res.json();
@@ -2385,7 +2385,7 @@ document.querySelectorAll('.tab').forEach(btn=>{
       statusEl.textContent = 'Sending…';
       try {
         const res = await fetch(`/api/mc/locations/${locationId}/tell`, {
-          method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${window.__vantageToken}` },
           body: JSON.stringify({ text }),
         });
         const result = await res.json();
