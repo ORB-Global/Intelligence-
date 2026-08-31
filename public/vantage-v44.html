@@ -1698,9 +1698,32 @@ body{
     <div id="v44-door-panel" style="display:none; margin-top:16px; padding:16px; border:1px solid rgba(37,43,49,.10); border-radius:14px; background:rgba(255,255,255,.4);"></div>
   </section>
 
-  <div class="v32-divider"><span>What Vantage sees</span></div>
+  <div class="v32-divider"><span>Your Business</span></div>
 
-  <section class="v36-story">
+  <section id="v44-your-business" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:14px; margin-bottom:24px;">
+    <div class="v44-yb-card" data-yb="advertising" style="padding:16px; border:1px solid rgba(37,43,49,.10); border-radius:14px; background:rgba(255,255,255,.4);">
+      <div style="font-size:10px; letter-spacing:.12em; text-transform:uppercase; color:#8a95a3; margin-bottom:6px;">Advertising</div>
+      <div id="v44-yb-advertising" style="font-size:14px; color:#33404a; line-height:1.5;">Loading…</div>
+    </div>
+    <div class="v44-yb-card" data-yb="social" style="padding:16px; border:1px solid rgba(37,43,49,.10); border-radius:14px; background:rgba(255,255,255,.4);">
+      <div style="font-size:10px; letter-spacing:.12em; text-transform:uppercase; color:#8a95a3; margin-bottom:6px;">Social</div>
+      <div id="v44-yb-social" style="font-size:14px; color:#33404a; line-height:1.5;">Loading…</div>
+    </div>
+    <div class="v44-yb-card" data-yb="local" style="padding:16px; border:1px solid rgba(37,43,49,.10); border-radius:14px; background:rgba(255,255,255,.4);">
+      <div style="font-size:10px; letter-spacing:.12em; text-transform:uppercase; color:#8a95a3; margin-bottom:6px;">Local Visibility</div>
+      <div id="v44-yb-local" style="font-size:14px; color:#33404a; line-height:1.5;">Loading…</div>
+    </div>
+    <div class="v44-yb-card" data-yb="competition" style="padding:16px; border:1px solid rgba(37,43,49,.10); border-radius:14px; background:rgba(255,255,255,.4);">
+      <div style="font-size:10px; letter-spacing:.12em; text-transform:uppercase; color:#8a95a3; margin-bottom:6px;">Competition</div>
+      <div id="v44-yb-competition" style="font-size:14px; color:#33404a; line-height:1.5;">Loading…</div>
+    </div>
+    <div class="v44-yb-card" data-yb="store" style="padding:16px; border:1px solid rgba(37,43,49,.10); border-radius:14px; background:rgba(255,255,255,.4);">
+      <div style="font-size:10px; letter-spacing:.12em; text-transform:uppercase; color:#8a95a3; margin-bottom:6px;">Store Results</div>
+      <div id="v44-yb-store" style="font-size:14px; color:#33404a; line-height:1.5;">Loading…</div>
+    </div>
+  </section>
+
+  <section class="v36-story" style="display:none;">
     <div class="v32-scene green">
       <div class="v32-k">01 · Where am I?</div><h3 id="v44-story-position">Loading real position…</h3>
     </div>
@@ -2081,6 +2104,17 @@ document.querySelectorAll('.tab').forEach(btn=>{
   // Real six evidence points - honest status per point, real facts where they exist
   const points = payload.v44Points;
   const bstate = payload.businessState?.state || {};
+
+  // Real "Your Business" - five-category overview using the same
+  // real bstate fields already fetched, replacing the old duplicated
+  // Where Am I / What Matters blocks (hidden, not deleted, so their
+  // existing wiring below never breaks).
+  if (el('v44-yb-advertising')) el('v44-yb-advertising').textContent = bstate.money?.fact || 'Not enough real advertising data yet.';
+  if (el('v44-yb-social')) el('v44-yb-social').textContent = bstate.content?.fact || 'Not enough real social data yet.';
+  if (el('v44-yb-local')) el('v44-yb-local').textContent = bstate.customer_intent?.fact || 'Local visibility data is being established.';
+  if (el('v44-yb-competition')) el('v44-yb-competition').textContent = bstate.competition?.fact || 'No real competitors on file yet.';
+  if (el('v44-yb-store')) el('v44-yb-store').textContent = bstate.store_outcome?.fact || 'Waiting for real Store Pulse input.';
+
   function setPoint(key, label, meta){
     const l = el(`v41-pt-${key}-label`); const m = el(`v41-pt-${key}-meta`);
     if (l) l.textContent = label;
