@@ -1667,6 +1667,7 @@ button{
               bstate.money?.fact ? `Your advertising response is still healthy: ${bstate.money.fact}.` : null,
             ].filter(Boolean),
             meaning: `Vantage is watching this competitive pressure in furniture before recommending more ad spend.`,
+            usedFields: ['money'],
           };
         }
       }
@@ -1674,9 +1675,9 @@ button{
     // Fallback: pick whichever real signal has the most notable status.
     const PRIORITY = ['STRONG', 'IMPROVING', 'OPPORTUNITY', 'DECLINING', 'CHANNEL_CONCENTRATION'];
     const candidates = [
-      { field: bstate.customer_intent, label: 'local intent' },
-      { field: bstate.money, label: 'advertising' },
-      { field: bstate.content, label: 'social attention' },
+      { key: 'customer_intent', field: bstate.customer_intent, label: 'local intent' },
+      { key: 'money', field: bstate.money, label: 'advertising' },
+      { key: 'content', field: bstate.content, label: 'social attention' },
     ].filter(c => c.field?.fact && PRIORITY.includes(c.field.status));
     if (candidates.length) {
       const top = candidates[0];
@@ -1684,12 +1685,14 @@ button{
         headline: payload.briefing || `Something real is changing in your ${top.label}.`,
         why: [top.field.fact, bstate.competition?.fact].filter(Boolean),
         meaning: payload.whatsNext?.whatHappensNext || 'Vantage is comparing this against your history before drawing a firm conclusion.',
+        usedFields: [top.key, 'competition'],
       };
     }
     return {
       headline: payload.briefing || 'Your business is steady.',
       why: [],
       meaning: 'Vantage is still gathering enough real evidence for a confident read.',
+      usedFields: [],
     };
   }
 
@@ -1749,12 +1752,16 @@ button{
   // ---------- WHAT MATTERS TODAY ----------
   (function renderMatters(){
     const UNINTERESTING = ['UNKNOWN', 'INCOMPLETE_EVIDENCE', 'no_real_intent_signal', 'NO_BUDGET_SET', 'no_real_budget_data'];
+    // REAL FIX: was independently pulling from the same bstate pool
+    // as the hero, causing real, confirmed duplication (e.g.
+    // "Direction requests +90.7%" appearing in both). Now excludes
+    // whatever real field the hero's story already used.
     const candidates = [
-      { title: 'Advertising', field: bstate.money },
-      { title: 'Local intent', field: bstate.customer_intent },
-      { title: 'Social', field: bstate.content },
-      { title: 'Competition', field: bstate.competition },
-    ].filter((c) => c.field?.fact && !UNINTERESTING.includes(c.field.status));
+      { key: 'money', title: 'Advertising', field: bstate.money },
+      { key: 'customer_intent', title: 'Local intent', field: bstate.customer_intent },
+      { key: 'content', title: 'Social', field: bstate.content },
+      { key: 'competition', title: 'Competition', field: bstate.competition },
+    ].filter((c) => c.field?.fact && !UNINTERESTING.includes(c.field.status) && !(story.usedFields || []).includes(c.key));
 
     const storeUnknown = !bstate.store_outcome?.fact || bstate.store_outcome.status === 'UNKNOWN';
     const items = storeUnknown ? [...candidates.slice(0, 2), { title: 'Store result', field: { fact: 'Tell Vantage how business felt so it can connect marketing to what happened in-store.' } }] : candidates.slice(0, 3);
