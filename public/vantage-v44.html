@@ -1383,6 +1383,7 @@ button{
     <div class="goal">
         <div class="eyebrow">Current business goal</div>
         <h3 id="v45-goal-text">Loading…</h3>
+        <p id="v45-goal-assessment" style="font-weight:600; color:var(--ink);"></p>
         <p>Vantage carries this objective forward and uses it when weighing evidence, answering questions and creating actions.</p>
         <div style="margin-top:13px">
             <button class="btn" onclick="openGoalEdit()">Change goal</button>
@@ -1391,7 +1392,15 @@ button{
 </section>
 
 
-<section class="deep">
+<section class="section" id="v45-deep-trigger-section" style="text-align:center; padding:30px 0;">
+    <button class="btn primary" style="padding:16px 28px; font-size:14px;" onclick="document.getElementById('v45-deep-overlay').style.display='block'; document.body.style.overflow='hidden';">Explore Deep Intelligence →</button>
+    <p style="color:var(--muted); font-size:12px; margin-top:10px;">Everything Vantage knows, remembers, compares, and is still investigating.</p>
+</section>
+
+<div id="v45-deep-overlay" style="display:none; position:fixed; inset:0; z-index:100; background:#1a232a; overflow-y:auto;">
+<button onclick="document.getElementById('v45-deep-overlay').style.display='none'; document.body.style.overflow='';" style="position:fixed; top:24px; right:24px; z-index:101; width:38px; height:38px; border-radius:50%; border:1px solid rgba(255,255,255,.25); background:rgba(255,255,255,.08); color:#fff; font-size:18px; cursor:pointer;">×</button>
+<div class="shell">
+<section class="deep" style="margin-top:40px;">
     <div class="eyebrow">Deep Intelligence</div>
     <h2>Go all the way into the evidence.</h2>
     <p class="deep-intro">Everything Vantage knows, remembers, compares, questions and learns about this business. The home screen tells you what matters. Deep Intelligence shows you why.</p>
@@ -1453,6 +1462,8 @@ button{
         </div>
     </div>
 </section>
+</div>
+</div>
 
 </div>
 
@@ -1817,8 +1828,18 @@ button{
     const goalRes = await apiFetch(`/api/mc/locations/${locationId}/goal`);
     if (goalRes && goalRes.business_objective && goalRes.business_objective.trim().split(/\s+/).length >= 3) {
       el('v45-goal-text').textContent = goalRes.business_objective;
+      // REAL, honestly conservative assessment - per the explicit "no
+      // fake causality" rule, this only ever says "on track" when a
+      // real, directly relevant signal exists, and otherwise says so
+      // plainly rather than fabricating confidence.
+      if (bstate.store_outcome?.status === 'UNKNOWN' || !bstate.store_outcome?.fact) {
+        el('v45-goal-assessment').textContent = "Vantage doesn't have enough evidence yet to say whether you're on track - store outcomes aren't connected to this goal.";
+      } else {
+        el('v45-goal-assessment').textContent = `Real store evidence on file: ${bstate.store_outcome.fact}`;
+      }
     } else {
       el('v45-goal-text').textContent = 'No real goal has been set yet.';
+      el('v45-goal-assessment').textContent = '';
     }
   } catch (e) { el('v45-goal-text').textContent = 'No real goal has been set yet.'; }
 
