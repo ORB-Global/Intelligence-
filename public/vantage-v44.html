@@ -2143,7 +2143,21 @@ document.querySelectorAll('.tab').forEach(btn=>{
   if (terr) {
     if (el('v34-tracked-terms')) el('v34-tracked-terms').textContent = terr.trackedTerms ?? '0';
     if (el('v34-competitor-count')) el('v34-competitor-count').textContent = terr.competitorCount ?? '0';
-    if (el('v34-territory-status')) el('v34-territory-status').textContent = terr.territoryStatus || 'unknown';
+    if (el('v34-territory-status')) {
+      // REAL FIX from the Leitchfield audit: don't lead with "no real
+      // territory grid run yet" when real competitor data already
+      // exists - lead with the useful, known information instead.
+      // The raw, honest status still exists in terr.territoryStatus
+      // for Deep Intelligence; this only changes the primary display.
+      const realCompCount = terr.competitorCount || 0;
+      if (terr.territoryStatus && terr.territoryStatus.startsWith('unknown') && realCompCount > 0) {
+        el('v34-territory-status').textContent = `${realCompCount} nearby competitor${realCompCount === 1 ? '' : 's'} being watched`;
+      } else if (terr.territoryStatus && terr.territoryStatus.startsWith('unknown')) {
+        el('v34-territory-status').textContent = 'Search visibility is being established';
+      } else {
+        el('v34-territory-status').textContent = terr.territoryStatus || 'unknown';
+      }
+    }
 
     const realTerms = terr.realCategoryTerms || [];
     const kwRows = [el('v34-kw-row-1'), el('v34-kw-row-2')];

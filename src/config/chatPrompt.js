@@ -218,7 +218,7 @@ ${snapshots && snapshots.length ? JSON.stringify(snapshots, null, 2) : '(none on
     prompt += fmtOptionalSection('MARKET PROFILE (business_dna_narrative = authoritative human-taught context, see evidentiary principles above)', marketProfile, '(not yet resolved)');
   }
   if (competitors !== undefined) {
-    prompt += fmtOptionalSection('KNOWN COMPETITORS (real, sourced - never invent additional ones)', competitors && competitors.length ? competitors : null, '(none discovered yet)');
+    prompt += fmtOptionalSection('KNOWN COMPETITORS (real, sourced count = the length of this real array - never invent additional ones, and never confuse this real count with any other, separate real "0" value elsewhere in this prompt, e.g. a real tracked-keyword-term count or a real territory-grid-coverage count. Those are different, unrelated real facts even when they appear near each other)', competitors && competitors.length ? competitors : null, '(none discovered yet)');
   }
   if (openQuestions !== undefined) {
     prompt += fmtOptionalSection('OPEN QUESTIONS (real current gaps - state plainly when relevant)', openQuestions && openQuestions.length ? openQuestions : null, '(none currently open)');
