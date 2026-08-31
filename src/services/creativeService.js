@@ -24,14 +24,19 @@ const CREATIVE_TOOL = {
   input_schema: {
     type: 'object',
     properties: {
+      concept_name: { type: 'string' },
       headline: { type: 'string' },
-      body_copy: { type: 'string' },
+      body_copy: { type: 'string', description: 'Primary Facebook ad copy.' },
+      facebook_copy: { type: 'string' },
+      instagram_copy: { type: 'string' },
+      gbp_copy: { type: 'string', description: 'Google Business Profile post copy.' },
+      creative_direction: { type: 'string', description: 'Suggested imagery/visual direction - never claim an actual image was generated.' },
       format_suggestion: { type: 'string' },
       cta: { type: 'string' },
       target_audience: { type: 'string' },
       rationale: { type: 'string' },
     },
-    required: ['headline', 'body_copy', 'format_suggestion', 'cta', 'target_audience', 'rationale'],
+    required: ['concept_name', 'headline', 'body_copy', 'facebook_copy', 'instagram_copy', 'gbp_copy', 'creative_direction', 'format_suggestion', 'cta', 'target_audience', 'rationale'],
     additionalProperties: false,
   },
 };
@@ -43,8 +48,10 @@ CRITICAL RULES:
 - Never invent facts about the business, its products, pricing, or promotions that weren't given to you.
 - rationale must explain WHY this concept fits the specific opportunity/intelligence provided, not just describe the copy.
 - Keep copy concrete and specific to the business, not generic ("shop now and save" is not acceptable if you have real evidence to work from).
+- creative_direction describes suggested imagery only - never imply an actual image has been generated.
+- Write real, distinct copy for facebook_copy, instagram_copy, and gbp_copy - do not just repeat body_copy three times; each platform has a different real voice and length convention.
 
-You must call submit_creative with: headline, body_copy, format_suggestion (e.g. "Facebook single-image ad", "Instagram Reel", "Google Search ad"), cta, target_audience, and rationale.`;
+You must call submit_creative with: concept_name, headline, body_copy (primary Facebook ad copy), facebook_copy, instagram_copy, gbp_copy, creative_direction, format_suggestion (e.g. "Facebook single-image ad", "Instagram Reel", "Google Search ad"), cta, target_audience, and rationale.`;
 
 async function generateCreative(job, context) {
   if (!ANTHROPIC_API_KEY) throw new Error('ANTHROPIC_API_KEY is not configured on the server.');

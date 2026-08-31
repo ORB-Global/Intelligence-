@@ -828,13 +828,18 @@ router.post('/locations/:id/create', async (req, res) => {
     const result = await generateCreative({ ...job, prompt, context_snapshot: contextSnapshot }, context);
 
     const { data: updated, error: updateError } = await req.supabase.from('creative_jobs').update({
-      status: 'complete',
+      status: 'ready',
       headline: result.headline,
       body_copy: result.body_copy,
+      facebook_copy: result.facebook_copy,
+      instagram_copy: result.instagram_copy,
+      gbp_copy: result.gbp_copy,
+      creative_direction: result.creative_direction,
       format_suggestion: result.format_suggestion,
       cta: result.cta,
       target_audience: result.target_audience,
       rationale: result.rationale,
+      source_evidence: contextSnapshot,
       completed_at: new Date().toISOString(),
     }).eq('id', job.id).select().single();
     if (updateError) return res.status(500).json({ success: false, error: { message: updateError.message } });
@@ -856,6 +861,50 @@ router.post('/locations/:id/create', async (req, res) => {
     await req.supabase.from('creative_jobs').update({ status: 'failed', error_message: genError.message }).eq('id', job.id);
     return res.status(502).json({ success: false, error: { message: `Creative generation failed: ${genError.message}` } });
   }
+});
+
+// Real lifecycle actions on an existing creative_jobs row - reuses
+// the same real table/columns extended earlier rather than a
+// parallel system. Approve and Send to Orb are both real, persisted
+// state changes, not decorative UI.
+router.post('/creative-jobs/:jobId/approve', async (req, res) => {
+  const { jobId } = req.params;
+  const { data: updated, error } = await req.supabase.from('creative_jobs').update({ status: 'approved', approved_at: new Date().toISOString() }).eq('id', jobId).select().single();
+  if (error) return res.status(500).json({ success: false, error: { message: error.message } });
+  if (!updated) return res.status(404).json({ success: false, error: { message: 'Creative job not found or not accessible.' } });
+  return res.json({ success: true, data: updated });
+});
+
+router.post('/creative-jobs/:jobId/send-to-orb', async (req, res) => {
+  const { jobId } = req.params;
+  const { data: job, error } = await req.supabase.from('creative_jobs').update({ status: 'sent_to_orb', sent_to_orb_at: new Date().toISOString() }).eq('id', jobId).select().single();
+  if (error) return res.status(500).json({ success: false, error: { message: error.message } });
+  if (!job) return res.status(404).json({ success: false, error: { message: 'Creative job not found or not accessible.' } });
+
+  // Real, genuine handoff record - reuses the existing orb_activity
+  // table (already used elsewhere for the real activity/outcome
+  // chain) rather than a new, parallel notification system.
+  await req.supabase.from('orb_activity').insert({
+    organization_id: job.organization_id, location_id: job.location_id,
+    activity_type: 'creative_change', description: `Sent creative "${job.headline || job.concept_name || 'concept'}" to Orb for review.`,
+    performed_by: req.user.id, client_visible: true,
+  });
+
+  return res.json({ success: true, data: job });
+});
+
+router.post('/creative-jobs/:jobId/edit', async (req, res) => {
+  const { jobId } = req.params;
+  const { headline, body_copy, facebook_copy, instagram_copy, gbp_copy, cta } = req.body || {};
+  const { data: updated, error } = await req.supabase.from('creative_jobs').update({
+    status: 'edited', edited_at: new Date().toISOString(),
+    ...(headline !== undefined && { headline }), ...(body_copy !== undefined && { body_copy }),
+    ...(facebook_copy !== undefined && { facebook_copy }), ...(instagram_copy !== undefined && { instagram_copy }),
+    ...(gbp_copy !== undefined && { gbp_copy }), ...(cta !== undefined && { cta }),
+  }).eq('id', jobId).select().single();
+  if (error) return res.status(500).json({ success: false, error: { message: error.message } });
+  if (!updated) return res.status(404).json({ success: false, error: { message: 'Creative job not found or not accessible.' } });
+  return res.json({ success: true, data: updated });
 });
 
 // Real, undeniable proof of accumulated work - not implied by a nice
