@@ -1420,7 +1420,16 @@ body{
 
 <style id="v42-readability-data">
 /* readability */
-.v41-copy h1{font-size:49px!important}
+/* REAL, CONFIRMED CASCADE BUG FIX: this unconditional 49px!important
+   rule (no media query) was silently overriding the pre-existing,
+   correctly-responsive @media(max-width:680px){.v41-copy h1{font-size:36px}}
+   rule above at every viewport width, including mobile - confirmed
+   via real rendering: the H1 was the exact, confirmed cause of a real
+   horizontal overflow at 390px width (scrollWidth 408px vs 390px
+   client width). Scoped this "readability" bump to genuinely wide
+   viewports only, so the existing mobile reflow logic can work as
+   originally intended. */
+@media(min-width:681px){.v41-copy h1{font-size:49px!important}}
 .v41-lead{font-size:13.5px!important;color:#46545f!important}
 .v41-welcome small{font-size:9px!important;color:#65727c!important}
 .v41-welcome b{font-size:16px!important;color:#46535d!important}
@@ -1518,7 +1527,17 @@ body{
     position:relative!important;left:auto!important;top:auto!important;transform:none!important;
     grid-column:1/-1!important;margin:0 auto 12px!important;
   }
-  .v41-whisper{
+  /* REAL, CONFIRMED SPECIFICITY FIX: the six .v41-whisper.<variant>
+     anchor-zone rules above (e.g. .v41-whisper.organic{left:8px...})
+     have higher specificity (two classes) than the single-class
+     .v41-whisper rule that follows here, so they were winning
+     regardless of media-query/source order and silently defeating
+     this entire mobile reflow block. Confirmed via real rendering:
+     genuine horizontal overflow at 390px width (scrollWidth 408-414px
+     vs 390px client width), traced directly to these six selectors
+     via getBoundingClientRect(). Matching their specificity here so
+     this real override can actually take effect on narrow viewports. */
+  .v41-whisper, .v41-whisper.history, .v41-whisper.market, .v41-whisper.organic, .v41-whisper.paid, .v41-whisper.local, .v41-whisper.store{
     position:relative!important;left:auto!important;right:auto!important;top:auto!important;bottom:auto!important;
     width:auto!important;min-width:0!important;max-width:none!important;
   }

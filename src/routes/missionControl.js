@@ -94,6 +94,7 @@ async function assembleSharedIntelligence(supabase, locationId) {
     { data: dataQuality },
     { data: priorityItems },
     { data: realOutcomes },
+    { data: vantageQuestions },
   ] = await Promise.all([
     supabaseService.rpc('get_business_model_context', { p_location_id: locationId }),
     supabaseService.rpc('build_business_state', { p_location_id: locationId }),
@@ -119,6 +120,7 @@ async function assembleSharedIntelligence(supabase, locationId) {
     supabaseService.rpc('check_data_quality', { p_location_id: locationId }),
     supabaseService.rpc('get_priority_items', { p_location_id: locationId }),
     supabase.from('outcome_observations').select('observation_date, walk_ins, transactions, revenue, primary_category, source').eq('location_id', locationId).order('observation_date', { ascending: false }).limit(30),
+    supabase.from('vantage_questions').select('question, why_asked, evidence, answer, answer_date, status').eq('location_id', locationId).order('created_at', { ascending: false }).limit(10),
   ]);
 
   // Real conditional weather - shared by both callers so the page
@@ -129,7 +131,7 @@ async function assembleSharedIntelligence(supabase, locationId) {
     businessModel, businessState, keywordFocus, vantageState, sourceCoverage,
     v44Points, v44Territory, supportMode, deepIntelligence, whatsNext,
     territoryEvidence, weatherEvidence, topPosts, opportunities, conversionDetail, signalProfile, businessExpectation,
-    whatChanged, recommendationTrackRecord, sourceInventory, contradictions, dataQuality, priorityItems, realOutcomes,
+    whatChanged, recommendationTrackRecord, sourceInventory, contradictions, dataQuality, priorityItems, realOutcomes, vantageQuestions,
   };
 }
 
@@ -171,7 +173,7 @@ async function buildTenantChatContext(supabase, locationId) {
   ]);
 
   const shared = await assembleSharedIntelligence(supabase, locationId);
-  const { businessModel, businessState, keywordFocus, vantageState, sourceCoverage, v44Points, v44Territory, supportMode, deepIntelligence, whatsNext, territoryEvidence, weatherEvidence, topPosts, opportunities, conversionDetail, signalProfile, businessExpectation, whatChanged, recommendationTrackRecord, sourceInventory, contradictions, dataQuality, priorityItems, realOutcomes } = shared;
+  const { businessModel, businessState, keywordFocus, vantageState, sourceCoverage, v44Points, v44Territory, supportMode, deepIntelligence, whatsNext, territoryEvidence, weatherEvidence, topPosts, opportunities, conversionDetail, signalProfile, businessExpectation, whatChanged, recommendationTrackRecord, sourceInventory, contradictions, dataQuality, priorityItems, realOutcomes, vantageQuestions } = shared;
 
   // Real fix for the confirmed Phase 1 gap: recommendation_verdicts
   // reached chat as raw rows, but the derived TRUE lifecycle stage
