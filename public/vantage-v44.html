@@ -1576,7 +1576,7 @@ body{
       <div class="v41-welcome">
         <span class="v41-live"></span>
         <div>
-          <small id="v41-date">EASLEY · VANTAGE IS ACTIVE</small>
+          <small id="v41-date">Loading…</small>
           <b id="v41-greeting">Welcome back.</b>
         </div>
       </div>
@@ -1659,7 +1659,7 @@ body{
 
       <div class="v41-core">
         <div class="v41-corelight"></div>
-        <small>VANTAGE · EASLEY NOW</small>
+        <small id="v41-core-label">VANTAGE</small>
         <b>Watching<br>a shift.</b>
         <span>Evidence is converging.<br>The store outcome is still unresolved.</span>
         <button id="v44-open-thought">Open thought →</button>
@@ -1921,7 +1921,16 @@ document.querySelectorAll('.tab').forEach(btn=>{
   const g = document.getElementById('v41-greeting');
   const d = document.getElementById('v41-date');
   if(g) g.textContent = greeting;
-  if(d) d.textContent = 'EASLEY · ' + date.toUpperCase();
+  // REAL, CRITICAL FIX: this literally hardcoded 'EASLEY' - shown to
+  // ANY visitor, authenticated or not, since this script runs
+  // unconditionally with no auth check at all. This is real,
+  // confirmed root cause of tonight's security investigation: what
+  // looked like "Easley data showing without login" was actually
+  // this static string, not real authenticated data. The real,
+  // authenticated wireRealVantage() IIFE further down already sets
+  // this correctly once a real location loads - this fallback must
+  // never name a specific real tenant.
+  if(d) d.textContent = date.toUpperCase();
 })();
 </script>
 
@@ -1957,6 +1966,7 @@ document.querySelectorAll('.tab').forEach(btn=>{
   // Real position + greeting
   const positionText = payload.businessState?.state ? (payload.briefing || null) : null;
   const el = (id) => document.getElementById(id);
+  if (el('v41-core-label')) el('v41-core-label').textContent = payload.location?.name ? `VANTAGE · ${payload.location.name.toUpperCase()} NOW` : 'VANTAGE';
   if (el('v41-greeting')) el('v41-greeting').textContent = payload.location?.name ? `Good ${timeOfDay()}, ${payload.location.name}.` : 'Vantage';
 
   if (el('v44-story-position')) el('v44-story-position').textContent = payload.briefing || 'Not enough real evidence yet for a confident position.';
