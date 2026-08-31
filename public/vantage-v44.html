@@ -1565,7 +1565,7 @@ body{
 
 </head>
 <body><div class="page">
-<div class="top"><div class="brand">ORB GLOBAL <span>VANTAGE</span></div><div class="muted">Business decision intelligence · concept v8</div></div>
+<div class="top"><div class="brand">ORB GLOBAL <span>VANTAGE</span></div><div class="muted">Business decision intelligence</div></div>
 
 
 
@@ -1665,6 +1665,7 @@ body{
         <button id="v44-open-thought">Open thought →</button>
       </div>
     </div>
+    <div id="v44-radar-drawer" style="display:none; margin-top:16px; padding:18px; border:1px solid rgba(37,43,49,.12); border-radius:14px; background:rgba(255,255,255,.55); font-size:14px; line-height:1.6;"></div>
   </div>
 
   <div class="v41-bottom">
@@ -2360,6 +2361,46 @@ document.querySelectorAll('.tab').forEach(btn=>{
     document.getElementById('v44-deep-intelligence')?.closest('details')?.setAttribute('open', '');
     document.getElementById('v44-deep-intelligence')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
   });
+
+  // Real, single, reusable evidence drawer for all six radar signals -
+  // one drawer element, populated per-signal, never six separate
+  // panels. Each signal pulls from real payload data already fetched;
+  // honest "not enough evidence" fallback if that specific field is
+  // genuinely missing or empty - never fabricated content.
+  const radarDrawer = el('v44-radar-drawer');
+  function showRadarDrawer(title, bodyHtml) {
+    if (!radarDrawer) return;
+    radarDrawer.innerHTML = `<div style="font-family:'Fraunces',serif; font-size:15px; margin-bottom:8px;">${title}</div><div style="color:#4a555d;">${bodyHtml}</div>`;
+    radarDrawer.style.display = 'block';
+  }
+  const radarSignalHandlers = {
+    history: () => showRadarDrawer('History', payload.territoryEvidence ? `Real, historical baseline evidence is on file for this account.` : 'Not enough real historical evidence yet to say more.'),
+    market: () => {
+      const count = (payload.competitors || []).length;
+      showRadarDrawer('Market', count ? `Tracking ${count} real, verified competitor${count === 1 ? '' : 's'} for this account.` : 'No real competitors currently on file.');
+    },
+    paid: () => {
+      const rows = payload.conversionDetail || [];
+      showRadarDrawer('Paid', rows.length ? `Real conversion data on file across ${rows.length} channel/period combination${rows.length === 1 ? '' : 's'}.` : 'No real paid conversion detail connected yet.');
+    },
+    organic: () => {
+      const posts = payload.topPosts || [];
+      showRadarDrawer('Organic', posts.length ? `Top real post: "${(posts[0].caption || '').slice(0, 80)}${(posts[0].caption || '').length > 80 ? '…' : ''}" - ${posts[0].clicks || 0} real clicks.` : 'No real organic post data connected yet.');
+    },
+    local: () => {
+      const sources = (payload.sourceInventory?.sources || []).find((s) => s.source === 'Google Business Profile');
+      showRadarDrawer('Local', sources ? `Google Business Profile: ${sources.connected ? 'real, connected' : 'not connected'}${sources.dataThrough ? `, data through ${sources.dataThrough}` : ''}.` : 'Local visibility source status not available.');
+    },
+    store: () => {
+      const outcomes = payload.realOutcomes || [];
+      showRadarDrawer('Store', outcomes.length ? `${outcomes.length} real store outcome record${outcomes.length === 1 ? '' : 's'} on file.` : 'No real store outcome data connected yet - store-level results cannot be verified against digital signals until this is connected.');
+    },
+  };
+  document.querySelectorAll('.v41-whisper').forEach((btn) => {
+    const variant = ['history', 'market', 'paid', 'organic', 'local', 'store'].find((v) => btn.classList.contains(v));
+    if (variant && radarSignalHandlers[variant]) btn.addEventListener('click', radarSignalHandlers[variant]);
+  });
+
   const whyThinksBtn = el('v44-why-thinks');
   if (whyThinksBtn) whyThinksBtn.addEventListener('click', () => {
     const deep = payload.deepIntelligence;
