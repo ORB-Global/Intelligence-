@@ -1959,12 +1959,12 @@ document.querySelectorAll('.tab').forEach(btn=>{
   });
 
   client.auth.onAuthStateChange((event) => {
-    if (event === 'SIGNED_OUT') window.location.href = '/login.html';
+    if (event === 'SIGNED_OUT') window.location.href = '/login.html?next=' + encodeURIComponent(window.location.pathname + window.location.search);
   });
 
   async function apiFetch(path, options = {}, timeoutMs = 15000) {
     const { data } = await client.auth.getSession();
-    if (!data.session) { window.location.href = '/login.html'; throw new Error('No session'); }
+    if (!data.session) { window.location.href = '/login.html?next=' + encodeURIComponent(window.location.pathname + window.location.search); throw new Error('No session'); }
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
     let res;
@@ -1980,14 +1980,14 @@ document.querySelectorAll('.tab').forEach(btn=>{
     } finally {
       clearTimeout(timeoutId);
     }
-    if (res.status === 401) { window.location.href = '/login.html'; throw new Error('Session expired'); }
+    if (res.status === 401) { window.location.href = '/login.html?next=' + encodeURIComponent(window.location.pathname + window.location.search); throw new Error('Session expired'); }
     const body = await res.json();
     if (!res.ok || !body.success) throw Object.assign(new Error(body.error?.message || `HTTP ${res.status}`), { status: res.status });
     return body.data;
   }
 
   const { data: gateCheck } = await client.auth.getSession();
-  if (!gateCheck.session) { window.location.href = '/login.html'; return; }
+  if (!gateCheck.session) { window.location.href = '/login.html?next=' + encodeURIComponent(window.location.pathname + window.location.search); return; }
   const initialSession = gateCheck.session;
 
   const params = new URLSearchParams(window.location.search);

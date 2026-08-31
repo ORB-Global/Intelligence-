@@ -45,8 +45,23 @@
   const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { auth: { persistSession: true, autoRefreshToken: true } });
 
   client.auth.getSession().then(({ data }) => {
-    if (data.session) window.location.href = '/mission-control.html';
+    if (data.session) window.location.href = getRealRedirectDestination();
   });
+
+  // Real, safe addition: remembers which real page sent someone here
+  // (e.g. Vantage redirecting an unauthenticated visitor) so a
+  // successful login returns them there, instead of always landing on
+  // Mission Control regardless of where they actually wanted to go.
+  // Falls back to the existing, proven default if no real ?next=
+  // value is present, so nothing about the current, working behavior
+  // changes for anyone reaching this page any other way.
+  function getRealRedirectDestination() {
+    const params = new URLSearchParams(window.location.search);
+    const next = params.get('next');
+    // Only ever redirect to a real, local page - never an external URL.
+    if (next && next.startsWith('/') && !next.startsWith('//')) return next;
+    return '/mission-control.html';
+  }
 
   // Resolves a client-facing account name ("Easley") to its real
   // internal email via the server (which never exposes the email
@@ -93,7 +108,7 @@
       btn.textContent = 'Sign In';
       return;
     }
-    window.location.href = '/mission-control.html';
+    window.location.href = getRealRedirectDestination();
   });
 
   document.getElementById('resetBtn').addEventListener('click', async () => {
