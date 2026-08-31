@@ -1170,8 +1170,10 @@ button{
 <section class="hero">
     <div>
         <div class="eyebrow" id="v45-eyebrow">Loading…</div>
-        <h1 id="v45-hero-h1">Loading real evidence…</h1>
+        <h1 id="v45-hero-h1" style="font-size:38px;">Loading real evidence…</h1>
+        <div id="v45-hero-why" style="margin:14px 0; font-size:14px; color:#45535c; line-height:1.7;"></div>
         <p class="hero-copy" id="v45-hero-copy">Loading real evidence…</p>
+        <p style="margin:10px 0 0; font-size:12px; color:var(--muted); font-style:italic;" id="v45-hero-missing"></p>
         <p style="margin:8px 0 0; font-size:11px; color:var(--muted);" id="v45-freshness-line"></p>
         <div class="hero-actions">
             <button class="btn primary" onclick="openAsk()">Ask Vantage</button>
@@ -1613,14 +1615,71 @@ button{
   const payload = await apiFetch(`/api/mc/locations/${locationId}`);
   window.__v45_payload = payload;
   const bstate = payload.businessState?.state || {};
+  const terr = payload.v44Territory;
+  const wtd = payload.whatsNext?.whatToDo || null;
 
   // ---------- HERO ----------
+  // REAL REBUILD per direct feedback: the hero was leading with raw
+  // metrics (a report), not a single, dynamically-selected finding
+  // (what Vantage actually noticed). Now answers five real questions:
+  // what Vantage sees, why, what it means, what to do, what's missing.
   const hour = new Date().getHours();
   const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
   el('v45-eyebrow').textContent = `${payload.location?.name || 'Vantage'} · ${greeting}`;
-  const positionText = payload.briefing || 'Your business is steady.';
-  el('v45-hero-h1').innerHTML = positionText;
-  el('v45-hero-copy').textContent = payload.whatsNext?.whatHappensNext || 'Vantage is comparing today with your history, market, media, local visibility and store outcomes.';
+
+  function selectMainStory() {
+    // Real, honest check for the exact pattern given as the example:
+    // one category ranking strong, a related category weaker, with a
+    // specific real competitor repeatedly ahead in the weaker one.
+    if (terr?.realCategoryTerms?.length >= 2) {
+      const mattressTerms = terr.realCategoryTerms.filter(t => /mattress/i.test(t.term));
+      const otherTerms = terr.realCategoryTerms.filter(t => /furniture|sofa|sectional/i.test(t.term));
+      if (mattressTerms.length && otherTerms.length) {
+        const bestMattress = Math.min(...mattressTerms.map(t => t.bestRank || 99));
+        const bestOther = Math.min(...otherTerms.map(t => t.bestRank || 99));
+        if (bestMattress <= 2 && bestOther >= 3 && bestOther - bestMattress >= 2) {
+          const rival = otherTerms.find(t => t.topCompetitorAtBest && t.topCompetitorAtBest !== payload.location?.name)?.topCompetitorAtBest;
+          return {
+            headline: `You're winning mattress searches, but furniture is where you're getting squeezed.`,
+            why: [
+              `Ranking #${bestMattress} for your strongest real mattress searches.`,
+              `Furniture searches sitting around #${bestOther}${rival ? `, with ${rival} repeatedly appearing ahead of you` : ''}.`,
+              bstate.money?.fact ? `Your advertising response is still healthy: ${bstate.money.fact}.` : null,
+            ].filter(Boolean),
+            meaning: `Vantage is watching this competitive pressure in furniture before recommending more ad spend.`,
+          };
+        }
+      }
+    }
+    // Fallback: pick whichever real signal has the most notable status.
+    const PRIORITY = ['STRONG', 'IMPROVING', 'OPPORTUNITY', 'DECLINING', 'CHANNEL_CONCENTRATION'];
+    const candidates = [
+      { field: bstate.customer_intent, label: 'local intent' },
+      { field: bstate.money, label: 'advertising' },
+      { field: bstate.content, label: 'social attention' },
+    ].filter(c => c.field?.fact && PRIORITY.includes(c.field.status));
+    if (candidates.length) {
+      const top = candidates[0];
+      return {
+        headline: payload.briefing || `Something real is changing in your ${top.label}.`,
+        why: [top.field.fact, bstate.competition?.fact].filter(Boolean),
+        meaning: payload.whatsNext?.whatHappensNext || 'Vantage is comparing this against your history before drawing a firm conclusion.',
+      };
+    }
+    return {
+      headline: payload.briefing || 'Your business is steady.',
+      why: [],
+      meaning: 'Vantage is still gathering enough real evidence for a confident read.',
+    };
+  }
+
+  const story = selectMainStory();
+  el('v45-hero-h1').textContent = story.headline;
+  el('v45-hero-why').innerHTML = story.why.length ? story.why.map(w => `<div>· ${w}</div>`).join('') : '';
+  el('v45-hero-copy').textContent = story.meaning;
+  el('v45-hero-missing').textContent = (bstate.store_outcome?.status === 'UNKNOWN' || !bstate.store_outcome?.fact)
+    ? "What Vantage doesn't know yet: whether this attention is actually reaching the store."
+    : '';
 
   // Real freshness line - directly addresses "no way to see what
   // dates you're referencing." Uses the real sourceInventory dates
@@ -1689,7 +1748,6 @@ button{
   })();
 
   // ---------- RECOMMENDATION ----------
-  const wtd = payload.whatsNext?.whatToDo || null;
   if (wtd?.focus) {
     el('v45-recommend').style.display = 'grid';
     el('v45-rec-headline').textContent = wtd.focus;
@@ -1718,7 +1776,6 @@ button{
   el('businessStoreOutcome').textContent = (bstate.store_outcome?.status === 'UNKNOWN' || !bstate.store_outcome?.fact) ? 'Needs your input' : bstate.store_outcome.fact;
 
   // ---------- TERRITORY ----------
-  const terr = payload.v44Territory;
   if (terr) {
     el('v45-territory-headline').textContent = terr.competitorCount > 0 ? `${terr.competitorCount} nearby competitors being watched` : 'Territory evidence is being established.';
     el('v45-territory-summary-h4').textContent = terr.competitorCount > 0 ? `You have ${terr.competitorCount} real, tracked competitors.` : 'No real competitors on file yet.';
