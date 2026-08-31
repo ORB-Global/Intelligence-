@@ -197,6 +197,7 @@ button{
     transform:translate(-50%,-50%);
     border:1px solid rgba(87,110,123,.20);
     border-radius:50%;
+    animation:v45breathe 6s ease-in-out infinite;
 }
 
 .ring:before,
@@ -220,6 +221,22 @@ button{
     height:120px;
 }
 
+@keyframes v45breathe{
+    0%,100%{ transform:translate(-50%,-50%) scale(1); }
+    50%{ transform:translate(-50%,-50%) scale(1.035); }
+}
+
+@keyframes v45centerglow{
+    0%,100%{ box-shadow:0 14px 32px rgba(20,32,39,.09); }
+    50%{ box-shadow:0 14px 40px rgba(116,139,152,.22); }
+}
+
+@keyframes v45livedot{
+    0%{ box-shadow:0 0 0 0 rgba(116,139,152,.45); }
+    70%{ box-shadow:0 0 0 6px rgba(116,139,152,0); }
+    100%{ box-shadow:0 0 0 0 rgba(116,139,152,0); }
+}
+
 .shift-center{
     position:absolute;
     left:50%;
@@ -238,6 +255,7 @@ button{
     box-shadow:0 14px 32px rgba(20,32,39,.09);
     z-index:10;
     cursor:pointer;
+    animation:v45centerglow 4s ease-in-out infinite;
 }
 
 .shift-center small{
@@ -273,6 +291,24 @@ button{
     z-index:5;
     cursor:pointer;
 }
+
+.signal:before{
+    content:"";
+    position:absolute;
+    top:9px;
+    right:10px;
+    width:5px;
+    height:5px;
+    border-radius:50%;
+    background:var(--accent);
+    animation:v45livedot 2.6s ease-out infinite;
+}
+
+.signal:nth-of-type(2):before{ animation-delay:.4s; }
+.signal:nth-of-type(3):before{ animation-delay:.8s; }
+.signal:nth-of-type(4):before{ animation-delay:1.2s; }
+.signal:nth-of-type(5):before{ animation-delay:1.6s; }
+.signal:nth-of-type(6):before{ animation-delay:2s; }
 
 .signal small{
     display:block;
@@ -1647,11 +1683,24 @@ button{
   }
 
   // ---------- YOUR BUSINESS ----------
-  el('v45-biz-advertising').textContent = bstate.money?.fact ? bstate.money.fact.split(',')[0] : 'No real data yet';
+  // REAL FIX: was repeating the same narrative sentence already shown
+  // in What Matters Today. Now shows a genuinely different lens - the
+  // real status/trend at a glance, not the story. What Matters Today
+  // tells the story; this is the quick reference.
+  const STATUS_LABELS = {
+    STRONG: 'Strong', IMPROVING: 'Improving', OPPORTUNITY: 'Worth watching',
+    WEAK: 'Weak', DECLINING: 'Declining', UNKNOWN: 'Not enough data yet',
+    INCOMPLETE_EVIDENCE: 'Building evidence', NO_BUDGET_SET: 'No budget set',
+  };
+  function bizStatus(field) { return field?.status ? (STATUS_LABELS[field.status] || field.status) : 'No real data yet'; }
+  el('v45-biz-advertising').textContent = bizStatus(bstate.money);
   el('v45-biz-advertising-p').textContent = bstate.money?.fact || '';
-  el('v45-biz-social').textContent = bstate.content?.fact || 'No real data yet';
-  el('v45-biz-local').textContent = bstate.customer_intent?.fact || 'No real data yet';
-  el('v45-biz-competition').textContent = bstate.competition?.fact || 'No real data yet';
+  el('v45-biz-social').textContent = bizStatus(bstate.content);
+  el('v45-biz-social-p').textContent = bstate.content?.fact || '';
+  el('v45-biz-local').textContent = bizStatus(bstate.customer_intent);
+  el('v45-biz-local-p').textContent = bstate.customer_intent?.fact || '';
+  el('v45-biz-competition').textContent = payload.v44Territory?.competitorCount ? `${payload.v44Territory.competitorCount} tracked` : bizStatus(bstate.competition);
+  el('v45-biz-competition-p').textContent = bstate.competition?.fact || '';
   el('businessStoreOutcome').textContent = (bstate.store_outcome?.status === 'UNKNOWN' || !bstate.store_outcome?.fact) ? 'Needs your input' : bstate.store_outcome.fact;
 
   // ---------- TERRITORY ----------
@@ -1702,10 +1751,20 @@ button{
     const hasRealBeliefs = (deep.businessMemory?.realActiveBeliefs || 0) > 0;
     const hasRealCoverage = deep.sourceCoverage?.byChannel?.length > 0;
 
+    // REAL FIX: was just restating facts already shown in the hero
+    // and Your Business - the exact "just repeats what's already
+    // there" complaint. Now shows genuinely different content: the
+    // real relationships between signals (why they connect), plus
+    // real evidence-quality context, neither of which appears
+    // anywhere else on the page.
     const overview = [];
-    if (bstate.money?.fact) overview.push({ small: 'Current belief', strong: bstate.money.fact });
-    if (bstate.competition?.fact) overview.push({ small: 'Market', strong: bstate.competition.fact });
-    if (bstate.store_outcome?.status === 'UNKNOWN') overview.push({ small: 'Biggest unanswered question', strong: 'What is happening after customer interest?' });
+    const relationships = payload.businessState?.relationships || [];
+    const FRIENDLY_LABELS = { money: 'Advertising', customer_intent: 'Local intent', store_outcome: 'Store outcome', reputation: 'Reputation', competition: 'Competition', top_ad: 'Best-performing ad', content: 'Social', territory_furniture: 'Furniture ranking', territory_mattress: 'Mattress ranking' };
+    relationships.slice(0, 3).forEach((r) => {
+      overview.push({ small: r.connects.map(c => FRIENDLY_LABELS[c] || c).join(' + '), strong: r.because });
+    });
+    if (bstate.store_outcome?.status === 'UNKNOWN') overview.push({ small: 'Biggest real unknown', strong: 'Store outcomes are not yet connected - Vantage cannot confirm whether any of these signals are translating into real sales.' });
+    if (!overview.length && bstate.money?.fact) overview.push({ small: 'Current belief', strong: bstate.money.fact });
     el('v45-deep-overview-grid').innerHTML = overview.length ? overview.map((o) => `<div class="deep-block"><small>${o.small}</small><strong>${o.strong}</strong></div>`).join('') : '<div class="deep-block"><small>Status</small><strong>Deep Intelligence will populate here as more real evidence accumulates.</strong></div>';
 
     const perf = [];
