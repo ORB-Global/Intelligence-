@@ -340,11 +340,11 @@ button{
 .signal.weather:after{left:-43px;bottom:3px;transform:rotate(-18deg);}
 .signal.search{bottom:18px;right:20px;}
 .signal.search:after{left:-43px;top:-10px;transform:rotate(28deg);}
-.signal.local{bottom:0;left:78px;}
+.signal.local{bottom:-14px;left:78px;}
 .signal.local:after{right:-39px;top:-14px;transform:rotate(-42deg);}
 .signal.competition{top:135px;left:0;}
 .signal.competition:after{right:-47px;top:16px;}
-.signal.store{top:216px;left:24px;}
+.signal.store{top:218px;left:10px;}
 .signal.store:after{right:-44px;top:-5px;transform:rotate(-26deg);}
 
 .matters{
@@ -1635,13 +1635,27 @@ button{
   })();
 
   // ---------- RADAR SIGNALS ----------
-  if (el('v45-sig-ad')) el('v45-sig-ad').querySelector('strong').textContent = bstate.money?.fact || 'No real data yet';
-  if (el('v45-sig-search')) el('v45-sig-search').querySelector('strong').textContent = bstate.territory_mattress?.fact || bstate.territory_furniture?.fact || 'Not yet established';
-  if (el('v45-sig-local')) el('v45-sig-local').querySelector('strong').textContent = bstate.customer_intent?.fact || 'No real data yet';
-  if (el('v45-sig-competition')) el('v45-sig-competition').querySelector('strong').textContent = bstate.competition?.fact || 'No real data yet';
-  if (el('v45-sig-store')) el('storeSignal').textContent = bstate.store_outcome?.status === 'UNKNOWN' || !bstate.store_outcome?.fact ? 'Waiting on you' : bstate.store_outcome.fact;
+  // REAL FIX: was showing full, long real sentences in small,
+  // fixed-position boxes - with genuinely long real data (e.g. "Direction
+  // requests +90.7%, 28 real calls, 400 website clicks") this caused
+  // real, confirmed layout collisions between adjacent signals
+  // (screenshot showed "Store Reality" literally overlapping "Local
+  // Intent", text cut off). Now shows a short, real snippet in the
+  // radar itself - full detail lives one click away via the existing
+  // scroll-to-section wiring, which was always the real intent.
+  function shortSignal(fact, maxLen) {
+    if (!fact) return null;
+    const firstClause = fact.split(',')[0].split(' - ')[0].trim();
+    if (firstClause.length <= maxLen) return firstClause;
+    return firstClause.slice(0, maxLen - 1).trim() + '…';
+  }
+  if (el('v45-sig-ad')) el('v45-sig-ad').querySelector('strong').textContent = shortSignal(bstate.money?.fact, 30) || 'No real data yet';
+  if (el('v45-sig-search')) el('v45-sig-search').querySelector('strong').textContent = shortSignal(bstate.territory_mattress?.fact || bstate.territory_furniture?.fact, 30) || 'Not yet established';
+  if (el('v45-sig-local')) el('v45-sig-local').querySelector('strong').textContent = shortSignal(bstate.customer_intent?.fact, 30) || 'No real data yet';
+  if (el('v45-sig-competition')) el('v45-sig-competition').querySelector('strong').textContent = shortSignal(bstate.competition?.fact, 30) || 'No real data yet';
+  if (el('v45-sig-store')) el('storeSignal').textContent = bstate.store_outcome?.status === 'UNKNOWN' || !bstate.store_outcome?.fact ? 'Waiting on you' : shortSignal(bstate.store_outcome.fact, 30);
   const weatherRows = payload.weatherEvidence;
-  if (el('v45-sig-weather')) el('v45-sig-weather').querySelector('strong').textContent = (weatherRows && weatherRows.length) ? `${weatherRows[0].conditions || 'Real forecast'}, ${Math.round(weatherRows[0].temp_high_f || 0)}°F` : 'No real weather source connected';
+  if (el('v45-sig-weather')) el('v45-sig-weather').querySelector('strong').textContent = (weatherRows && weatherRows.length) ? `${weatherRows[0].conditions || 'Real forecast'}, ${Math.round(weatherRows[0].temp_high_f || 0)}°F` : 'Not connected';
 
   // ---------- SHIFT CENTER (belief) ----------
   el('v45-shift-headline').textContent = payload.whatsNext?.whatHappensNext ? 'Watching a shift.' : 'Gathering evidence.';
