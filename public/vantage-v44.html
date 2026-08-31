@@ -1836,27 +1836,58 @@ button{
     el('v45-create-needs-input').style.display = 'none';
   };
   window.closeCreate = function() { document.getElementById('createBackdrop').classList.remove('open'); };
+  let currentJobId = null;
   window.generateCreative = async function() {
-    el('v45-create-submit').textContent = 'Assembling…';
+    el('v45-create-submit').textContent = 'Creating…';
+    const userPrompt = el('createPrompt').value.trim();
     try {
-      const result = await apiFetch(`/api/mc/locations/${locationId}/creative-brief`);
-      if (result.needsInput) {
-        el('v45-create-needs-input').style.display = 'block';
-        el('v45-generated-headline').textContent = result.headline;
-        el('generatedCreative').classList.add('visible');
-        el('v45-generated-grid').innerHTML = '';
-        el('v45-generated-gaps').textContent = 'Describe what you would like to promote above, then submit again.';
-      } else {
-        el('generatedCreative').classList.add('visible');
-        el('v45-generated-headline').textContent = result.headline;
-        el('v45-generated-grid').innerHTML = (result.evidence || []).map(e => `<div class="generated-card full"><small>Evidence</small><p>${e}</p></div>`).join('');
-        el('v45-generated-gaps').innerHTML = `<small>What Vantage doesn't know</small><p>${result.honestGaps}</p>`;
-      }
+      const job = await apiFetch(`/api/mc/locations/${locationId}/create`, {
+        method: 'POST',
+        body: JSON.stringify({
+          sourceType: wtd?.focus ? 'recommendation' : 'manual',
+          requestType: 'ad_copy',
+          prompt: userPrompt || undefined,
+        }),
+      });
+      currentJobId = job.id;
+      el('generatedCreative').classList.add('visible');
+      el('v45-create-needs-input').style.display = 'none';
+      el('v45-generated-headline').textContent = job.headline || 'Vantage created a concept.';
+      el('v45-generated-grid').innerHTML = [
+        job.rationale ? { small: 'Why Vantage created this', body: job.rationale } : null,
+        job.facebook_copy ? { small: 'Facebook copy', body: job.facebook_copy } : null,
+        job.instagram_copy ? { small: 'Instagram copy', body: job.instagram_copy } : null,
+        job.gbp_copy ? { small: 'Google Business Profile copy', body: job.gbp_copy } : null,
+        job.cta ? { small: 'Suggested CTA', body: job.cta } : null,
+        job.creative_direction ? { small: 'Suggested creative direction', body: job.creative_direction } : null,
+      ].filter(Boolean).map(c => `<div class="generated-card full"><small>${c.small}</small><p>${c.body}</p></div>`).join('');
+      el('v45-generated-gaps').innerHTML = `
+        <div class="creation-footer">
+          <div><button class="btn" onclick="generateCreative()">Regenerate</button></div>
+          <div>
+            <button class="btn" onclick="approveCreative()">Approve</button>
+            <button class="btn primary" onclick="sendToOrb()">Send to Orb →</button>
+          </div>
+        </div>`;
     } catch (e) {
-      alert('Could not assemble a brief: ' + e.message);
+      alert('Could not create with Vantage: ' + e.message);
     } finally {
       el('v45-create-submit').textContent = 'Create with Vantage →';
     }
+  };
+  window.approveCreative = async function() {
+    if (!currentJobId) return;
+    try {
+      await apiFetch(`/api/mc/creative-jobs/${currentJobId}/approve`, { method: 'POST' });
+      alert('Real, saved: this creative is now approved.');
+    } catch (e) { alert('Could not approve: ' + e.message); }
+  };
+  window.sendToOrb = async function() {
+    if (!currentJobId) return;
+    try {
+      await apiFetch(`/api/mc/creative-jobs/${currentJobId}/send-to-orb`, { method: 'POST' });
+      alert('Real, sent: Orb has been notified to review this creative.');
+    } catch (e) { alert('Could not send to Orb: ' + e.message); }
   };
 
   // ---------- DEEP INTELLIGENCE TABS ----------
