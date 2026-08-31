@@ -1566,6 +1566,28 @@ body{
 @media(max-width:900px){.v44-dohead{display:block}.v44-dohead p{text-align:left}.v44-found,.v44-creategrid{grid-template-columns:1fr}}
 </style>
 
+<style id="v44-contrast-boost">
+/* REAL, TARGETED CONTRAST FIX - addresses the direct "washed out
+   gray-on-gray-on-gray" complaint. Added last so it safely wins the
+   cascade without needing to touch dozens of existing hardcoded
+   color declarations throughout the file. */
+body{color:#2a333b!important;}
+.v30-door, #v44-your-business .v44-yb-card, #v44-territory-compact, #v44-goal-compact,
+#v44-recommends, .v34-card, .v37-box, .v36-entry, .v36-import{
+  background:rgba(255,255,255,.62)!important;
+  border-color:rgba(37,43,49,.16)!important;
+}
+.v30-door:hover{background:rgba(255,255,255,.8)!important;}
+.v30-door h3{color:#1f2731!important;}
+#v44-matters-today > div{background:rgba(255,255,255,.6)!important;border-color:rgba(37,43,49,.14)!important;}
+#v44-recommends{border-color:rgba(176,138,70,.32)!important;background:linear-gradient(135deg,rgba(255,255,255,.75),rgba(255,255,255,.45))!important;}
+#v44-rec-primary{color:#1f2731!important;}
+#v44-goal-submit, #v44-store-submit, #v44-local-reality-submit, #v44-show-submit{
+  background:#2f3b44!important;color:#fff!important;border-color:#2f3b44!important;
+}
+#v44-logout{background:rgba(255,255,255,.5)!important;}
+</style>
+
 </head>
 <body><div class="page">
 <div class="top"><div><div class="brand">ORB GLOBAL <span>VANTAGE</span></div><div class="muted">Business decision intelligence</div></div><button id="v44-logout" style="background:transparent; border:1px solid rgba(37,43,49,.18); border-radius:8px; padding:6px 14px; font-size:12px; letter-spacing:normal; text-transform:none; color:#5a656d; cursor:pointer; align-self:flex-start;">Log out</button></div>
