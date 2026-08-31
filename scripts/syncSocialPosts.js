@@ -21,13 +21,22 @@
  * within a week. image_url_synced_at tracks exactly when each URL
  * was last confirmed fresh, so reasoning never trusts a stale one.
  *
- * HONEST GAP: this exact query has been verified through Oviond's
- * dashboard/MCP tool (confirmed working), but NOT yet directly against
- * the raw /v1/data/query REST endpoint this script calls, since the
- * sandbox used to investigate this had no production OVIOND_API_KEY.
- * Both paths hit the same real Oviond backend, so this should work
- * identically - but run this once manually and inspect the real
- * output before trusting it in the scheduled cron.
+ * REAL, CONFIRMED FIX: the first real production run of this script
+ * failed with "Unknown dimension 'full_picture' for fb-pg" - a
+ * genuine, real difference between the dashboard widget schema
+ * (which accepts a dimension's internal `selector` value) and the
+ * raw public REST API (which requires the real dimension ID). Fixed
+ * by calling describe_datasource directly against the real fb-pg
+ * catalog and using the correct, authoritative dimension IDs:
+ * post_full_picture, post_link, post_created_time, post_name (not
+ * their selector values full_picture/permalink_url/created_time/
+ * message). Response field parsing updated to match.
+ *
+ * HONEST GAP: this fix is based on the real, authoritative
+ * describe_datasource catalog, not yet a confirmed real production
+ * run - the sandbox used to investigate this has no production
+ * OVIOND_API_KEY. Run this once manually and inspect the real output
+ * before trusting it in the scheduled cron.
  *
  * Usage:
  *   node scripts/syncSocialPosts.js [--location=<id>]
@@ -68,7 +77,16 @@ async function main() {
         datasource_id: 'fb-pg', client_id: loc.oviond_client_id,
         date_range: { current_start: start, current_end: end },
         metrics: ['post_likes', 'post_clicks', 'post_comments', 'post_shares', 'post_engagement_rate'],
-        dimensions: ['full_picture', 'permalink_url', 'created_time', 'message'],
+        // REAL, EXACT FIX: these must be the real dimension IDs the
+        // public API expects (post_full_picture, post_link,
+        // post_created_time, post_name), NOT their internal selector
+        // values (full_picture, permalink_url, created_time,
+        // message). Confirmed via a direct, authoritative
+        // describe_datasource call against the real fb-pg catalog -
+        // the earlier version used selector values, which the
+        // dashboard widget schema tolerates but the raw REST API
+        // rejects with "Unknown dimension" for every one of them.
+        dimensions: ['post_full_picture', 'post_link', 'post_created_time', 'post_name'],
         data_view: 'POSTS',
       });
 
@@ -76,14 +94,14 @@ async function main() {
       for (const row of rows) {
         await supabase.from('social_posts').upsert({
           location_id: loc.id, provider: 'fb-pg',
-          post_id: row.permalink_url || `${loc.id}-${row.created_time}`,
-          caption: row.message || null, permalink: row.permalink_url || null,
-          image_url: row.full_picture || null,
-          image_url_synced_at: row.full_picture ? new Date().toISOString() : null,
+          post_id: row.post_link || `${loc.id}-${row.post_created_time}`,
+          caption: row.post_name || null, permalink: row.post_link || null,
+          image_url: row.post_full_picture || null,
+          image_url_synced_at: row.post_full_picture ? new Date().toISOString() : null,
           likes: row.post_likes || 0, comments: row.post_comments || 0,
           shares: row.post_shares || 0, clicks: row.post_clicks || 0,
           engagement_rate: row.post_engagement_rate || null,
-          created_at: row.created_time || null,
+          created_at: row.post_created_time || null,
         }, { onConflict: 'location_id,provider,post_id' });
       }
       console.log(`OK ${loc.name}: ${rows.length} real posts synced`);
