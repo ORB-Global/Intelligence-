@@ -2170,16 +2170,23 @@ document.querySelectorAll('.tab').forEach(btn=>{
   if (invSection && invList && realInvestigations.length) {
     invSection.style.display = 'block';
     invList.innerHTML = realInvestigations.map((inv) => {
-      const explanations = (inv.possible_explanations || []).map((e) => `<div style="margin-top:4px;">• ${e.explanation}${e.supported_by ? ` <span style="color:#8a95a3;">(${e.supported_by})</span>` : ''}</div>`).join('');
+      // Real fix: an empty (not null) possible_explanations array
+      // previously rendered a label with nothing after it. Also
+      // guarding every interpolated field individually - an
+      // undefined value here would literally print "undefined" into
+      // the page, exactly what the production pass forbids.
+      const explanations = (inv.possible_explanations && inv.possible_explanations.length)
+        ? inv.possible_explanations.map((e) => `<div style="margin-top:4px;">• ${e.explanation || 'Real evidence collected, explanation not yet summarized.'}${e.supported_by ? ` <span style="color:#8a95a3;">(${e.supported_by})</span>` : ''}</div>`).join('')
+        : `<div style="margin-top:4px; font-style:italic;">Vantage does not have enough evidence yet to identify likely explanations.</div>`;
       const confColor = inv.confidence === 'high' ? '#9a7a45' : inv.confidence === 'medium' ? '#6e8298' : '#8a95a3';
       return `
         <div style="border:1px solid rgba(37,43,49,.10); border-radius:14px; padding:16px; margin-top:10px; background:rgba(255,255,255,.4);">
           <div style="display:flex; justify-content:space-between; align-items:baseline;">
-            <b style="font-size:13px;">${inv.question}</b>
-            <span style="font-size:9px; text-transform:uppercase; letter-spacing:.08em; color:${confColor};">${inv.confidence} confidence · ${inv.status}</span>
+            <b style="font-size:13px;">${inv.question || 'Vantage is investigating a real, developing question.'}</b>
+            <span style="font-size:9px; text-transform:uppercase; letter-spacing:.08em; color:${confColor};">${inv.confidence || 'developing'} confidence · ${inv.status || 'open'}</span>
           </div>
           <div style="font-size:11px; color:#66727b; margin-top:8px;"><b>Possible explanations:</b>${explanations}</div>
-          ${inv.evidence_against?.length ? `<div style="font-size:11px; color:#8a95a3; margin-top:8px; font-style:italic;"><b>Still unknown:</b> ${inv.evidence_against.map((u) => u.unknown).join('; ')}</div>` : ''}
+          ${inv.evidence_against?.length ? `<div style="font-size:11px; color:#8a95a3; margin-top:8px; font-style:italic;"><b>Still unknown:</b> ${inv.evidence_against.map((u) => u.unknown || 'a specific real gap').join('; ')}</div>` : ''}
           <div style="font-size:10px; color:#a0abb3; margin-top:8px;">Next check: ${inv.next_check_at ? new Date(inv.next_check_at).toLocaleDateString() : 'not scheduled'}</div>
         </div>`;
     }).join('');
