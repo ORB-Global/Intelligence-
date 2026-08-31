@@ -1985,7 +1985,9 @@ document.querySelectorAll('.tab').forEach(btn=>{
     return body.data;
   }
 
+  alert('REAL CHECKPOINT 1: about to call getSession(). If you see this alert, the script is running and has reached this exact line.');
   const { data: gateCheck } = await client.auth.getSession();
+  alert('REAL CHECKPOINT 2: getSession() returned. hasSession=' + JSON.stringify(!!gateCheck.session) + ' email=' + JSON.stringify(gateCheck.session?.user?.email || null));
   if (!gateCheck.session) { window.location.href = '/login.html'; return; }
   const initialSession = gateCheck.session;
 
