@@ -1738,7 +1738,7 @@ body{
   <section class="v36-story">
     <div class="v32-scene violet">
       <div class="v32-k">04 · What happens next?</div><h3 id="v44-whats-next-headline">Loading real evidence…</h3>
-      <p>It should compare the current state with real historical analogues, sequence timing, territory movement, seasonality, local context and store-specific lag.</p>
+      <p>Vantage weighs your recent trend against past patterns, timing, and local context before drawing a conclusion.</p>
       <div class="v32-highlight">If calls, directions and Store Pulse do not follow, Vantage weakens the belief.</div>
     </div>
     <div class="v32-scene amber">
@@ -2087,7 +2087,7 @@ document.querySelectorAll('.tab').forEach(btn=>{
     if (m) m.innerHTML = meta;
   }
   if (points) {
-    setPoint('history', bstate.money?.fact ? 'Real calibrated history exists' : 'Not enough real history yet',
+    setPoint('history', bstate.money?.fact ? 'History is established' : 'Not enough history yet',
       `${points.history.status.toUpperCase()} <em>· last real data ${points.history.lastRealDataPoint || 'unknown'}</em>`);
     setPoint('market', bstate.territory_furniture?.fact || 'No real territory data yet',
       `${points.market.status.toUpperCase()} <em>· ${points.market.label || ''}</em>`);
