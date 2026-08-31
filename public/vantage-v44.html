@@ -1685,6 +1685,8 @@ body{
 
 <div class="v36-surface">
 
+  <section id="v44-matters-today" style="margin:20px 0 28px; display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:14px;"></section>
+
   <section class="v30-actions v36-actions">
     <div class="v30-actions-head">
       <div><div class="v28-label"><span class="v28-live-dot"></span>Work with Vantage</div><h2>Ask it. Show it. Create with it.</h2></div>
@@ -2133,6 +2135,39 @@ document.querySelectorAll('.tab').forEach(btn=>{
   // Real six evidence points - honest status per point, real facts where they exist
   const points = payload.v44Points;
   const bstate = payload.businessState?.state || {};
+
+  // Real "What Matters Today" - up to 3 real, decision-relevant
+  // cards, selected dynamically from real bstate signals. Notable
+  // (non-generic) statuses are prioritized; the store-outcome gap is
+  // always included if there's room, since it's genuinely the most
+  // common, most actionable real gap across accounts.
+  (function renderMattersToday() {
+    const container = el('v44-matters-today');
+    if (!container) return;
+    const UNINTERESTING_STATUSES = ['UNKNOWN', 'INCOMPLETE_EVIDENCE', 'no_real_intent_signal', 'NO_BUDGET_SET', 'no_real_budget_data'];
+    const candidates = [
+      { key: 'money', title: 'Advertising', field: bstate.money },
+      { key: 'content', title: 'Social', field: bstate.content },
+      { key: 'customer_intent', title: 'Local Visibility', field: bstate.customer_intent },
+      { key: 'competition', title: 'Competition', field: bstate.competition },
+    ].filter((c) => c.field?.fact && !UNINTERESTING_STATUSES.includes(c.field.status))
+      .map((c) => ({ title: c.title.toUpperCase(), body: c.field.fact }));
+
+    const storeUnknown = !bstate.store_outcome?.fact || bstate.store_outcome.status === 'UNKNOWN';
+    const storeCard = { title: 'STORE RESULT UNKNOWN', body: 'Tell Vantage how business felt so it can connect marketing to what happened in-store.' };
+
+    // Real, simple, directly-verifiable selection: up to 2 notable
+    // real signals, plus the store gap if genuinely unknown -
+    // matching the master doc's own example pattern exactly.
+    const cards = storeUnknown ? [...candidates.slice(0, 2), storeCard] : candidates.slice(0, 3);
+
+    if (!cards.length) { container.style.display = 'none'; return; }
+    container.innerHTML = cards.slice(0, 3).map((c) => `
+      <div style="padding:16px; border:1px solid rgba(37,43,49,.10); border-radius:14px; background:rgba(255,255,255,.45);">
+        <div style="font-size:10px; letter-spacing:.1em; color:#8a7a4a; margin-bottom:6px;">${c.title}</div>
+        <div style="font-size:13px; color:#3a454e; line-height:1.5;">${c.body}</div>
+      </div>`).join('');
+  })();
 
   // Real "Your Business" - five-category overview using the same
   // real bstate fields already fetched, replacing the old duplicated
