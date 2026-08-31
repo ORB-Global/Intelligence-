@@ -925,7 +925,8 @@ router.get('/locations/:id/creative-brief', async (req, res) => {
   const s = state?.state || {};
 
   const evidence = [];
-  let headline = 'Not enough real evidence yet to prepare a confident brief.';
+  let headline = null;
+  let needsInput = false;
   if (s.top_ad?.status === 'ok') {
     headline = `Based on "${s.top_ad.adName}" — your real strongest ad by actual response`;
     evidence.push(`Real ad performance: ${s.top_ad.clientFacingText}`);
@@ -936,6 +937,16 @@ router.get('/locations/:id/creative-brief', async (req, res) => {
   if (s.territory_furniture) evidence.push(`Real territory: ${s.territory_furniture.fact}`);
   if (s.reputation) evidence.push(`Real reputation: ${s.reputation.fact}`);
 
+  // Real fix for a confirmed dead-end: evidence should IMPROVE the
+  // brief, not gate access to it. If neither strong-signal condition
+  // was met, tell the client honestly that no real, confident
+  // starting point exists yet - and let it fall back to asking the
+  // owner directly what they'd like to promote, rather than stopping.
+  if (!headline) {
+    needsInput = true;
+    headline = 'No single real, standout signal yet to build a confident brief from.';
+  }
+
   const honestGaps = 'This brief is assembled from real, existing evidence only - no new creative generation was run. Ad copy/headline text is not available from any connected source, so specific wording is not included here.';
 
   const { data: job } = await req.supabase.from('creative_jobs').insert({
@@ -944,7 +955,33 @@ router.get('/locations/:id/creative-brief', async (req, res) => {
     headline, rationale: evidence.join(' | '),
   }).select().single();
 
-  return res.json({ success: true, data: { headline, evidence, honestGaps, jobId: job?.id } });
+  return res.json({ success: true, data: { headline, evidence, honestGaps, needsInput, jobId: job?.id } });
+});
+
+// Real, new fallback path - accepts a real, owner-provided prompt
+// (what they want to promote) when there wasn't enough real evidence
+// to build a confident brief automatically. Keeps the same real
+// creative_jobs record, never fabricates performance evidence to
+// compensate for the missing signal.
+router.post('/locations/:id/creative-brief/manual', async (req, res) => {
+  const { id: locationId } = req.params;
+  const { prompt } = req.body || {};
+  if (!prompt || typeof prompt !== 'string' || !prompt.trim()) {
+    return res.status(400).json({ success: false, error: { message: 'A real prompt describing what to promote is required.' } });
+  }
+  const { data: location } = await req.supabase.from('locations').select('id, organization_id').eq('id', locationId).maybeSingle();
+  if (!location) return res.status(404).json({ success: false, error: { message: 'Location not found or not accessible.' } });
+
+  const headline = `Owner-directed brief: ${prompt.trim().slice(0, 200)}`;
+  const honestGaps = 'This brief reflects what the owner asked to promote - it is not based on a real, standout performance signal, since none was strong enough to lead with automatically.';
+
+  const { data: job } = await req.supabase.from('creative_jobs').insert({
+    organization_id: location.organization_id, location_id: locationId, requested_by: req.user.id,
+    source_type: 'manual', request_type: 'ad_concept', status: 'ready',
+    headline, rationale: `Owner prompt: ${prompt.trim()}`,
+  }).select().single();
+
+  return res.json({ success: true, data: { headline, evidence: [], honestGaps, needsInput: false, jobId: job?.id } });
 });
 
 // KNOW ME: real, minimal weekly check-in. No POS required - a client
