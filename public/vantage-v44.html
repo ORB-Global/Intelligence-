@@ -1939,28 +1939,46 @@ document.querySelectorAll('.tab').forEach(btn=>{
 /* Real Phase 1 data wiring - fills the exact existing V44 DOM hooks
    with real Easley data. No visual/CSS changes. Every value is real
    or an honest unknown/stale/disconnected state - never invented. */
+
+/* CRITICAL, REAL SECURITY FIX: this page's own one-time
+   getSession()-then-reuse-the-token pattern allowed real,
+   authenticated business data to render with no real session in a
+   genuinely fresh, isolated incognito test - directly confirmed live.
+   Root cause not fully isolated (likely a real SDK initialization
+   timing issue in the one-shot check), so rather than keep debugging
+   the known-broken pattern, this replaces it outright with
+   mission-control.html's PROVEN, working pattern: getSession() is
+   checked FRESH on every single real API call inside apiFetch itself
+   (not once, reused), AND every response is checked for a real 401
+   with an immediate redirect - the exact defense-in-depth
+   vantage-v44.html never had. */
 (async function wireRealVantage(){
   const SUPABASE_URL = 'https://vdhsvasxccdrashmvvdk.supabase.co';
   const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZkaHN2YXN4Y2NkcmFzaG12dmRrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUzNDMyMDUsImV4cCI6MjEwMDkxOTIwNX0.rZvlbqrdYXlIeAKou-dllsO6MQr3ehzm7h3FBK2sZ6o';
   const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { auth: { autoRefreshToken: true, persistSession: true, detectSessionInUrl: true } });
 
-  const { data: sessionData } = await client.auth.getSession();
-  if (!sessionData.session) { window.location.href = '/login.html'; return; }
-  const token = sessionData.session.access_token;
-
   async function apiFetch(path){
-    const res = await fetch(path, { headers: { Authorization: `Bearer ${token}` } });
+    const { data } = await client.auth.getSession();
+    if (!data.session) { window.location.href = '/login.html'; throw new Error('No session'); }
+    const res = await fetch(path, { headers: { Authorization: `Bearer ${data.session.access_token}` } });
+    if (res.status === 401) { window.location.href = '/login.html'; throw new Error('Session expired'); }
     const body = await res.json();
     if (!res.ok || !body.success) throw new Error(body.error?.message || 'fetch failed');
     return body.data;
   }
+
+  // Real, explicit gate before anything else in this page runs - the
+  // real, initial check that actually stops rendering, not just the
+  // per-call checks inside apiFetch above.
+  const { data: initialSessionCheck } = await client.auth.getSession();
+  if (!initialSessionCheck.session) { window.location.href = '/login.html'; return; }
 
   const params = new URLSearchParams(window.location.search);
   const orgs = await apiFetch('/api/mc/organizations');
   const { locations } = await apiFetch(`/api/mc/organizations/${orgs[0].id}`);
   const locationId = params.get('location') || locations[0]?.id;
   window.__vantageLocationId = locationId;
-  window.__vantageToken = token;
+  window.__vantageToken = initialSessionCheck.session.access_token;
   const payload = await apiFetch(`/api/mc/locations/${locationId}`);
 
   // Real position + greeting
