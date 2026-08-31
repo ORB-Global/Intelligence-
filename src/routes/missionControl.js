@@ -123,9 +123,16 @@ async function assembleSharedIntelligence(supabase, locationId) {
     supabase.from('vantage_questions').select('question, why_asked, evidence, answer, answer_date, status').eq('location_id', locationId).order('created_at', { ascending: false }).limit(10),
   ]);
 
-  // Real conditional weather - shared by both callers so the page
-  // and chat never disagree about whether weather is relevant.
-  const weatherEvidence = (weatherRaw || []).some((d) => d.is_severe) ? weatherRaw : null;
+  // REAL FIX (found during the Leitchfield/weather audit): this used
+  // to only ever show weather to the brain when at least one real
+  // observation was flagged severe - meaning ordinary, non-severe
+  // forecast weather (e.g. "sunny this weekend") never reached
+  // reasoning at all, even though real data existed. The master plan
+  // explicitly wants weather usable as planning/timing context, not
+  // just severe-event alerts. Now shown whenever real forecast data
+  // exists, OR when something is genuinely severe - shared by both
+  // callers so the page and chat never disagree about relevance.
+  const weatherEvidence = (weatherRaw || []).length > 0 && (weatherRaw || []).some((d) => d.is_severe || d.is_forecast) ? weatherRaw : null;
 
   return {
     businessModel, businessState, keywordFocus, vantageState, sourceCoverage,
