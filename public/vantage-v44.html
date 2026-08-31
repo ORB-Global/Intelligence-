@@ -1935,38 +1935,59 @@ document.querySelectorAll('.tab').forEach(btn=>{
 </script>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="/js/real-auth-guard.js"></script>
 <script>
 /* Real Phase 1 data wiring - fills the exact existing V44 DOM hooks
    with real Easley data. No visual/CSS changes. Every value is real
    or an honest unknown/stale/disconnected state - never invented. */
 
-/* CRITICAL, REAL SECURITY FIX #5: four separate hand-ported attempts
-   at reproducing mission-control.html's proven-working auth check in
-   this file all failed for reasons never fully isolated remotely.
-   Replaced entirely with /js/real-auth-guard.js - the exact same real
-   file mission-control.html now also uses - eliminating any
-   possibility of a subtle difference between the two ever existing
-   again. */
+/* REGRESSION FIX: the previous approach (a separate, externally-
+   loaded /js/real-auth-guard.js file) caused vantage-v44.html to stop
+   opening at all. Root cause could not be fully confirmed against the
+   real production environment (the sandbox used to investigate this
+   cannot reach external CDNs to test real script-load timing), but
+   the safest, most conservative fix is to remove that extra external
+   dependency entirely and go back to a single, self-contained inline
+   script - matching mission-control.html's real, proven pattern
+   directly, with zero additional network dependency or diagnostic
+   code that could itself introduce risk. */
 (async function wireRealVantage(){
-  // TEMPORARY REAL DIAGNOSTIC BANNER - shows the exact, raw result of
-  // the real session check directly on the page, in plain sight, no
-  // DevTools needed. Remove once this investigation concludes.
-  const debugBanner = document.createElement('div');
-  debugBanner.style.cssText = 'position:fixed; top:0; left:0; right:0; z-index:99999; background:#c0392b; color:white; font-family:monospace; font-size:13px; padding:10px; white-space:pre-wrap;';
-  debugBanner.textContent = 'REAL DEBUG: checking session...';
-  document.body.prepend(debugBanner);
+  const SUPABASE_URL = 'https://vdhsvasxccdrashmvvdk.supabase.co';
+  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZkaHN2YXN4Y2NkcmFzaG12dmRrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUzNDMyMDUsImV4cCI6MjEwMDkxOTIwNX0.rZvlbqrdYXlIeAKou-dllsO6MQr3ehzm7h3FBK2sZ6o';
+  const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+    auth: { persistSession: true, autoRefreshToken: true },
+  });
 
-  const rawCheck = await window.realAuthGuard.client.auth.getSession();
-  debugBanner.textContent = 'REAL DEBUG getSession() result: ' + JSON.stringify({
-    hasSession: !!rawCheck.data.session,
-    userEmail: rawCheck.data.session?.user?.email || null,
-    expiresAt: rawCheck.data.session?.expires_at || null,
-    localStorageKeys: Object.keys(localStorage).filter(k => k.includes('supabase') || k.includes('auth')),
-  }, null, 2);
+  client.auth.onAuthStateChange((event) => {
+    if (event === 'SIGNED_OUT') window.location.href = '/login.html';
+  });
 
-  const initialSession = await window.realAuthGuard.requireSession();
-  const apiFetch = window.realAuthGuard.apiFetch;
+  async function apiFetch(path, options = {}, timeoutMs = 15000) {
+    const { data } = await client.auth.getSession();
+    if (!data.session) { window.location.href = '/login.html'; throw new Error('No session'); }
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+    let res;
+    try {
+      res = await fetch(path, {
+        ...options,
+        signal: controller.signal,
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${data.session.access_token}`, ...(options.headers || {}) },
+      });
+    } catch (err) {
+      if (err.name === 'AbortError') throw new Error(`Request timed out after ${timeoutMs / 1000}s: ${path}`);
+      throw err;
+    } finally {
+      clearTimeout(timeoutId);
+    }
+    if (res.status === 401) { window.location.href = '/login.html'; throw new Error('Session expired'); }
+    const body = await res.json();
+    if (!res.ok || !body.success) throw Object.assign(new Error(body.error?.message || `HTTP ${res.status}`), { status: res.status });
+    return body.data;
+  }
+
+  const { data: gateCheck } = await client.auth.getSession();
+  if (!gateCheck.session) { window.location.href = '/login.html'; return; }
+  const initialSession = gateCheck.session;
 
   const params = new URLSearchParams(window.location.search);
   const orgs = await apiFetch('/api/mc/organizations');
