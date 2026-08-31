@@ -111,6 +111,7 @@ function buildChatUserPrompt({
   dataQuality,
   priorityItems,
   realOutcomes,
+  vantageQuestions,
   weatherEvidence,
 }) {
   let prompt = `REAL CURRENT DATE (use this for all recency/staleness statements): ${new Date().toISOString().slice(0, 10)}
@@ -165,6 +166,9 @@ ${JSON.stringify(client, null, 2)}`;
   }
   if (realOutcomes !== undefined) {
     prompt += fmtOptionalSection('REAL STORE OUTCOMES (walk-ins, transactions, revenue, category - from real POS/spreadsheet imports where they exist. CRITICAL - the Honest Void: if this is empty, that means NO real outcome data has ever been connected - never say "sales were zero" or "no customers came in," say plainly that store-level outcomes are not connected and digital signals cannot be verified against real results. Never treat missing outcome data as zero)', realOutcomes && realOutcomes.length ? realOutcomes : null, '(no real store outcome data connected - digital signals cannot be verified against actual walk-ins/sales)');
+  }
+  if (vantageQuestions !== undefined) {
+    prompt += fmtOptionalSection('REAL VANTAGE QUESTIONS (real, evidence-triggered questions Vantage has asked or is asking the owner, with real why_asked evidence and, where present, the real owner answer. Owner answers are real business knowledge with their own provenance - NOT equivalent to API-observed facts, but genuinely valuable. If an owner answer exists and is relevant, use it directly, citing that it came from the owner. If an open, unanswered question is relevant to the current conversation, you may reference it or gently invite an answer - but do not repeatedly interrogate)', vantageQuestions && vantageQuestions.length ? vantageQuestions : null, '(no real Vantage Questions on file yet for this business)');
   }
   if (sourceInventory) {
     prompt += fmtOptionalSection('REAL SOURCE INVENTORY (exactly what real data this specific business has connected vs missing, and whether each connected source is genuinely fresh or stale right now. Each source now includes canonical fields: dataThrough (the real date real data covers through), lastSync (when it was actually last refreshed), freshness (CURRENT/RECENT/STALE/MATERIALLY_STALE/UNKNOWN - consistently computed, not arbitrary), and status (CONNECTED/MISSING/NOT_SUPPORTED). CRITICAL: adapt your answers to this - if asked about organic content and Facebook Page shows connected:false, say plainly that source is not connected rather than reasoning as if it exists; if freshness is STALE or MATERIALLY_STALE, say so plainly before drawing a conclusion from it, citing the real dataThrough date. Never collapse mixed freshness into one misleading universal date - if Google is fresher than GBP, say both real dates separately, e.g. "Google Ads through Aug 30, GBP through Jul 1." Never use "today," "currently," or "this week" unless the real evidence genuinely supports that timeframe. For any missing source, ifConnectedWouldProve (when present) tells you what to say if asked "what would connecting X let you know" - use that real, honest framing rather than a generic sales pitch)', sourceInventory, null);
