@@ -1764,7 +1764,7 @@ body{
       <p>Vantage weighs your recent trend against past patterns, timing, and local context before drawing a conclusion.</p>
       <div class="v32-highlight">If calls, directions and Store Pulse do not follow, Vantage weakens the belief.</div>
     </div>
-    <div class="v32-scene amber">
+    <div class="v32-scene amber" style="display:none;">
       <div class="v32-k">05 · What should I do?</div><h3 id="v44-whattodo-headline">Loading…</h3>
       <div class="v32-facts">
         <div class="v32-fact"><small>Budget</small><b id="v44-wtd-budget">—</b></div>
@@ -1772,6 +1772,15 @@ body{
         <div class="v32-fact"><small>Evidence</small><b id="v44-wtd-evidence">—</b></div>
       </div>
     </div>
+  </section>
+
+  <section id="v44-recommends" style="margin:24px 0; padding:22px; border:1px solid rgba(37,43,49,.14); border-radius:16px; background:linear-gradient(135deg, rgba(255,255,255,.6), rgba(255,255,255,.3));">
+    <div style="font-size:10px; letter-spacing:.14em; text-transform:uppercase; color:#8a7a4a; margin-bottom:8px;">What Vantage Recommends</div>
+    <div id="v44-rec-primary" style="font-family:'Fraunces',serif; font-size:19px; color:#2a333b; margin-bottom:14px;">Loading…</div>
+    <div style="font-size:10px; letter-spacing:.1em; text-transform:uppercase; color:#8a95a3; margin-bottom:4px;">Why</div>
+    <div id="v44-rec-why" style="font-size:13px; color:#4a555d; line-height:1.6; margin-bottom:14px;">—</div>
+    <div style="font-size:10px; letter-spacing:.1em; text-transform:uppercase; color:#8a95a3; margin-bottom:4px;">Next Step</div>
+    <div id="v44-rec-next" style="font-size:13px; color:#4a555d; line-height:1.6;">—</div>
   </section>
 
   
@@ -2347,6 +2356,21 @@ document.querySelectorAll('.tab').forEach(btn=>{
     if (el('v44-wtd-budget')) el('v44-wtd-budget').textContent = wtd?.budget || '—';
     if (el('v44-wtd-focus')) el('v44-wtd-focus').textContent = wtd?.focus || '—';
     if (el('v44-wtd-evidence')) el('v44-wtd-evidence').textContent = wtd?.evidence || '—';
+
+    // Real, visually prominent "What Vantage Recommends" - same real
+    // wtd data, restructured into RECOMMENDATION / WHY / NEXT STEP.
+    // Honest next step: if store outcomes are genuinely unknown
+    // (confirmed via bstate.store_outcome above), that IS the most
+    // useful real next step to suggest - closing the biggest real
+    // evidence gap - rather than inventing an unrelated one.
+    if (el('v44-rec-primary')) el('v44-rec-primary').textContent = wtd?.focus || 'Vantage needs more evidence before recommending a specific action.';
+    if (el('v44-rec-why')) el('v44-rec-why').textContent = wtd?.evidence || 'Not enough real evidence yet to explain a specific recommendation.';
+    if (el('v44-rec-next')) {
+      const storeUnknown = !bstate.store_outcome?.fact || bstate.store_outcome.status === 'UNKNOWN';
+      el('v44-rec-next').textContent = storeUnknown
+        ? 'Tell Vantage how store traffic felt recently so it can connect marketing activity to real results.'
+        : 'Keep watching - Vantage will update this if the evidence changes.';
+    }
   }
 
   // Real Living Business Plan wiring
