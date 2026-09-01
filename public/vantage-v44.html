@@ -1673,7 +1673,19 @@ button{
       }
     }
     // Fallback: pick whichever real signal has the most notable status.
+    // REAL, CONFIRMED BUG FIX: this used to fall back to
+    // payload.briefing - the old, long, raw-metrics backend text -
+    // as the headline. That's exactly why the hero still looked like
+    // the old report even after this rebuild: in the common case
+    // (no competitive-pressure pattern), it silently reused the old
+    // text verbatim. Now builds a genuinely short, real headline from
+    // the actual signal and its real status - never the long text.
     const PRIORITY = ['STRONG', 'IMPROVING', 'OPPORTUNITY', 'DECLINING', 'CHANNEL_CONCENTRATION'];
+    const HEADLINE_TEMPLATES = {
+      money: { STRONG: 'Your advertising is working harder for less.', IMPROVING: 'Your advertising is getting more efficient.', CHANNEL_CONCENTRATION: 'Almost all your ad spend rides on one channel.' },
+      customer_intent: { IMPROVING: 'More people are actively looking for you.', STRONG: 'Local interest is running strong.', DECLINING: 'Local interest has cooled off recently.' },
+      content: { OPPORTUNITY: 'One post is doing real work for you.', STRONG: 'Your content is landing with people.' },
+    };
     const candidates = [
       { key: 'customer_intent', field: bstate.customer_intent, label: 'local intent' },
       { key: 'money', field: bstate.money, label: 'advertising' },
@@ -1682,14 +1694,14 @@ button{
     if (candidates.length) {
       const top = candidates[0];
       return {
-        headline: payload.briefing || `Something real is changing in your ${top.label}.`,
+        headline: HEADLINE_TEMPLATES[top.key]?.[top.field.status] || `Something real is changing in your ${top.label}.`,
         why: [top.field.fact, bstate.competition?.fact].filter(Boolean),
         meaning: payload.whatsNext?.whatHappensNext || 'Vantage is comparing this against your history before drawing a firm conclusion.',
         usedFields: [top.key, 'competition'],
       };
     }
     return {
-      headline: payload.briefing || 'Your business is steady.',
+      headline: 'Your business is steady.',
       why: [],
       meaning: 'Vantage is still gathering enough real evidence for a confident read.',
       usedFields: [],
