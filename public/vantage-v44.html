@@ -1409,6 +1409,8 @@ button{
         <button class="active" onclick="showDeep('overview',this)">Overview</button>
         <button onclick="showDeep('performance',this)">Performance</button>
         <button onclick="showDeep('search',this)">Search & Territory</button>
+        <button onclick="showDeep('creative',this)">Social & Creative</button>
+        <button onclick="showDeep('competitors',this)">Competition</button>
         <button onclick="showDeep('store',this)">Store Outcomes</button>
         <button onclick="showDeep('history',this)">History</button>
         <button onclick="showDeep('memory',this)">Decision Memory</button>
@@ -1430,6 +1432,18 @@ button{
 
         <div id="deep-search" class="deep-panel">
             <div class="deep-grid" id="v45-deep-search-grid">
+                <div class="deep-block"><small>Loading</small><strong>Loading real evidence…</strong><p></p></div>
+            </div>
+        </div>
+
+        <div id="deep-creative" class="deep-panel">
+            <div class="deep-grid" id="v45-deep-creative-grid">
+                <div class="deep-block"><small>Loading</small><strong>Loading real evidence…</strong><p></p></div>
+            </div>
+        </div>
+
+        <div id="deep-competitors" class="deep-panel">
+            <div class="deep-grid" id="v45-deep-competitors-grid">
                 <div class="deep-block"><small>Loading</small><strong>Loading real evidence…</strong><p></p></div>
             </div>
         </div>
@@ -1888,14 +1902,36 @@ button{
     el('v45-deep-overview-grid').innerHTML = overview.length ? overview.map((o) => `<div class="deep-block"><small>${o.small}</small><strong>${o.strong}</strong></div>`).join('') : '<div class="deep-block"><small>Status</small><strong>Deep Intelligence will populate here as more real evidence accumulates.</strong></div>';
 
     const perf = [];
+    if (bstate.money?.fact) perf.push({ small: 'Real spend & channel mix', strong: bstate.money.fact });
+    if (payload.conversionDetail && payload.conversionDetail.length) {
+      payload.conversionDetail.slice(0, 4).forEach((c) => {
+        perf.push({ small: `${c.channel || 'Channel'} conversions`, strong: `${c.conversions ?? '—'} real conversions, $${c.cost_per_conversion ?? '—'} per conversion` });
+      });
+    }
     if (hasRealCoverage) perf.push({ small: 'Source coverage', strong: deep.sourceCoverage.byChannel.map(c => `${c.channel}: ${c.realMonths}mo`).join(' · ') });
     if (hasRealMtd) perf.push({ small: 'Month-to-date', strong: deep.mtdNormalizedComparison.clientFacingText });
     if (hasRealAnalogue) perf.push({ small: 'Historical pattern', strong: deep.historicalAnalogues.clientFacingText });
     el('v45-deep-performance-grid').innerHTML = perf.length ? perf.map((o) => `<div class="deep-block"><small>${o.small}</small><strong>${o.strong}</strong></div>`).join('') : '<div class="deep-block"><small>Status</small><strong>No real performance detail available yet.</strong></div>';
 
+    // REAL, added depth: full rank range + real competitor per term,
+    // not just a bare best-rank number - was the exact "too basic"
+    // complaint, and the real, richer per-keyword data already exists
+    // from the earlier territory fix.
     el('v45-deep-search-grid').innerHTML = (terr && terr.realCategoryTerms && terr.realCategoryTerms.length)
-      ? terr.realCategoryTerms.map((t) => `<div class="deep-block"><small>${t.term}</small><strong>${t.bestRank || 'Not yet ranked'}</strong></div>`).join('')
+      ? terr.realCategoryTerms.map((t) => `<div class="deep-block"><small>${t.term}</small><strong>${t.bestRank ? '#' + t.bestRank : 'Not yet ranked'}${t.worstRank && t.worstRank !== t.bestRank ? ` (varies to #${t.worstRank})` : ''}</strong><p>${t.topCompetitorAtBest ? `Real competitor at your best point: ${t.topCompetitorAtBest}` : 'No real competitor data at this point yet.'}</p></div>`).join('')
       : '<div class="deep-block"><small>Status</small><strong>No real search territory data available yet.</strong></div>';
+
+    // REAL, new depth: actual post-level detail, not just "top post"
+    const realPosts = payload.topPosts || [];
+    el('v45-deep-creative-grid').innerHTML = realPosts.length
+      ? realPosts.slice(0, 6).map((p) => `<div class="deep-block"><small>${p.created_at ? new Date(p.created_at).toLocaleDateString(undefined, {month:'short',day:'numeric'}) : 'Real post'}</small><strong>${p.clicks ?? 0} real clicks · ${p.likes ?? 0} likes · ${p.comments ?? 0} comments</strong><p>${(p.caption || '').slice(0, 100)}${(p.caption || '').length > 100 ? '…' : ''}</p></div>`).join('')
+      : '<div class="deep-block"><small>Status</small><strong>No real post-level data available yet.</strong></div>';
+
+    // REAL, new depth: every real tracked competitor with real address
+    const realCompetitors = terr?.competitors || [];
+    el('v45-deep-competitors-grid').innerHTML = realCompetitors.length
+      ? realCompetitors.map((c) => `<div class="deep-block"><small>${c.sameBrand ? 'Same brand (excluded from competitive count)' : 'Real tracked competitor'}</small><strong>${c.name}</strong><p>${c.address || 'No real address on file.'}</p></div>`).join('')
+      : '<div class="deep-block"><small>Status</small><strong>No real competitors on file yet.</strong></div>';
 
     const hist = [];
     if (hasRealDecisions) hist.push({ small: 'Decision memory', strong: `${deep.decisionMemory.realCount} real decision(s) on file.` });
