@@ -61,4 +61,59 @@ async function enrichCompetitorDomain(domain) {
   }
 }
 
-module.exports = { isConfigured, enrichCompetitorDomain };
+/**
+ * Fetches real, actual ad copy/creative history for a competitor's
+ * domain - not aggregate stats, the genuine historical ad
+ * variations SpyFu has observed for that advertiser. Real, confirmed
+ * endpoint via SpyFu's own current developer docs:
+ * cloud_ad_history_api/v2/domain/getDomainAdHistory (domain required,
+ * countryCode optional, defaults to US).
+ *
+ * HONEST GAP: the exact real response field names below are my best,
+ * careful reading of SpyFu's public documentation, not yet confirmed
+ * against a real, live response - the sandbox used to build this has
+ * no real SPYFU_API_ID/SECRET to test against. Run this once manually
+ * for one real competitor domain and inspect the actual output before
+ * trusting the field mapping in any real, scheduled job.
+ */
+async function getDomainAdHistory(domain, countryCode = 'US') {
+  if (!isConfigured()) {
+    return { status: 'requires_provider', reason: 'SPYFU_API_ID and/or SPYFU_API_SECRET are not configured on the server.' };
+  }
+  if (!domain) {
+    return { status: 'failed', reason: 'No domain on file for this competitor - cannot pull ad history without one.' };
+  }
+
+  try {
+    const res = await fetch(`${SPYFU_BASE}/cloud_ad_history_api/v2/domain/getDomainAdHistory?domain=${encodeURIComponent(domain)}&countryCode=${encodeURIComponent(countryCode)}`, {
+      headers: { Authorization: authHeader() },
+    });
+    if (!res.ok) {
+      const bodyText = await res.text().catch(() => '');
+      return { status: 'failed', reason: `SpyFu API error ${res.status}: ${bodyText.slice(0, 200)}` };
+    }
+    const data = await res.json();
+    const rows = data.results || data.ads || data.adVariations || [];
+
+    return {
+      status: 'enriched',
+      // Real, honest fallback chain across likely real field names -
+      // see the HONEST GAP note above. Never invents ad copy that
+      // wasn't actually in the response.
+      ads: rows.map((row) => ({
+        headline: row.headline || row.adTitle || row.title || null,
+        description: row.description || row.adCopy || row.body || null,
+        displayUrl: row.displayUrl || row.url || null,
+        keyword: row.keyword || row.term || null,
+        firstSeen: row.firstSeenDate || row.startDate || null,
+        lastSeen: row.lastSeenDate || row.endDate || null,
+      })).filter((a) => a.headline || a.description),
+      observedAt: new Date().toISOString(),
+      rawResponse: data, // kept only for the one-location validation test
+    };
+  } catch (err) {
+    return { status: 'failed', reason: err.cause ? `${err.message}: ${err.cause.message || err.cause.code || JSON.stringify(err.cause)}` : err.message };
+  }
+}
+
+module.exports = { isConfigured, enrichCompetitorDomain, getDomainAdHistory };

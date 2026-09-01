@@ -1852,7 +1852,10 @@ button{
       // correctly said 7 - showed a confusing, direct mismatch. Now
       // shows every real tracked competitor.
       el('v45-competitor-focus').innerHTML = terr.competitors.map((c) => `
-        <div class="competitor-card"><strong>${c.name}</strong><span>${c.address || ''}</span></div>`).join('');
+        <div class="competitor-card">
+          <strong>${c.name}</strong><span>${c.address || ''}</span>
+          ${c.realAds && c.realAds.length ? `<div style="margin-top:6px; padding:8px; background:var(--soft); border-radius:8px; font-size:11px;"><b>Real ad they're running:</b> "${c.realAds[0].headline || ''}${c.realAds[0].description ? ' - ' + c.realAds[0].description : ''}"</div>` : ''}
+        </div>`).join('');
     }
   }
 

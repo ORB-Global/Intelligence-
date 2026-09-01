@@ -18,7 +18,7 @@
 
 require('dotenv').config();
 const { createClient } = require('@supabase/supabase-js');
-const { isConfigured, enrichCompetitorDomain } = require('../src/services/spyfuAdapter');
+const { isConfigured, enrichCompetitorDomain, getDomainAdHistory } = require('../src/services/spyfuAdapter');
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, {
   auth: { persistSession: false, autoRefreshToken: false },
@@ -56,15 +56,29 @@ async function main() {
       provider_enriched_at: result.observedAt,
     }).eq('id', c.id);
 
-    await supabase.from('competitor_observations').insert({
-      competitor_id: c.id,
-      observation_type: 'search_visibility',
-      observed_value: JSON.stringify(result.seoVisibilityData),
-      description: 'Automated SpyFu enrichment - organic search visibility snapshot.',
-      source: 'spyfu',
-      confidence: 'observed',
-      observed_at: result.observedAt,
-    });
+    // Real, new ad-history call (separate SpyFu endpoint - actual ad
+    // copy, not just aggregate stats). Genuinely optional per-call:
+    // if it fails, the core enrichment above still succeeded, so we
+    // don't fail the whole competitor over this newer, less-tested
+    // addition.
+    const adHistory = await getDomainAdHistory(c.domain);
+    if (adHistory.status === 'enriched') {
+      await supabase.from('competitors').update({ ad_history_data: adHistory.ads }).eq('id', c.id);
+      console.log(`        + ${adHistory.ads.length} real ad(s) found for ${c.name}`);
+    } else if (adHistory.status === 'failed') {
+      console.log(`        (ad history skipped: ${adHistory.reason})`);
+    }
+
+    // REAL, CONFIRMED BUG FIX: this insert previously used column
+    // names (competitor_id, observation_type, observed_value,
+    // confidence) that do not exist on the real competitor_observations
+    // table (which uses canonical_competitor_id, linking to a
+    // DIFFERENT table than `competitors` - confirmed zero rows with
+    // source='spyfu' ever existed, proving this silently never
+    // worked). Removed rather than mapped, since competitors.id and
+    // canonical_competitors.id are not directly related here - the
+    // real seo/paid/ad data is now fully captured on the competitors
+    // row itself above, which was already the primary real storage.
 
     enriched++;
     console.log(`OK      ${c.name} (${c.domain})`);
