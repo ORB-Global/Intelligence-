@@ -1345,25 +1345,25 @@ button{
     </div>
 
     <div class="business-grid">
-        <div class="business">
+        <div class="business" id="v44-yb-advertising-card">
             <small>Advertising</small>
             <strong id="v45-biz-advertising">Loading…</strong>
             <p id="v45-biz-advertising-p"></p>
             <a href="#v45-territory-section">View advertising →</a>
         </div>
-        <div class="business">
+        <div class="business" id="v44-yb-social-card">
             <small>Social</small>
             <strong id="v45-biz-social">Loading…</strong>
             <p id="v45-biz-social-p"></p>
             <a href="#v45-territory-section">View creative →</a>
         </div>
-        <div class="business">
+        <div class="business" id="v44-yb-local-card">
             <small>Local visibility</small>
             <strong id="v45-biz-local">Loading…</strong>
             <p id="v45-biz-local-p"></p>
             <a href="#v45-territory-section">View local intent →</a>
         </div>
-        <div class="business">
+        <div class="business" id="v44-yb-competition-card">
             <small>Competition</small>
             <strong id="v45-biz-competition">Loading…</strong>
             <p id="v45-biz-competition-p"></p>
@@ -1827,6 +1827,24 @@ button{
   el('v45-biz-competition').textContent = payload.v44Territory?.competitorCount ? `${payload.v44Territory.competitorCount} tracked` : bizStatus(bstate.competition);
   el('v45-biz-competition-p').textContent = bstate.competition?.fact || '';
   el('businessStoreOutcome').textContent = (bstate.store_outcome?.status === 'UNKNOWN' || !bstate.store_outcome?.fact) ? 'Needs your input' : bstate.store_outcome.fact;
+
+  // REAL, new: visually connects the hero's one story to the fuller
+  // picture below - "here's what changed" (hero) now visibly points
+  // to "here's the fuller context" (Your Business), instead of the
+  // two sections sitting side by side with no visible thread between
+  // them. Directly addresses "missing the story that flows."
+  (function highlightRelatedCard() {
+    const CARD_FOR_FIELD = { money: 'v44-yb-advertising-card', customer_intent: 'v44-yb-local-card', content: 'v44-yb-social-card', competition: 'v44-yb-competition-card' };
+    const primaryField = (story.usedFields || [])[0];
+    const cardId = CARD_FOR_FIELD[primaryField];
+    if (!cardId) return;
+    const cardEl = document.getElementById(cardId);
+    if (cardEl) {
+      cardEl.style.borderColor = 'var(--accent)';
+      cardEl.style.borderWidth = '1.5px';
+      cardEl.insertAdjacentHTML('afterbegin', '<div style="font-size:9px; font-weight:800; letter-spacing:.08em; color:var(--accent); margin-bottom:4px;">↑ FROM TODAY\'S STORY</div>');
+    }
+  })();
 
   // ---------- TERRITORY ----------
   if (terr) {
