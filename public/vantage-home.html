@@ -1,0 +1,369 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#10202B">
+<title>Vantage</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#10202B; --ink-2:#182C3A; --ink-3:#22394A;
+    --paper:#EEF3F5; --paper-dim:#A7B7C2; --paper-faint:#6E8291;
+    --amber:#F2B84B; --green:#6FD3A0; --red:#F0716A;
+    --rule:rgba(238,243,245,.12);
+    --r:14px;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--ink);color:var(--paper);font-family:Sora,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+  body{min-height:100dvh;padding-bottom:calc(84px + env(safe-area-inset-bottom))}
+  a{color:inherit}
+  button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+  button:focus-visible,[tabindex]:focus-visible,input:focus-visible{outline:2px solid var(--amber);outline-offset:3px;border-radius:6px}
+  @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+
+  header{padding:22px 20px 6px;display:flex;justify-content:space-between;align-items:baseline}
+  header .brand{font-weight:700;letter-spacing:-.02em;font-size:18px}
+  header .brand span{color:var(--amber)}
+  header .loc{color:var(--paper-dim);font-size:14px}
+
+  main{padding:0 20px;max-width:680px;margin:0 auto}
+  section[hidden]{display:none}
+
+  /* ---------- the hero sentence ---------- */
+  .lede{font-size:clamp(26px,6.5vw,40px);line-height:1.18;font-weight:600;letter-spacing:-.02em;margin:18px 0 10px}
+  .lede b{font-weight:700;color:var(--amber)}
+  .sub{color:var(--paper-dim);font-size:16px;line-height:1.5;margin:0 0 26px;max-width:38em}
+
+  .row{display:flex;gap:14px;flex-wrap:wrap;margin:0 0 22px}
+  .stat{flex:1 1 130px;border-top:1px solid var(--rule);padding-top:10px}
+  .stat .n{font-size:26px;font-weight:600;letter-spacing:-.02em}
+  .stat .l{color:var(--paper-dim);font-size:13px;margin-top:2px}
+
+  /* ---------- check-in ---------- */
+  .checkin{background:var(--ink-2);border-radius:var(--r);padding:18px;margin:8px 0 26px}
+  .checkin h2{margin:0 0 4px;font-size:18px}
+  .checkin p{margin:0 0 14px;color:var(--paper-dim);font-size:14px}
+  .moods{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:12px}
+  .moods button{background:var(--ink-3);border-radius:10px;padding:14px 0 10px;text-align:center;line-height:1.1;transition:background .15s,transform .15s}
+  .moods button .e{font-size:22px;display:block;margin-bottom:6px}
+  .moods button .t{font-size:12px;color:var(--paper-dim)}
+  .moods button[aria-pressed="true"]{background:var(--amber);color:var(--ink);transform:translateY(-2px)}
+  .moods button[aria-pressed="true"] .t{color:var(--ink)}
+  .salesrow{display:flex;gap:10px;align-items:center}
+  .salesrow input{flex:1;background:var(--ink-3);border:1px solid transparent;border-radius:10px;padding:13px 14px;color:var(--paper);font-size:16px}
+  .salesrow input::placeholder{color:var(--paper-faint)}
+  .btn{background:var(--amber);color:var(--ink);font-weight:600;border-radius:10px;padding:13px 18px;white-space:nowrap}
+  .btn[disabled]{opacity:.5;cursor:default}
+  .btn.ghost{background:var(--ink-3);color:var(--paper)}
+  .ok{color:var(--green);font-size:14px;margin-top:10px}
+  .streak{color:var(--paper-faint);font-size:13px;margin-top:10px}
+
+  /* ---------- ads ---------- */
+  .ad{display:grid;grid-template-columns:96px 1fr;gap:14px;padding:16px 0;border-top:1px solid var(--rule)}
+  .ad:first-of-type{border-top:0}
+  .ad img,.ad .noimg{width:96px;height:96px;object-fit:cover;border-radius:10px;background:var(--ink-3)}
+  .ad .noimg{display:grid;place-items:center;color:var(--paper-faint);font-size:12px}
+  .ad h3{margin:0 0 4px;font-size:16px;font-weight:600}
+  .ad .why{color:var(--paper-dim);font-size:14px;line-height:1.45;margin:0 0 8px}
+  .tag{display:inline-block;font-size:12px;padding:3px 8px;border-radius:999px;background:var(--ink-3);color:var(--paper-dim)}
+  .tag.winner{background:rgba(111,211,160,.18);color:var(--green)}
+  .tag.producing{background:rgba(242,184,75,.18);color:var(--amber)}
+  .tag.expensive{background:rgba(240,113,106,.18);color:var(--red)}
+  .ad .nums{font-size:13px;color:var(--paper-faint);margin-top:6px}
+
+  /* ---------- ledger ---------- */
+  .ledger{border-top:1px solid var(--rule)}
+  .day{display:grid;grid-template-columns:54px 1fr auto;gap:12px;align-items:center;padding:12px 0;border-bottom:1px solid var(--rule)}
+  .day .d{color:var(--paper-dim);font-size:13px;line-height:1.2}
+  .day .d b{display:block;color:var(--paper);font-weight:600;font-size:15px}
+  .bar{height:8px;border-radius:4px;background:var(--ink-3);overflow:hidden;position:relative}
+  .bar i{position:absolute;left:0;top:0;bottom:0;background:var(--amber);border-radius:4px}
+  .day .r{text-align:right;font-size:14px;min-width:90px}
+  .day .r small{display:block;color:var(--paper-faint);font-size:12px}
+  .mood-dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:5px;vertical-align:middle;background:var(--paper-faint)}
+  .m1,.m2{background:var(--red)} .m3{background:var(--paper-dim)} .m4,.m5{background:var(--green)}
+  .legend{color:var(--paper-faint);font-size:13px;margin:12px 0 0}
+
+  /* ---------- network ---------- */
+  .compare{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin:6px 0 24px}
+  .compare > div{border-top:1px solid var(--rule);padding-top:10px}
+  .compare .who{color:var(--paper-dim);font-size:13px;margin-bottom:8px}
+  .compare .big{font-size:34px;font-weight:600;letter-spacing:-.03em;line-height:1}
+  .compare .big.you{color:var(--amber)}
+  .compare .unit{color:var(--paper-dim);font-size:13px;margin-top:6px}
+  .rank{margin:4px 0 20px;height:10px;border-radius:5px;background:linear-gradient(90deg,var(--red),var(--paper-dim) 50%,var(--green));position:relative}
+  .rank i{position:absolute;top:-5px;width:20px;height:20px;border-radius:50%;background:var(--amber);border:3px solid var(--ink);transform:translateX(-50%)}
+  .rank-l{display:flex;justify-content:space-between;color:var(--paper-faint);font-size:12px}
+
+  /* ---------- leads ---------- */
+  .lead{padding:14px 0;border-top:1px solid var(--rule)}
+  .lead .who{font-weight:600}
+  .lead .msg{color:var(--paper-dim);font-size:14px;margin:4px 0 10px;line-height:1.45}
+  .lead .acts{display:flex;gap:8px}
+  .lead .acts button{background:var(--ink-3);border-radius:8px;padding:8px 12px;font-size:13px}
+  .lead .acts button.sold{background:rgba(111,211,160,.18);color:var(--green)}
+
+  .empty{color:var(--paper-dim);font-size:15px;line-height:1.5;padding:18px 0}
+  .err{color:var(--red);font-size:14px}
+
+  /* ---------- tabs ---------- */
+  nav{position:fixed;left:0;right:0;bottom:0;background:rgba(16,32,43,.92);backdrop-filter:blur(10px);border-top:1px solid var(--rule);padding:8px 8px calc(8px + env(safe-area-inset-bottom))}
+  nav ul{list-style:none;margin:0 auto;padding:0;display:grid;grid-template-columns:repeat(4,1fr);max-width:680px}
+  nav button{width:100%;padding:8px 0 6px;border-radius:10px;color:var(--paper-faint);font-size:12px;display:grid;justify-items:center;gap:4px}
+  nav button svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+  nav button[aria-selected="true"]{color:var(--amber)}
+  h2.sec{font-size:20px;font-weight:600;letter-spacing:-.01em;margin:22px 0 6px}
+  p.note{color:var(--paper-dim);font-size:14px;line-height:1.5;margin:0 0 14px}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand">Vantage <span>by Orb</span></div>
+  <div class="loc" id="locName"></div>
+</header>
+
+<main>
+  <!-- ============ TODAY ============ -->
+  <section id="tab-today">
+    <p class="lede" id="lede">Loading your day…</p>
+    <p class="sub" id="sub"></p>
+    <div class="row" id="todayStats"></div>
+
+    <div class="checkin" id="checkin">
+      <h2>How was today?</h2>
+      <p>Ten seconds. This is how we connect your ad spend to real sales.</p>
+      <div class="moods" role="group" aria-label="How was today">
+        <button data-mood="1" aria-pressed="false"><span class="e">😴</span><span class="t">Dead</span></button>
+        <button data-mood="2" aria-pressed="false"><span class="e">🌧️</span><span class="t">Slow</span></button>
+        <button data-mood="3" aria-pressed="false"><span class="e">🙂</span><span class="t">Okay</span></button>
+        <button data-mood="4" aria-pressed="false"><span class="e">👍</span><span class="t">Good</span></button>
+        <button data-mood="5" aria-pressed="false"><span class="e">🔥</span><span class="t">Great</span></button>
+      </div>
+      <div class="salesrow">
+        <input id="salesCount" type="number" inputmode="numeric" min="0" placeholder="How many sales?">
+        <button class="btn" id="saveCheckin" disabled>Save today</button>
+      </div>
+      <div class="ok" id="checkinOk" hidden></div>
+      <div class="streak" id="streak"></div>
+    </div>
+
+    <h2 class="sec">Waiting on you</h2>
+    <div id="openLeads"></div>
+  </section>
+
+  <!-- ============ BEST ADS ============ -->
+  <section id="tab-ads" hidden>
+    <p class="lede" id="adsLede"></p>
+    <p class="sub" id="adsSub"></p>
+    <div id="ads"></div>
+  </section>
+
+  <!-- ============ SALES vs SPEND ============ -->
+  <section id="tab-sales" hidden>
+    <p class="lede" id="salesLede"></p>
+    <p class="sub" id="salesSub"></p>
+    <div class="row" id="salesStats"></div>
+    <h2 class="sec">Last 14 days</h2>
+    <p class="note">Bar is what you spent that day. Right side is what you told us happened.</p>
+    <div class="ledger" id="ledger"></div>
+    <p class="legend"><span class="mood-dot m5"></span>good day &nbsp; <span class="mood-dot m3"></span>okay &nbsp; <span class="mood-dot m1"></span>slow &nbsp; <span class="mood-dot"></span>no check-in</p>
+  </section>
+
+  <!-- ============ NETWORK ============ -->
+  <section id="tab-network" hidden>
+    <p class="lede" id="netLede"></p>
+    <p class="sub" id="netSub"></p>
+    <div class="compare" id="compare"></div>
+    <div class="rank-l"><span>most expensive</span><span>cheapest conversations</span></div>
+    <div class="rank"><i id="rankPin" style="left:50%"></i></div>
+    <div id="netMore"></div>
+  </section>
+</main>
+
+<nav aria-label="Sections">
+  <ul>
+    <li><button role="tab" aria-selected="true" data-tab="today"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1 7 17M17 7l2.1-2.1"/></svg>Today</button></li>
+    <li><button role="tab" aria-selected="false" data-tab="ads"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="14" rx="2"/><path d="M8 21h8M12 18v3"/></svg>Best ads</button></li>
+    <li><button role="tab" aria-selected="false" data-tab="sales"><svg viewBox="0 0 24 24"><path d="M3 20h18M6 16V9M11 16V5M16 16v-7M21 16v-3"/></svg>Sales</button></li>
+    <li><button role="tab" aria-selected="false" data-tab="network"><svg viewBox="0 0 24 24"><circle cx="12" cy="5" r="2.5"/><circle cx="5" cy="19" r="2.5"/><circle cx="19" cy="19" r="2.5"/><path d="M12 7.5v4M12 11.5 6.5 17M12 11.5l5.5 5.5"/></svg>Network</button></li>
+  </ul>
+</nav>
+
+<script type="module">
+/* ---------------------------------------------------------------
+   Wiring. The page needs two things from the app that hosts it:
+   1) window.VANTAGE_LOCATION_ID  — the logged-in owner's location
+   2) window.VANTAGE_TOKEN        — their Supabase access token (JWT)
+   The existing login page sets both after sign-in. In dev you can
+   put ?loc=<uuid>&token=<jwt> on the URL.
+---------------------------------------------------------------- */
+const qs = new URLSearchParams(location.search);
+const LOCATION_ID = window.VANTAGE_LOCATION_ID || qs.get('loc') || localStorage.getItem('vantage_location_id');
+const TOKEN       = window.VANTAGE_TOKEN       || qs.get('token') || localStorage.getItem('vantage_token');
+if (qs.get('loc'))   localStorage.setItem('vantage_location_id', qs.get('loc'));
+if (qs.get('token')) localStorage.setItem('vantage_token', qs.get('token'));
+
+const $ = (s, r=document) => r.querySelector(s);
+const money = n => n == null ? '—' : '$' + Number(n).toLocaleString(undefined,{maximumFractionDigits:0});
+const money2 = n => n == null ? '—' : '$' + Number(n).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
+const num = n => n == null ? '—' : Number(n).toLocaleString();
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const monthName = d => new Date(d + 'T12:00:00').toLocaleString(undefined,{month:'long'});
+const dayLabel = d => { const x = new Date(d.slice(0,10)+'T12:00:00'); return { dow: x.toLocaleString(undefined,{weekday:'short'}), dm: x.toLocaleString(undefined,{month:'short',day:'numeric'}) }; };
+
+async function api(path, opts={}) {
+  const res = await fetch(path, { ...opts, headers: { 'Content-Type':'application/json', 'Authorization': 'Bearer ' + TOKEN, ...(opts.headers||{}) } });
+  if (!res.ok) throw new Error((await res.json().catch(()=>({}))).error || res.statusText);
+  return res.json();
+}
+
+let home = null;
+
+/* ---------------- Tabs ---------------- */
+document.querySelectorAll('nav [role=tab]').forEach(b => b.addEventListener('click', () => showTab(b.dataset.tab)));
+function showTab(name) {
+  document.querySelectorAll('nav [role=tab]').forEach(b => b.setAttribute('aria-selected', String(b.dataset.tab === name)));
+  ['today','ads','sales','network'].forEach(t => $('#tab-'+t).hidden = t !== name);
+  window.scrollTo({top:0});
+}
+
+/* ---------------- Load ---------------- */
+async function load() {
+  if (!LOCATION_ID || !TOKEN) { $('#lede').textContent = 'Sign in to see your store.'; return; }
+  try {
+    home = await api(`/api/vantage/home/${LOCATION_ID}`);
+  } catch (e) {
+    $('#lede').textContent = 'Couldn’t load your store right now.';
+    $('#sub').innerHTML = `<span class="err">${esc(e.message)}</span> — try again in a minute.`;
+    return;
+  }
+  renderToday(); renderAds(); renderSales(); renderNetwork();
+}
+
+/* ---------------- TODAY ---------------- */
+function renderToday() {
+  const t = home.today || {}, n = home.network || {}, m = home.money_story || {};
+  $('#locName').textContent = t.location_name || '';
+  const weather = t.weather_sentence || '';
+  $('#lede').innerHTML = `${esc(t.greeting || 'Hello')}. ${esc(weather)}`;
+  // one supporting sentence: yesterday, then the single most useful fact
+  const parts = [];
+  if (t.yesterday_spend != null) parts.push(`Yesterday you spent <b>${money(t.yesterday_spend)}</b> for ${num(t.yesterday_clicks)} clicks${t.yesterday_messages ? ` and ${t.yesterday_messages} conversation${t.yesterday_messages==1?'':'s'}` : ''}.`);
+  if (t.new_reviews_30d) parts.push(`${t.new_reviews_30d} new review${t.new_reviews_30d==1?'':'s'} this month, averaging ${Number(t.avg_rating_30d).toFixed(1)} stars.`);
+  $('#sub').innerHTML = parts.join(' ') || 'Your numbers will fill in as the day’s data lands.';
+  $('#todayStats').innerHTML = [
+    ['This month so far', money(t.mtd_spend), 'spent on ads'],
+    ['Conversations', num(t.mtd_messages), 'started this month'],
+    ['Network', n.your_cost_per_message != null ? money(n.your_cost_per_message) : '—', 'your cost per conversation'],
+  ].map(([l,v,s]) => `<div class="stat"><div class="n">${v}</div><div class="l">${esc(s)}</div></div>`).join('');
+  $('#streak').textContent = home.checkin_streak ? `${home.checkin_streak} of the last 7 days logged.` : 'No days logged yet this week.';
+
+  const leads = home.open_leads || [];
+  $('#openLeads').innerHTML = leads.length ? leads.map(l => `
+    <div class="lead" data-id="${l.id}">
+      <div class="who">${esc(l.contact_name || 'Someone')} <span class="tag">${esc(l.source.replace('_',' '))}</span></div>
+      <div class="msg">${esc(l.first_message || '')}${l.ad_name ? ` <span style="color:var(--paper-faint)">— from “${esc(l.ad_name)}”</span>` : ''}</div>
+      <div class="acts">
+        <button data-status="talking">Talking</button>
+        <button data-status="sold" class="sold">Sold</button>
+        <button data-status="lost">Lost</button>
+      </div>
+    </div>`).join('') : `<div class="empty">Nothing waiting. When a customer messages, calls, or fills out your form, it shows up here and you tap what happened.</div>`;
+  $('#openLeads').querySelectorAll('.acts button').forEach(b => b.addEventListener('click', async () => {
+    const card = b.closest('.lead'); const id = card.dataset.id; const status = b.dataset.status;
+    let amount = null;
+    if (status === 'sold') { const v = prompt('Roughly how much was the sale? (optional)'); if (v) amount = Number(String(v).replace(/[^0-9.]/g,'')) || null; }
+    card.style.opacity = .5;
+    try { await api(`/api/vantage/leads/${id}/status`, { method:'POST', body: JSON.stringify({ status, sale_amount: amount }) }); card.remove(); }
+    catch (e) { card.style.opacity = 1; alert(e.message); }
+  }));
+}
+
+/* check-in controls */
+let mood = null;
+document.querySelectorAll('.moods button').forEach(b => b.addEventListener('click', () => {
+  mood = Number(b.dataset.mood);
+  document.querySelectorAll('.moods button').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+  $('#saveCheckin').disabled = false;
+}));
+$('#saveCheckin').addEventListener('click', async () => {
+  const btn = $('#saveCheckin'); btn.disabled = true; btn.textContent = 'Saving…';
+  try {
+    const sales = $('#salesCount').value === '' ? null : Number($('#salesCount').value);
+    await api(`/api/vantage/checkin/${LOCATION_ID}`, { method:'POST', body: JSON.stringify({ mood, sales_count: sales }) });
+    $('#checkinOk').hidden = false; $('#checkinOk').textContent = 'Saved. Thanks — this is the part that makes Vantage smarter.';
+    btn.textContent = 'Saved today';
+    home = await api(`/api/vantage/home/${LOCATION_ID}`); renderSales(); $('#streak').textContent = `${home.checkin_streak} of the last 7 days logged.`;
+  } catch (e) { btn.disabled = false; btn.textContent = 'Save today'; $('#checkinOk').hidden = false; $('#checkinOk').innerHTML = `<span class="err">${esc(e.message)}</span>`; }
+});
+
+/* ---------------- BEST ADS ---------------- */
+function renderAds() {
+  const ads = home.best_ads || [], m = home.money_story || {};
+  if (!ads.length) { $('#adsLede').textContent = 'No ad results for last month yet.'; return; }
+  const top = ads[0];
+  const mon = m.month ? monthName(m.month) : 'last month';
+  $('#adsLede').innerHTML = `Your best ad in ${esc(mon)} was <b>“${esc(top.ad_name)}”</b>.`;
+  $('#adsSub').textContent = `${top.why}. It used ${top.share_of_spend}% of your budget.`;
+  const tagClass = v => v === 'winner' ? 'winner' : v === 'producing' ? 'producing' : v.startsWith('expensive') ? 'expensive' : '';
+  $('#ads').innerHTML = ads.map(a => `
+    <div class="ad">
+      ${a.creative_image_url ? `<img src="${esc(a.creative_image_url)}" alt="" loading="lazy" onerror="this.outerHTML='<div class=noimg>no preview</div>'">` : `<div class="noimg">no preview</div>`}
+      <div>
+        <h3>${esc(a.ad_name)} <span class="tag ${tagClass(a.verdict)}">${esc(a.verdict)}</span></h3>
+        <p class="why">${esc(a.why)}</p>
+        <div class="nums">${money(a.spend)} spent · ${num(a.clicks)} clicks · ${Number(a.ctr).toFixed(1)}% CTR${a.status==='PAUSED' ? ' · paused' : ''}</div>
+      </div>
+    </div>`).join('');
+}
+
+/* ---------------- SALES vs SPEND ---------------- */
+function renderSales() {
+  const m = home.money_story || {};
+  $('#salesLede').innerHTML = esc(m.headline || '').replace(/\$[\d,]+/g, x => `<b>${x}</b>`);
+  $('#salesSub').textContent = m.owner_days_reported ? `Based on ${m.owner_days_reported} day${m.owner_days_reported==1?'':'s'} you logged.` : 'Log your days on the Today screen and this sentence starts talking about sales, not clicks.';
+  $('#salesStats').innerHTML = [
+    ['spent last month', money(m.spend)],
+    ['conversations', num(m.messages)],
+    [m.owner_reported_sales ? 'sales you reported' : 'leads tracked', m.owner_reported_sales ? num(m.owner_reported_sales) : num(m.leads)],
+    ['sales per $100', m.sales_per_100_dollars != null ? m.sales_per_100_dollars : '—'],
+  ].map(([l,v]) => `<div class="stat"><div class="n">${v}</div><div class="l">${esc(l)}</div></div>`).join('');
+
+  const rows = (home.ledger_14d || []).filter(r => new Date(r.day) <= new Date());
+  const max = Math.max(1, ...rows.map(r => Number(r.spend)||0));
+  $('#ledger').innerHTML = rows.map(r => {
+    const d = dayLabel(r.day);
+    const w = Math.round(100 * (Number(r.spend)||0) / max);
+    const right = r.owner_reported_sales != null ? `${r.owner_reported_sales} sale${r.owner_reported_sales==1?'':'s'}` : (r.mood ? ['','dead','slow','okay','good','great'][r.mood] : '<span style="color:var(--paper-faint)">not logged</span>');
+    const wx = r.conditions ? `${esc(String(r.conditions).toLowerCase())}${r.temp_high_f ? `, ${Math.round(r.temp_high_f)}°` : ''}` : '';
+    return `<div class="day">
+      <div class="d"><b>${d.dow}</b>${d.dm}</div>
+      <div><div class="bar"><i style="width:${w}%"></i></div><small style="color:var(--paper-faint);font-size:12px">${r.spend != null ? money(r.spend) : 'no data'}${r.clicks ? ` · ${num(r.clicks)} clicks` : ''}${wx ? ` · ${wx}` : ''}</small></div>
+      <div class="r"><span class="mood-dot m${r.mood||0}"></span>${right}</div>
+    </div>`;
+  }).join('') || `<div class="empty">No daily data yet.</div>`;
+}
+
+/* ---------------- NETWORK ---------------- */
+function renderNetwork() {
+  const n = home.network || {};
+  if (!n.your_spend) { $('#netLede').textContent = 'We’ll compare you to the network once a month of data is in.'; return; }
+  $('#netLede').innerHTML = `Across ${n.peer_count} ${esc(n.peer_group)}, you’re in the <b>${n.percentile_messages_per_dollar >= 50 ? 'top ' + (100 - n.percentile_messages_per_dollar) : 'bottom ' + Math.max(1, n.percentile_messages_per_dollar)}%</b> for conversations per dollar.`;
+  $('#netSub').textContent = n.sentence || '';
+  $('#compare').innerHTML = `
+    <div><div class="who">You</div><div class="big you">${money2(n.your_cost_per_message)}</div><div class="unit">per conversation · ${money(n.your_spend)} spent</div></div>
+    <div><div class="who">Typical store</div><div class="big">${money2(n.peer_median_cost_per_message)}</div><div class="unit">per conversation · ${money(n.peer_median_spend)} spent</div></div>`;
+  $('#rankPin').style.left = `${Math.min(98, Math.max(2, n.percentile_messages_per_dollar))}%`;
+  const gap = n.your_cost_per_message && n.peer_median_cost_per_message ? Math.round(n.your_cost_per_message / n.peer_median_cost_per_message) : null;
+  $('#netMore').innerHTML = gap && gap > 2
+    ? `<h2 class="sec">What the top stores do differently</h2><p class="note">The stores paying a few dollars per conversation run ads whose only job is to start a message. Yours are mostly built for reach and traffic. Same budget, different objective — that’s the gap. Ask Vantage to build a messaging ad and we’ll show you what it would look like.</p>`
+    : `<h2 class="sec">You’re in good company</h2><p class="note">Your cost per conversation is in line with the network. The next lever is what happens after the message — tap Sold or Lost on the Today screen so we can see which conversations turn into money.</p>`;
+}
+
+load();
+</script>
+<script type="module" src="/js/native.js"></script>
+</body>
+</html>

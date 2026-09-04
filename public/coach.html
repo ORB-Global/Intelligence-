@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#10202B">
+<title>Vantage — Your stores</title>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{--ink:#10202B;--ink-2:#182C3A;--ink-3:#22394A;--paper:#EEF3F5;--paper-dim:#A7B7C2;--paper-faint:#6E8291;--amber:#F2B84B;--green:#6FD3A0;--red:#F0716A;--rule:rgba(238,243,245,.12)}
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--ink);color:var(--paper);font-family:Sora,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+  header{padding:22px 20px 6px;display:flex;justify-content:space-between;align-items:baseline;max-width:1000px;margin:0 auto}
+  .brand{font-weight:700;font-size:18px}.brand span{color:var(--amber)}
+  .who{color:var(--paper-dim);font-size:14px}
+  main{max-width:1000px;margin:0 auto;padding:0 20px 60px}
+  .lede{font-size:clamp(24px,4.5vw,36px);line-height:1.18;font-weight:600;letter-spacing:-.02em;margin:16px 0 8px}
+  .lede b{color:var(--amber)}
+  .sub{color:var(--paper-dim);font-size:15px;line-height:1.5;margin:0 0 22px;max-width:48em}
+  .row{display:flex;gap:16px;flex-wrap:wrap;margin:0 0 26px}
+  .stat{flex:1 1 150px;border-top:1px solid var(--rule);padding-top:10px}
+  .stat .n{font-size:26px;font-weight:600;letter-spacing:-.02em}.stat .l{color:var(--paper-dim);font-size:13px;margin-top:2px}
+  .filters{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 12px}
+  .filters button{background:var(--ink-2);border:0;color:var(--paper-dim);font:inherit;font-size:13px;padding:8px 12px;border-radius:999px;cursor:pointer}
+  .filters button[aria-pressed=true]{background:var(--amber);color:var(--ink)}
+  .filters input{margin-left:auto;background:var(--ink-2);border:0;border-radius:999px;padding:8px 14px;color:var(--paper);font:inherit;font-size:13px;min-width:180px}
+  table{width:100%;border-collapse:collapse}
+  th{text-align:left;color:var(--paper-faint);font-weight:500;font-size:12px;padding:10px 8px;border-bottom:1px solid var(--rule)}
+  th.num,td.num{text-align:right}
+  td{padding:14px 8px;border-bottom:1px solid var(--rule);vertical-align:top;font-size:14px}
+  td.store b{display:block;font-weight:600;font-size:15px}
+  td.store small{color:var(--paper-faint)}
+  .dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:8px;vertical-align:middle}
+  .s-strong{background:var(--green)}.s-okay{background:var(--paper-dim)}.s-needs{background:var(--red)}.s-none{background:var(--ink-3)}
+  .note{color:var(--paper-dim);font-size:13px;line-height:1.45;max-width:34em}
+  .flags{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+  .flag{font-size:11px;padding:2px 7px;border-radius:999px;background:var(--ink-3);color:var(--paper-dim)}
+  .flag.warn{background:rgba(240,113,106,.18);color:var(--red)}
+  .flag.good{background:rgba(111,211,160,.18);color:var(--green)}
+  tr.row-link{cursor:pointer}tr.row-link:hover td{background:rgba(238,243,245,.03)}
+  .empty{color:var(--paper-dim);padding:30px 0}
+  .err{color:var(--red)}
+  @media (max-width:720px){ th.hide,td.hide{display:none} td{padding:12px 6px} }
+</style>
+</head>
+<body>
+<header><div class="brand">Vantage <span>by Orb</span></div><div class="who" id="who"></div></header>
+<main>
+  <p class="lede" id="lede">Loading your stores…</p>
+  <p class="sub" id="sub"></p>
+  <div class="row" id="stats"></div>
+
+  <div class="filters" role="group" aria-label="Filter stores">
+    <button data-f="all" aria-pressed="true">All</button>
+    <button data-f="needs attention" aria-pressed="false">Needs attention</button>
+    <button data-f="okay" aria-pressed="false">Okay</button>
+    <button data-f="strong" aria-pressed="false">Strong</button>
+    <button data-f="quiet" aria-pressed="false">No check-ins</button>
+    <input id="q" type="search" placeholder="Find a store">
+  </div>
+
+  <table>
+    <thead><tr>
+      <th>Store</th>
+      <th class="num">Spent</th>
+      <th class="num">Conversations</th>
+      <th class="num">Per conversation</th>
+      <th class="hide">What's going on</th>
+      <th class="num hide">Logged (7d)</th>
+    </tr></thead>
+    <tbody id="rows"></tbody>
+  </table>
+  <div class="empty" id="empty" hidden>No stores match.</div>
+</main>
+
+<script type="module">
+const qs = new URLSearchParams(location.search);
+const TOKEN = window.VANTAGE_TOKEN || qs.get('token') || localStorage.getItem('vantage_token');
+if (qs.get('token')) localStorage.setItem('vantage_token', qs.get('token'));
+const $ = s => document.querySelector(s);
+const money = n => n == null ? '—' : '$' + Number(n).toLocaleString(undefined,{maximumFractionDigits:0});
+const money2 = n => n == null ? '—' : '$' + Number(n).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+async function api(p){ const r = await fetch(p,{headers:{Authorization:'Bearer '+TOKEN}}); if(!r.ok) throw new Error((await r.json().catch(()=>({}))).error||r.statusText); return r.json(); }
+
+let rows = [], filter = 'all', q = '';
+try {
+  const data = await api('/api/portfolio');
+  rows = data.locations || [];
+  const n = data.network || {};
+  $('#who').textContent = data.scope === 'network' ? `${rows.length} stores · network view` : `${rows.length} store${rows.length==1?'':'s'}`;
+  if (data.scope === 'network' && n.headline) {
+    $('#lede').innerHTML = esc(n.headline).replace(/\$[\d,\.]+/g, x => `<b>${x}</b>`);
+    $('#sub').textContent = `About ${money(n.spend_in_bottom_third)} of last month's spend sat in the third of stores paying the most per conversation. That's the money to move first.`;
+    $('#stats').innerHTML = [[money(n.total_spend),'spent across the network'],[Number(n.total_conversations||0).toLocaleString(),'customer conversations'],[money2(n.network_cost_per_conversation),'network cost per conversation'],[n.best ? `${esc(n.best.name)} · ${money2(n.best.cost)}` : '—','best store']]
+      .map(([v,l])=>`<div class="stat"><div class="n">${v}</div><div class="l">${l}</div></div>`).join('');
+  } else {
+    const need = rows.filter(r=>r.status==='needs attention').length, quiet = rows.filter(r=>!r.checkins_last_7).length;
+    $('#lede').innerHTML = need ? `<b>${need}</b> of your ${rows.length} stores ${need==1?'is':'are'} paying far more than the network for each customer conversation.` : `Your ${rows.length} stores are holding their own.`;
+    $('#sub').textContent = quiet ? `${quiet} ${quiet==1?'store hasn\'t':'stores haven\'t'} logged a day this week — a quick text from you gets that going.` : 'Every store is checking in. Nice.';
+    const spend = rows.reduce((a,r)=>a+Number(r.spend||0),0), conv = rows.reduce((a,r)=>a+Number(r.conversations||0),0);
+    $('#stats').innerHTML = [[money(spend),'spent last month'],[conv.toLocaleString(),'conversations'],[conv?money2(spend/conv):'—','your group, per conversation'],[money2(rows[0]?.network_median_cpc),'network typical']]
+      .map(([v,l])=>`<div class="stat"><div class="n">${v}</div><div class="l">${l}</div></div>`).join('');
+  }
+  render();
+} catch (e) { $('#lede').textContent = 'Couldn’t load stores.'; $('#sub').innerHTML = `<span class="err">${esc(e.message)}</span>`; }
+
+document.querySelectorAll('.filters button').forEach(b=>b.addEventListener('click',()=>{filter=b.dataset.f;document.querySelectorAll('.filters button').forEach(x=>x.setAttribute('aria-pressed',String(x===b)));render();}));
+$('#q').addEventListener('input',e=>{q=e.target.value.toLowerCase();render();});
+
+function render(){
+  const list = rows.filter(r => (filter==='all' || (filter==='quiet' ? !r.checkins_last_7 : r.status===filter)) && (!q || `${r.location_name} ${r.city} ${r.state}`.toLowerCase().includes(q)));
+  $('#empty').hidden = list.length>0;
+  $('#rows').innerHTML = list.map(r => {
+    const cls = r.status==='strong'?'s-strong':r.status==='okay'?'s-okay':r.status==='no data'?'s-none':'s-needs';
+    const flags = [];
+    if (r.days_stale > 2) flags.push(`<span class="flag warn">data ${r.days_stale}d old</span>`);
+    if (r.proposed_recs) flags.push(`<span class="flag">${r.proposed_recs} recommendation${r.proposed_recs==1?'':'s'} waiting</span>`);
+    if (r.ready_creatives) flags.push(`<span class="flag good">ad ready</span>`);
+    if (r.open_leads) flags.push(`<span class="flag">${r.open_leads} lead${r.open_leads==1?'':'s'} unanswered</span>`);
+    if (r.reported_sales_month) flags.push(`<span class="flag good">${r.reported_sales_month} sales reported</span>`);
+    return `<tr class="row-link" data-id="${r.location_id}" tabindex="0">
+      <td class="store"><span class="dot ${cls}"></span><b style="display:inline">${esc(r.location_name)}</b><br><small>${esc([r.city,r.state].filter(Boolean).join(', '))}</small></td>
+      <td class="num">${money(r.spend)}</td>
+      <td class="num">${r.conversations ?? '—'}</td>
+      <td class="num">${r.cost_per_conversation != null ? money2(r.cost_per_conversation) : (r.spend ? '∞' : '—')}</td>
+      <td class="hide"><div class="note">${esc(r.note)}</div><div class="flags">${flags.join('')}</div></td>
+      <td class="num hide">${r.checkins_last_7 ?? 0}/7${r.avg_mood_7 ? ` <span style="color:var(--paper-faint)">(${Number(r.avg_mood_7).toFixed(1)})</span>` : ''}</td>
+    </tr>`;
+  }).join('');
+  $('#rows').querySelectorAll('tr').forEach(tr => {
+    const go = () => location.href = `/vantage-home.html?loc=${tr.dataset.id}`;
+    tr.addEventListener('click', go); tr.addEventListener('keydown', e => { if (e.key==='Enter') go(); });
+  });
+}
+</script>
+<script type="module" src="/js/native.js"></script>
+</body>
+</html>
