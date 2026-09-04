@@ -41,19 +41,32 @@
   <div class="brand">Vantage <span>by Orb</span></div>
 
   <div id="ask">
-    <h1>See what stores like yours <b>spend, and what they get back.</b></h1>
-    <p class="sub">Type in your store. In a few seconds you'll see how BoxDrop stores in your area are doing on ads — and where you'd land.</p>
+    <h1>See what businesses like yours <b>spend on ads, and what they get back.</b></h1>
+    <p class="sub">Type in your business. In a few seconds you'll see what businesses like yours spend on ads, what they get for it, and where you'd land.</p>
     <form id="f">
-      <label>Store name <input name="business_name" placeholder="BoxDrop Easley" autocomplete="organization"></label>
+      <label>Business name <input name="business_name" placeholder="Your business" autocomplete="organization"></label>
       <label>Street address <input name="address" required placeholder="1017 Powdersville Rd" autocomplete="street-address"></label>
       <div class="three">
         <label>City <input name="city" required autocomplete="address-level2"></label>
         <label>State <select name="state" required><option value="">—</option></select></label>
         <label>ZIP <input name="zip" inputmode="numeric" autocomplete="postal-code"></label>
       </div>
-      <label>What you sell
-        <select name="business_type">
-          <option>mattress &amp; furniture</option><option>mattress only</option><option>furniture only</option><option>appliances</option><option>other retail</option>
+      <label>What kind of business
+        <select name="business_type" required>
+          <option value="mattress_furniture">Mattress &amp; furniture</option>
+          <option value="appliances">Appliances</option>
+          <option value="retail_other">Other local retail</option>
+          <option value="home_services">Home services (HVAC, plumbing, roofing, cleaning)</option>
+          <option value="auto_repair">Auto repair &amp; tires</option>
+          <option value="auto_dealer">Auto sales</option>
+          <option value="restaurant">Restaurant &amp; food</option>
+          <option value="salon_spa">Salon, spa &amp; beauty</option>
+          <option value="fitness">Gym, fitness &amp; studio</option>
+          <option value="dental_medical">Dental, medical &amp; chiropractic</option>
+          <option value="real_estate">Real estate</option>
+          <option value="legal">Legal services</option>
+          <option value="professional_services">Professional services</option>
+          <option value="other">Something else</option>
         </select>
       </label>
       <div class="two">
@@ -95,13 +108,23 @@ $('#f').addEventListener('submit', async (e) => {
     if (!res.ok) throw new Error(data.error || 'Something went wrong');
     const b = data.benchmark_json || {};
     $('#ask').style.display = 'none'; $('#result').style.display = 'block';
-    $('#lede').innerHTML = `${esc(b.peer_group || 'BoxDrop stores')} spent about <b>${money(b.median_monthly_spend)}</b> on ads last month and started around <b>${Number(b.median_conversations||0).toLocaleString()}</b> customer conversations.`;
-    $('#detail').textContent = `That works out to roughly ${money(b.median_cost_per_conversation)} per conversation. The best store did it for $${Number(b.best_cost_per_conversation||0).toFixed(2)}. Vantage tells you every morning which of your ads is getting you there and which is wasting money.`;
-    $('#stats').innerHTML = [
-      [b.store_count, 'stores compared'],
-      [money(b.median_monthly_spend), 'typical monthly ad spend'],
-      ['$' + Number(b.best_cost_per_conversation||0).toFixed(2), 'best cost per conversation'],
-    ].map(([n,l]) => `<div class="stat"><div class="n">${esc(n)}</div><div class="l">${esc(l)}</div></div>`).join('');
+    if (b.basis === 'network') {
+      $('#lede').innerHTML = `${esc(b.peer_group)} spent about <b>${money(b.median_monthly_spend)}</b> on ads last month and started around <b>${Number(b.median_conversations||0).toLocaleString()}</b> customer conversations.`;
+      $('#detail').textContent = `That's roughly ${money(b.median_cost_per_conversation)} per conversation. The best one did it for $${Number(b.best_cost_per_conversation||0).toFixed(2)}. Vantage tells you every morning which of your ads is getting you there and which is wasting money.`;
+      $('#stats').innerHTML = [
+        [b.store_count, 'real businesses compared'],
+        [money(b.median_monthly_spend), 'typical monthly ad spend'],
+        ['$' + Number(b.best_cost_per_conversation||0).toFixed(2), 'best cost per conversation'],
+      ].map(([n,l]) => `<div class="stat"><div class="n">${esc(n)}</div><div class="l">${esc(l)}</div></div>`).join('');
+    } else {
+      $('#lede').innerHTML = `${esc(b.peer_group.charAt(0).toUpperCase() + b.peer_group.slice(1))} typically pay <b>${money(b.median_cost_per_conversation)}</b> for each customer conversation from ads.`;
+      $('#detail').textContent = `${b.sentence} Vantage reads your own numbers and tells you, every morning, whether you're beating that.`;
+      $('#stats').innerHTML = [
+        [money(b.median_monthly_spend), 'typical monthly ad spend'],
+        [Number(b.median_conversations||0).toLocaleString(), 'conversations a month at that budget'],
+        ['$' + Number(b.best_cost_per_conversation||0).toFixed(0), 'what the good ones pay per conversation'],
+      ].map(([n,l]) => `<div class="stat"><div class="n">${esc(n)}</div><div class="l">${esc(l)}</div></div>`).join('') + `<p class="fine" style="flex-basis:100%">Industry estimate. Once your accounts are connected, these become your real numbers.</p>`;
+    }
     $('#share').textContent = `${location.origin}/try/${data.token}`;
     window.scrollTo({top:0});
   } catch (err) {
